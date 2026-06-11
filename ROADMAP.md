@@ -7,7 +7,7 @@
 Goal: prove you can traverse a _classical_ site and extract results (first static plugin)
 
 - [x] first generic fetch page method [#3](https://github.com/fletort/ranking/issues/3)
-- [ ] fetch events list page and extract event informations with their URLs
+- [x] fetch events list page and extract event informations with their URLs
       [#5](https://github.com/fletort/ranking/issues/5)
 - [ ] fetch event page and extract event informations and race informations with their URLs
       [#6](https://github.com/fletort/ranking/issues/6)
