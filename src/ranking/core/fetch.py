@@ -11,6 +11,17 @@ HEADERS = {
 
 
 def fetch_page(url: str) -> str:
+    """Fetch the HTML content of a page at the given URL.
+
+    Args:
+        url: The URL to fetch.
+
+    Returns:
+        The raw HTML content as a string.
+
+    Raises:
+        RuntimeError: On HTTP error status codes or network-level errors.
+    """
     try:
         response = httpx.get(url, headers=HEADERS, follow_redirects=True)
         response.raise_for_status()
