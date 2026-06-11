@@ -1,0 +1,78 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for more information:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# https://containers.dev/guide/dependabot
+
+version: 2
+
+updates:
+  - package-ecosystem: 'pip'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+
+    open-pull-requests-limit: 10
+
+    groups:
+      dev-low-risk:
+        patterns:
+          - 'pytest'
+          - 'ruff'
+          - 'mypy'
+          - 'black'
+          - 'isort'
+        update-types:
+          - 'patch'
+          - 'minor'
+
+      core-low-risk:
+        patterns:
+          - '*'
+        exclude-patterns:
+          - 'pytest'
+          - 'ruff'
+          - 'mypy'
+          - 'black'
+          - 'isort'
+        update-types:
+          - 'patch'
+          - 'minor'
+
+      major-updates:
+        patterns:
+          - '*'
+        update-types:
+          - 'major'
+
+    allow:
+      - dependency-type: 'all'
+
+    labels:
+      - 'dependencies'
+      - 'python'
+
+    versioning-strategy: increase
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+    labels:
+      - 'dependencies'
+      - 'ci'
+
+  - package-ecosystem: 'devcontainers'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+
+    labels:
+      - 'dependencies'
+      - 'devcontainer'

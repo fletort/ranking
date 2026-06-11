@@ -1,0 +1,35 @@
+[project]
+name = "ranking"
+version = "0.0.1"
+description = ""
+authors = [
+    {name = "Fabien Letort"}
+]
+requires-python = ">=3.12"
+dependencies = [
+]
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.5"
+mypy = "^2.1.0"
+
+[project.scripts]
+ranking = "ranking.cli:main"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.poetry]
+packages = [{ include = "ranking", from = "src"}]
+
+[tool.ruff]
+line-length = 100
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
