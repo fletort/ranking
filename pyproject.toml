@@ -8,11 +8,13 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28",
+    "beautifulsoup4>=4.15.0,<5.0.0",
 ]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15"
 mypy = "^2.1.0"
+pytest = "^8.4.0"
 
 [project.scripts]
 ranking = "ranking.cli:main"
