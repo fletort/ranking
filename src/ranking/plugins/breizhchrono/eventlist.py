@@ -38,7 +38,7 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
             return []
 
         headers = [_normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead th")]
-        if headers[:3] != EXPECTED_HEADERS:
+        if len(headers) < 3 or headers[:3] != EXPECTED_HEADERS:
             return []
 
         events: list[EventListItem] = []
