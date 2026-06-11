@@ -31,18 +31,18 @@ def _as_text(value: object) -> str:
 def extract_events_list(html_content: str) -> list[EventListItem]:
     try:
         soup = BeautifulSoup(html_content, "html.parser")
-        table = soup.select_one("div.table-responsive table.table.table-bordered.table-hover")
-        if table is None:
-            table = soup.select_one("table.table.table-bordered.table-hover")
+        table = soup.select_one("div.table-responsive table")
         if table is None:
             return []
 
-        headers = [_normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead th")]
+        headers = [
+            _normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead > tr > th")
+        ]
         if len(headers) < 3 or headers[:3] != EXPECTED_HEADERS:
             return []
 
         events: list[EventListItem] = []
-        for row in table.select("tbody tr"):
+        for row in table.select("tbody > tr"):
             columns = row.find_all("td")
             if len(columns) < 3:
                 continue
@@ -52,16 +52,10 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
                 continue
 
             url = ""
-            link = columns[0].find("a", href=True)
-            if link is not None:
-                url = _as_text(link.get("href")).strip()
-            if not url:
-                url = _as_text(row.get("data-href")).strip()
-            if not url:
-                onclick = _as_text(row.get("onclick"))
-                match = re.search(r"['\"]([^'\"]+)['\"]", onclick)
-                if match:
-                    url = match.group(1).strip()
+            onclick = _as_text(row.get("onclick"))
+            match = re.search(r"['\"]([^'\"]+)['\"]", onclick)
+            if match:
+                url = match.group(1).strip()
 
             events.append(
                 {
