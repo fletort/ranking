@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.5"
+ruff = "^0.15"
 mypy = "^2.1.0"
 
 [project.scripts]
