@@ -4,7 +4,7 @@
 
 Goal: prove you can traverse a _classical_ site and extract results (first static plugin)
 
-- [ ] first generic fetch page method
+- [x] first generic fetch page method
 - [ ] fetch events list page and extract event informations with their URLs
 - [ ] fetch event page and extract event informations and race informations with their URLs
 - [ ] fetch race result page and parse results from one race
