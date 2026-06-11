@@ -69,6 +69,40 @@ pytest
 
 See [Technical Specification](./docs/technical_specification.md) for details.
 
+## Writing a Parser Plugin
+
+Parsers are responsible for extracting and structuring data from HTML pages.
+
+### Conceptual model
+
+Parsers typically follow 3 levels:
+
+1. Extraction (required)
+   - Extract raw values from HTML (DOM parsing)
+   - Example: "date_raw": "du 10 juin au 12 juin"
+
+2. Parsing (optional)
+   - Extract structured data from raw values
+   - Example: start_date / end_date
+
+3. Normalization (optional)
+   - Convert values to consistent types (datetime, etc.)
+
+Note:
+
+- Only the output of level 3 is required
+- The core doesn't require that your code follow this strategy
+
+### Example
+
+```python
+def extract(html):
+    return {
+        "title": ...,
+        "date_raw": ...,
+    }
+```
+
 ## 🔮 Future Direction
 
 _These features will be introduced progressively as real needs emerge._
