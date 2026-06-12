@@ -7,10 +7,23 @@ from bs4 import BeautifulSoup, Tag
 
 
 def extract_result_detail(html_content: str) -> dict:
+    """Extract raw result detail fields from a BreizhChrono runner detail page.
+
+    Parses the HTML of a per-runner result page and returns a flat dictionary of
+    raw extracted fields:
+    - ``header_raw``: the full H1 text as-is (e.g. ``"CURIE Marie (N°0110)"``).
+    - ``sex``, ``nationality``, ``birth``, ``category``: identity block fields.
+    - ``rank_*`` / ``rank_*_total``: dynamic ranking fields from classement blocks.
+    - ``time_*``: time fields (official, real, …).
+
+    Returns an empty dict if parsing fails entirely.
+    """
     try:
         soup = BeautifulSoup(html_content, "html.parser")
         result: dict[str, str] = {}
 
+        # Keep the full header text as a single raw field; name and bib number
+        # are left together — splitting them is a normalization concern, not extraction.
         h1 = soup.select_one("h1.title")
         if h1:
             result["header_raw"] = h1.get_text(" ", strip=True)
@@ -37,6 +50,7 @@ def extract_result_detail(html_content: str) -> dict:
             raw_title = title_spans[0].get_text(" ", strip=True)
             rank_key = rank_label_to_key(raw_title)
             rank_value = extract_rank_value(rank_span)
+            # second title span holds the total count, e.g. "/ 2134" → "2134"
             total_value = title_spans[1].get_text(" ", strip=True).replace("/", "").strip()
 
             if rank_key and rank_value:
@@ -51,6 +65,12 @@ def extract_result_detail(html_content: str) -> dict:
 
 
 def extract_identity_value(field: Tag | None) -> str:
+    """Extract a single identity field value from its HTML element.
+
+    Prefers the ``title`` attribute (e.g. ``title="Sexe : F"``), which carries
+    the human-readable value after the colon. Falls back to the element's text
+    content when no colon-delimited title is present.
+    """
     if field is None:
         return ""
 
@@ -61,14 +81,30 @@ def extract_identity_value(field: Tag | None) -> str:
 
 
 def normalize_text(text: str) -> str:
+    """Normalize a label string into a lowercase ASCII snake_case key.
+
+    Strips accents, lowercases, and replaces any run of non-alphanumeric
+    characters with underscores, trimming leading/trailing underscores.
+    """
+    # Decompose characters so accents become separate combining marks
     value = unicodedata.normalize("NFD", text.lower())
+    # Drop all combining (accent) characters
     value = "".join(c for c in value if unicodedata.category(c) != "Mn")
     value = re.sub(r"[^a-z0-9]+", "_", value).strip("_")
     return value
 
 
 def rank_label_to_key(label: str) -> str:
+    """Convert a classement block title into a normalized ``rank_*`` key.
+
+    Strips common French prefixes (``classement_``, ``rank_``) and applies
+    alias translations (e.g. ``general`` → ``overall``, ``sexe`` → ``gender``)
+    so that output keys are stable and language-independent.
+
+    Returns an empty string when the label cannot be turned into a valid key.
+    """
     normalized = normalize_text(label)
+    # Strip any leading "classement_" or "rank_" prefix already baked into the label
     for prefix in ("classement_", "rank_"):
         if normalized.startswith(prefix):
             normalized = normalized[len(prefix) :]
@@ -79,6 +115,11 @@ def rank_label_to_key(label: str) -> str:
 
 
 def extract_rank_value(rank_span: Tag) -> str:
+    """Extract the numeric rank value from a classement index span.
+
+    The rank is rendered as an ``<img alt="N"/>`` inside the span on the live
+    site. Falls back to the span's text content for plain-text variants.
+    """
     img = rank_span.find("img")
     if isinstance(img, Tag):
         alt = img.get("alt")
@@ -88,6 +129,14 @@ def extract_rank_value(rank_span: Tag) -> str:
 
 
 def extract_time_values(soup: BeautifulSoup) -> dict[str, str]:
+    """Extract all time fields from the page.
+
+    Handles two HTML patterns used by BreizhChrono:
+    - Primary times: ``<span class="timeTitle">`` followed by a sibling ``<span>``.
+    - Secondary times: pairs of ``<span class="secondaryTime">`` sharing a parent.
+
+    Each parent element is processed at most once to avoid duplicate entries.
+    """
     result: dict[str, str] = {}
     for label in soup.select("span.timeTitle"):
         value_tag = label.find_next_sibling("span")
@@ -95,6 +144,7 @@ def extract_time_values(soup: BeautifulSoup) -> dict[str, str]:
             continue
         add_time_value(result, label.get_text(" ", strip=True), value_tag.get_text(" ", strip=True))
 
+    # Track already-processed parents to avoid emitting duplicate pairs
     processed_parents: set[int] = set()
     for span in soup.select("span.secondaryTime"):
         parent = span.parent
@@ -111,6 +161,12 @@ def extract_time_values(soup: BeautifulSoup) -> dict[str, str]:
 
 
 def add_time_value(result: dict[str, str], raw_label: str, raw_value: str) -> None:
+    """Normalize a time label and insert the corresponding value into *result*.
+
+    Strips the French ``temps_`` prefix and applies alias translations
+    (e.g. ``officiel`` → ``official``, ``reel`` → ``real``) so keys are
+    stable and language-independent. Entries with an empty value are skipped.
+    """
     normalized = normalize_text(raw_label)
     if normalized.startswith("temps_"):
         normalized = normalized[len("temps_") :]
