@@ -32,11 +32,15 @@ def test_extract_event_detail_returns_event_and_races() -> None:
                 "url": "/bc/resultats/course-result.jsp?ref=12345-123&heat=10km"
                 "&query=&category=&sex=&inter=",
                 "name": "10km",
+                "ref_computed": "12345-123",
+                "heat_computed": "10km",
             },
             {
                 "url": "/bc/resultats/course-result.jsp?ref=678912334-222&heat=5km"
                 "&query=&category=&sex=&inter=",
                 "name": "5km",
+                "ref_computed": "678912334-222",
+                "heat_computed": "5km",
             },
         ],
     }

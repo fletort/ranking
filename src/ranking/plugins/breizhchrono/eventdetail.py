@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TypedDict
+from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -8,6 +9,8 @@ from bs4 import BeautifulSoup
 class RaceItem(TypedDict):
     url: str
     name: str
+    ref_computed: str
+    heat_computed: str
 
 
 class EventDetail(TypedDict):
@@ -32,8 +35,16 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
                 href = href[0] if href else ""
 
             final_url = build_race_url(str(href))
+            ref, heat = extract_ref_and_heat(final_url)
 
-            races.append({"url": final_url, "name": name})
+            races.append(
+                {
+                    "url": final_url,
+                    "name": name,
+                    "ref_computed": ref,
+                    "heat_computed": heat,
+                }
+            )
 
         return {"event_race_raw": event_race_raw, "races": races}
     except Exception:
@@ -64,3 +75,11 @@ def build_race_url(raw_url: str) -> str:
     ref = "-".join(slug_parts[-2:])  # prend les 2 derniers éléments
 
     return f"/bc/resultats/course-result.jsp?ref={ref}&heat={heat}&query=&category=&sex=&inter="
+
+
+def extract_ref_and_heat(url: str) -> tuple[str, str]:
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+    ref = params.get("ref", [""])[0]
+    heat = params.get("heat", [""])[0]
+    return ref, heat

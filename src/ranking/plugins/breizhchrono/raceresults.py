@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Mapping
+from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -59,9 +61,12 @@ def check_decode_order(soup: BeautifulSoup) -> None:
             print("[WARN] Field mapping changed:", fields)
 
 
-def extract_race_results(html: str) -> list[dict]:
+def extract_race_results(
+    html: str, race_information: Mapping[str, str] | None = None
+) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     check_decode_order(soup)
+    ref, heat = extract_ref_and_heat(race_information)
 
     data_tag = soup.find(id="data")
     if not data_tag:
@@ -82,8 +87,33 @@ def extract_race_results(html: str) -> list[dict]:
         if len(parts) < len(EXPECTED):
             continue  # sécurité
 
-        results.append(
-            {key: parts[i] if i < len(parts) else None for i, key in enumerate(EXPECTED)}
-        )
+        result = {key: parts[i] if i < len(parts) else None for i, key in enumerate(EXPECTED)}
+
+        dossard = result.get("dossard")
+        if isinstance(dossard, str) and dossard and ref and heat:
+            result["result_detail_url_computed"] = (
+                f"/bc/resultats/coureur.jsp?ref={ref}&heat={heat}&dossard={dossard}"
+            )
+
+        results.append(result)
 
     return results
+
+
+def extract_ref_and_heat(race_information: Mapping[str, str] | None) -> tuple[str, str]:
+    if not race_information:
+        return "", ""
+
+    ref = race_information.get("ref_computed")
+    heat = race_information.get("heat_computed")
+
+    if isinstance(ref, str) and isinstance(heat, str) and ref and heat:
+        return ref, heat
+
+    race_url = race_information.get("url")
+    if not isinstance(race_url, str):
+        return "", ""
+
+    parsed = urlparse(race_url)
+    params = parse_qs(parsed.query)
+    return params.get("ref", [""])[0], params.get("heat", [""])[0]
