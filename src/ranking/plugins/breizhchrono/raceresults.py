@@ -1,73 +1,89 @@
 from __future__ import annotations
 
-from typing import TypedDict
+import base64
+import re
 
 from bs4 import BeautifulSoup
 
-
-class RaceResultItem(TypedDict):
-    rank: str
-    rank_category: str
-    category_name: str
-    bib: str
-    category: str
-    gender: str
-    club_city: str
-    official_time: str
-    real_time: str
-
-
-EXPECTED_HEADERS = [
-    "clt",
-    "clt cat",
-    "nom categorie",
+EXPECTED = [
     "dossard",
-    "catégorie",
+    "diploma",
+    "classement",
+    "classementCat",
+    "nom",
+    "cat",
     "sexe",
-    "club/ville",
-    "temps officiel",
-    "temp réel",
+    "club",
+    "inter",
+    "officiel",
+    "reel",
+    "endurance",
 ]
 
 
-def _normalize_text(value: str) -> str:
-    return " ".join(value.lower().split())
+def decode_data(encoded: str, key_char: str = "K") -> str:
+    """
+    Decode a base64-encoded string using a simple XOR cipher with the given key character.
+    Do as the official JavaScript does (see showResults function in the page source).
+    Args:
+        encoded: The base64-encoded string to decode.
+        key_char: A single character used as the key for the XOR cipher (default is 'K').
+    Returns:    The decoded string.
+    """
+
+    raw = base64.b64decode(encoded)
+    key = ord(key_char)
+    decoded_bytes = bytes(b ^ key for b in raw)
+    return decoded_bytes.decode("utf-8")
 
 
-def extract_race_results(html_content: str) -> list[RaceResultItem]:
-    try:
-        soup = BeautifulSoup(html_content, "html.parser")
-        table = soup.select_one("table.table")
-        if table is None:
-            return []
+def check_decode_order(soup: BeautifulSoup) -> None:
+    """Check the order of fields used in the JavaScript decoding logic.
+    This is a sanity check to detect if the website has changed its encoding logic.
+    It looks for the JavaScript code that does the decoding and extracts the order of fields.
+    If the order does not match the expected one, it prints a warning.
+    Args:
+        soup: The BeautifulSoup object of the page, used to find the relevant JavaScript code.
+    """
 
-        headers = [
-            _normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead > tr > th")
-        ]
-        expected_count = len(EXPECTED_HEADERS)
-        if len(headers) < expected_count or headers[:expected_count] != EXPECTED_HEADERS:
-            return []
+    scripts = soup.find_all("script")
+    js_code = "\n".join(s.get_text() for s in scripts if s.get_text())
+    match = re.search(r"\[\s*([^\]]+?)\s*\]\s*=\s*ligne\.split", js_code, re.DOTALL)
 
-        results: list[RaceResultItem] = []
-        for row in table.select("tbody > tr"):
-            columns = row.find_all("td")
-            if len(columns) < len(EXPECTED_HEADERS):
-                continue
+    if not match:
+        print("[ERROR] No destructuring found")
+    else:
+        fields = [f.strip() for f in match.group(1).split(",")]
 
-            results.append(
-                {
-                    "rank": columns[0].get_text(" ", strip=True),
-                    "rank_category": columns[1].get_text(" ", strip=True),
-                    "category_name": columns[2].get_text(" ", strip=True),
-                    "bib": columns[3].get_text(" ", strip=True),
-                    "category": columns[4].get_text(" ", strip=True),
-                    "gender": columns[5].get_text(" ", strip=True),
-                    "club_city": columns[6].get_text(" ", strip=True),
-                    "official_time": columns[7].get_text(" ", strip=True),
-                    "real_time": columns[8].get_text(" ", strip=True),
-                }
-            )
+        if fields != EXPECTED:
+            print("[WARN] Field mapping changed:", fields)
 
-        return results
-    except Exception:
+
+def extract_race_results(html: str) -> list[dict]:
+    soup = BeautifulSoup(html, "html.parser")
+    check_decode_order(soup)
+
+    data_tag = soup.find(id="data")
+    if not data_tag:
         return []
+
+    encoded = data_tag.get_text(strip=True)
+
+    decoded = decode_data(encoded)
+
+    results = []
+
+    for line in decoded.split("\n"):
+        if not line.strip():
+            continue
+
+        parts = line.split("|")
+
+        if len(parts) < len(EXPECTED):
+            continue  # sécurité
+
+        results.append(
+            {key: parts[i] if i < len(parts) else None for i, key in enumerate(EXPECTED)}
+        )
+
+    return results
