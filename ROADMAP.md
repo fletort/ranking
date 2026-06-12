@@ -13,6 +13,8 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
       [#6](https://github.com/fletort/ranking/issues/6)
 - [x] fetch race result page and parse results from one race
       [#7](https://github.com/fletort/ranking/issues/7)
+- [ ] fetch result detail page and parse result information
+      [#15](https://github.com/fletort/ranking/issues/15)
 
 ## POC - Phase 1 — Simple Cache (MUST HAVE)
 
