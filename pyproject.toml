@@ -14,7 +14,7 @@ dependencies = [
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.15"
 mypy = "^2.1.0"
-pytest = "^8.4.0"
+pytest = "^9.0.3"
 
 [project.scripts]
 ranking = "ranking.cli:main"
