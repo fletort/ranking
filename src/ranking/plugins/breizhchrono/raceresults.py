@@ -85,7 +85,7 @@ def extract_race_results(
         parts = line.split("|")
 
         if len(parts) < len(EXPECTED):
-            continue  # sécurité
+            continue  # safety
 
         result = {key: parts[i] if i < len(parts) else None for i, key in enumerate(EXPECTED)}
 
