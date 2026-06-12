@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
+
 import httpx
+
+VERIFY_SSL = os.getenv("ENV") != "dev"
 
 HEADERS = {
     "User-Agent": "RankingBot/0.1 (contact: https://github.com/fletort/ranking)",
@@ -23,7 +27,9 @@ def fetch_page(url: str) -> str:
         RuntimeError: On HTTP error status codes or network-level errors.
     """
     try:
-        response = httpx.get(url, headers=HEADERS, follow_redirects=True)
+        response = httpx.get(
+            url, headers=HEADERS, follow_redirects=True, verify=VERIFY_SSL, timeout=10.0
+        )
         response.raise_for_status()
         return response.text
     except httpx.HTTPStatusError as e:

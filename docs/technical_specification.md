@@ -8,6 +8,7 @@
 | Dependency management | Poetry              |
 | Data validation       | Pydantic v2         |
 | HTTP client           | httpx (async-ready) |
+| Web extraction        | beautifulsoup4      |
 | Linter / formatter    | ruff                |
 | Type checker          | mypy                |
 | Tests                 | pytest + pytest-cov |
