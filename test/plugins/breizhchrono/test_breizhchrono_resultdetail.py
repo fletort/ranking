@@ -48,8 +48,7 @@ def test_extract_result_detail_returns_expected_fields() -> None:
     result = extract_result_detail(html)
 
     assert result == {
-        "name": "CURIE Marie",
-        "dossard": "0110",
+        "header_raw": "CURIE Marie (N°0110)",
         "sex": "F",
         "nationality": "FRA",
         "birth": "1912",

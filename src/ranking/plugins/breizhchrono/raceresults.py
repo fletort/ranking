@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import re
 from collections.abc import Mapping
-from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -66,7 +65,9 @@ def extract_race_results(
 ) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     check_decode_order(soup)
-    ref, heat = extract_ref_and_heat(race_information)
+
+    ref = race_information.get("ref_computed", "") if race_information else ""
+    heat = race_information.get("heat_computed", "") if race_information else ""
 
     data_tag = soup.find(id="data")
     if not data_tag:
@@ -98,22 +99,3 @@ def extract_race_results(
         results.append(result)
 
     return results
-
-
-def extract_ref_and_heat(race_information: Mapping[str, str] | None) -> tuple[str, str]:
-    if not race_information:
-        return "", ""
-
-    ref = race_information.get("ref_computed")
-    heat = race_information.get("heat_computed")
-
-    if isinstance(ref, str) and isinstance(heat, str) and ref and heat:
-        return ref, heat
-
-    race_url = race_information.get("url")
-    if not isinstance(race_url, str):
-        return "", ""
-
-    parsed = urlparse(race_url)
-    params = parse_qs(parsed.query)
-    return params.get("ref", [""])[0], params.get("heat", [""])[0]

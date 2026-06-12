@@ -48,7 +48,6 @@ def main() -> None:
 
     first_race = event_detail["races"][0]
     race_information = {
-        "url": first_race["url"],
         "ref_computed": first_race["ref_computed"],
         "heat_computed": first_race["heat_computed"],
     }

@@ -13,12 +13,7 @@ def extract_result_detail(html_content: str) -> dict:
 
         h1 = soup.select_one("h1.title")
         if h1:
-            header_text = h1.get_text(" ", strip=True)
-            name, dossard = parse_name_and_dossard(header_text)
-            if name:
-                result["name"] = name
-            if dossard:
-                result["dossard"] = dossard
+            result["header_raw"] = h1.get_text(" ", strip=True)
 
         identity = soup.find(id="identity")
         if isinstance(identity, Tag):
@@ -53,13 +48,6 @@ def extract_result_detail(html_content: str) -> dict:
         return result
     except Exception:
         return {}
-
-
-def parse_name_and_dossard(header_text: str) -> tuple[str, str]:
-    match = re.match(r"^(.*?)\s*\(N°\s*([^)]+)\)\s*$", header_text)
-    if not match:
-        return header_text, ""
-    return match.group(1).strip(), match.group(2).strip()
 
 
 def extract_identity_value(field: Tag | None) -> str:

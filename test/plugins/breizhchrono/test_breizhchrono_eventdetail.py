@@ -3,11 +3,13 @@ from ranking.plugins.breizhchrono.eventdetail import build_race_url, extract_eve
 
 def test_build_race_url_return_correct_url() -> None:
     raw_url = "/resultats-courses/10h-relais-solidaire-2026-1488071608761-916/10h-relais-solidaire"
-    output = build_race_url(raw_url)
+    url, ref, heat = build_race_url(raw_url)
     assert (
-        output == "/bc/resultats/course-result.jsp?ref=1488071608761-916&heat=10h-relais-"
+        url == "/bc/resultats/course-result.jsp?ref=1488071608761-916&heat=10h-relais-"
         "solidaire&query=&category=&sex=&inter="
     )
+    assert ref == "1488071608761-916"
+    assert heat == "10h-relais-solidaire"
 
 
 def test_extract_event_detail_returns_event_and_races() -> None:
