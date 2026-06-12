@@ -13,7 +13,7 @@ def test_extract_events_list_returns_parsed_events() -> None:
           </tr>
         </thead>
         <tbody>
-          <tr onclick="window.location='https://resultats.breizhchrono.com/event-1';">
+          <tr onclick="window.location='/event-1';">
             <td>Trail de la Côte</td>
             <td>14/07/2026</td>
             <td>22</td>
@@ -27,7 +27,7 @@ def test_extract_events_list_returns_parsed_events() -> None:
 
     assert events == [
         {
-            "url": "https://resultats.breizhchrono.com/event-1",
+            "url": "/event-1",
             "name": "Trail de la Côte",
             "date_raw": "14/07/2026",
             "location_raw": "22",

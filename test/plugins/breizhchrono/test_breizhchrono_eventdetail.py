@@ -7,8 +7,8 @@ def test_extract_event_detail_returns_event_and_races() -> None:
       <body>
         <h1>Brest Running Tour 2026 - 10km</h1>
         <div>
-          <a class="badge-link" href="https://resultats.breizhchrono.com/event-1/10km">10km</a>
-          <a class="badge-link" href="https://resultats.breizhchrono.com/event-1/5km">5km</a>
+          <a class="badge-link" href="/resultats-course/10km">10km</a>
+          <a class="badge-link" href="/resultats-course/5km">5km</a>
         </div>
       </body>
     </html>
@@ -19,8 +19,8 @@ def test_extract_event_detail_returns_event_and_races() -> None:
     assert result == {
         "event_race_raw": "Brest Running Tour 2026 - 10km",
         "races": [
-            {"url": "https://resultats.breizhchrono.com/event-1/10km", "name": "10km"},
-            {"url": "https://resultats.breizhchrono.com/event-1/5km", "name": "5km"},
+            {"url": "/resultats-course/10km", "name": "10km"},
+            {"url": "/resultats-course/5km", "name": "5km"},
         ],
     }
 
@@ -30,7 +30,7 @@ def test_extract_event_detail_returns_none_when_no_h1() -> None:
     <html>
       <body>
         <div>
-          <a class="badge-link" href="https://resultats.breizhchrono.com/event-1/10km">10km</a>
+          <a class="badge-link" href="/resultats-course/10km">10km</a>
         </div>
       </body>
     </html>

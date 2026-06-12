@@ -13,12 +13,14 @@ def main() -> None:
         return
 
     events = extract_events_list(html)
+    print(f"Extracted {len(events)} events:")
     print(events)
+    print("-----------------------------------------------------------------------------")
 
     if not events:
         return
 
-    first_event_url = events[0]["url"]
+    first_event_url = EVENTS_LIST_URL + events[0]["url"]
     try:
         event_html = fetch_page(first_event_url)
     except RuntimeError as exc:
