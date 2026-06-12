@@ -30,8 +30,37 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
             name = link.get_text(" ", strip=True)
             if isinstance(href, list):
                 href = href[0] if href else ""
-            races.append({"url": str(href), "name": name})
+
+            final_url = build_race_url(str(href))
+
+            races.append({"url": final_url, "name": name})
 
         return {"event_race_raw": event_race_raw, "races": races}
     except Exception:
         return None
+
+
+def build_race_url(raw_url: str) -> str:
+    # raw url exemple:
+    # /resultats-courses/10h-relais-solidaire-2026-1488071608761-916/10h-relais-solidaire
+    # output exemple:
+    #   /bc/resultats/course-result.jsp?ref=1488071608761-916&amp;
+    #   heat=10h-relais-solidaire&amp;query=&category=&sex=&inter=
+    parts = raw_url.strip("/").split("/")
+
+    if len(parts) != 3:
+        return raw_url  # fallback
+
+    full_slug = parts[-2]
+    heat = parts[-1]
+
+    # extraire ref depuis le slug
+    # ex: 10h-relais-solidaire-2026-1488071608761-916
+    slug_parts = full_slug.split("-")
+
+    if len(slug_parts) < 2:
+        return raw_url
+
+    ref = "-".join(slug_parts[-2:])  # prend les 2 derniers éléments
+
+    return f"/bc/resultats/course-result.jsp?ref={ref}&heat={heat}&query=&category=&sex=&inter="
