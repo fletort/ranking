@@ -22,7 +22,7 @@ def main() -> None:
     if not events:
         return
 
-    first_event_url = "https://resultats.breizhchrono.com/resultats-courses/brest-running-tour-2026-1763690973375-1/10km"
+    first_event_url = "https://resultats.breizhchrono.com/resultats-courses/triathlon-de-la-cote-de-granit-rose-tregastel-2026-1295405190290-19/triathlon-m"
     try:
         event_html = fetch_page(first_event_url)
     except RuntimeError as exc:
