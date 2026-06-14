@@ -8,28 +8,31 @@ from bs4 import BeautifulSoup, Tag
 
 
 class RankItem(TypedDict):
-    """ Represents a single global ranking field extracted from a BreizhChrono result detail page.
+    """Represents a single global ranking field extracted from a BreizhChrono result detail page.
     Each ranking field has a name, a value (the rank), and an optional total
     (the total number of participants in that ranking).
     """
+
     name: str
     value: str
     total: str | None
 
 
 class TimeItem(TypedDict):
-    """ Represents a single time field extracted from a BreizhChrono result detail page.
+    """Represents a single time field extracted from a BreizhChrono result detail page.
     Each time field has a name and a value (the time string).
     """
+
     name: str
     value: str
 
 
 class RankTimeItem(TypedDict):
-    """ Represents a single rank-time field extracted from a BreizhChrono result detail page.
+    """Represents a single rank-time field extracted from a BreizhChrono result detail page.
     Each rank-time field has a name, a time value, an overall rank value, and a category
     rank value.
     """
+
     name: str
     time: str
     overall_rank: str
@@ -159,12 +162,10 @@ def extract_global_rank_values(soup: BeautifulSoup) -> list[RankItem]:
         rank_value = extract_rank_value(rank_span)
         # second title span holds the total count, e.g. "/ 2134" → "2134"
         if len(title_spans) > 1:
-            total_value = title_spans[1].get_text(
-                " ", strip=True).replace("/", "").strip()
+            total_value = title_spans[1].get_text(" ", strip=True).replace("/", "").strip()
 
         if rank_key and rank_value:
-            new_rank: RankItem = {"name": rank_key,
-                                  "value": rank_value, "total": None}
+            new_rank: RankItem = {"name": rank_key, "value": rank_value, "total": None}
             if total_value:
                 new_rank["total"] = total_value
             result.append(new_rank)
