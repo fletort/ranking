@@ -112,6 +112,19 @@ def test_extract_race_results_returns_parsed_results() -> None:
     assert results[0]["sexe"] == "M"
 
 
+def test_extract_race_results_adds_result_detail_url_when_race_information_exists() -> None:
+    encoded = _encode(SAMPLE_ROW + "\n")
+    html = _make_html(encoded)
+
+    results = extract_race_results(
+        html, {"ref_computed": "1488071608761-916", "heat_computed": "10h-relais-solidaire"}
+    )
+
+    assert results[0]["result_detail_url_computed"] == (
+        "/bc/resultats/coureur.jsp?ref=1488071608761-916&heat=10h-relais-solidaire&dossard=42"
+    )
+
+
 def test_extract_race_results_returns_all_expected_keys() -> None:
     encoded = _encode(SAMPLE_ROW + "\n")
     html = _make_html(encoded)

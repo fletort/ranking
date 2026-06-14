@@ -4,6 +4,7 @@ from ranking.core.fetch import fetch_page
 from ranking.plugins.breizhchrono.eventdetail import extract_event_detail
 from ranking.plugins.breizhchrono.eventlist import EVENTS_LIST_URL, extract_events_list
 from ranking.plugins.breizhchrono.raceresults import extract_race_results
+from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
 
 def main() -> None:
@@ -21,7 +22,7 @@ def main() -> None:
     if not events:
         return
 
-    first_event_url = "https://resultats.breizhchrono.com/resultats-courses/brest-running-tour-2026-1763690973375-1/10km"
+    first_event_url = "https://resultats.breizhchrono.com/resultats-courses/triathlon-de-la-cote-de-granit-rose-tregastel-2026-1295405190290-19/triathlon-m"
     try:
         event_html = fetch_page(first_event_url)
     except RuntimeError as exc:
@@ -45,9 +46,33 @@ def main() -> None:
         print(f"Fetch error: {exc}")
         return
 
-    results = extract_race_results(race_html)
+    first_race = event_detail["races"][0]
+    race_information = {
+        "ref_computed": first_race["ref_computed"],
+        "heat_computed": first_race["heat_computed"],
+    }
+    results = extract_race_results(race_html, race_information)
     print("Race results:")
     print(results)
+    print("-----------------------------------------------------------------------------")
+
+    if not results:
+        return
+
+    result_detail_url = results[0].get("result_detail_url_computed")
+    if not isinstance(result_detail_url, str) or not result_detail_url:
+        print("No computed result detail URL found")
+        return
+
+    try:
+        detail_html = fetch_page(EVENTS_LIST_URL + result_detail_url)
+    except RuntimeError as exc:
+        print(f"Fetch error: {exc}")
+        return
+
+    detail = extract_result_detail(detail_html)
+    print("Result detail:")
+    print(detail)
     print("-----------------------------------------------------------------------------")
 
 
