@@ -91,17 +91,18 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
 
         identity = soup.find(id="identity")
         if isinstance(identity, Tag):
-            for field_id, field_key in (
-                ("sex", "sex"),
-                ("nat", "nationality"),
-                ("birth", "birth"),
-                ("categ", "category"),
-            ):
+            field_mapping = {
+                "sex": "sex",
+                "nat": "nationality",
+                "birth": "birth",
+                "categ": "category",
+            }
+            for field_id, field_key in field_mapping.items():
                 field = identity.find(id=field_id)
                 if field:
                     value = extract_identity_value(field)
                     if value:
-                        result[field_key] = value
+                        result[field_key] = value  # type: ignore[literal-required]
 
         result["global_ranks"] = extract_global_rank_values(soup)
         result["global_times"] = extract_global_time_values(soup)
