@@ -22,7 +22,7 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 **Goal:** never re-fetch the same URL
 
-- [ ] Implement a class resposible of the Cache v1 as defined in the [technical-specification]
+- [x] Implement a class resposible of the Cache v1 as defined in the [technical-specification]
       [#18](https://github.com/fletort/ranking/issues/18)
 - [ ] Use the cache V1 (developed upper) in the fetch command as defined in the
       [technical-specification]
