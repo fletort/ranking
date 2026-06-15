@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Callable
@@ -78,7 +78,7 @@ class HTTPCacheV1:
         snapshot_path.write_text(content, encoding="utf-8")
 
     def _snapshot_timestamp(self) -> str:
-        return datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
 
     @staticmethod
     def _slug_from_url(url: str) -> str:

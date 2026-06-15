@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -68,6 +69,8 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     assert updated == "v2"
     assert cache.current_path(url).read_text(encoding="utf-8") == "v2"
     assert len(snapshot_files) == 1
+    assert snapshot_files[0].suffix == ".html"
+    datetime.strptime(snapshot_files[0].stem, "%Y-%m-%dT%H-%M-%S")
     assert snapshot_files[0].read_text(encoding="utf-8") == "v2"
 
 
