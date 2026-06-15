@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
 class CachePolicy(Enum):
@@ -33,8 +33,9 @@ class HTTPCacheV1:
 
     @staticmethod
     def derive_cache_key(url: str) -> str:
-        """Derive a deterministic SHA-1 key from the full URL string."""
-        return hashlib.sha1(url.encode("utf-8")).hexdigest()  # noqa: S324
+        """Derive a deterministic SHA-1 key from a canonicalized full URL string."""
+        canonical_url = HTTPCacheV1._canonicalize_url(url)
+        return hashlib.sha1(canonical_url.encode("utf-8")).hexdigest()  # noqa: S324
 
     def fetch(self, url: str, cache_policy: CachePolicy) -> str:
         """Fetch content according to policy and update on-disk cache when needed."""
@@ -102,3 +103,20 @@ class HTTPCacheV1:
 
         slug = re.sub(r"[^a-zA-Z0-9]+", "_", raw).strip("_").lower()
         return slug or "cached_resource"
+
+    @staticmethod
+    def _canonicalize_url(url: str) -> str:
+        """Canonicalize URL by sorting query parameters to stabilize cache keys."""
+        parsed = urlparse(url)
+        sorted_query = sorted(parse_qsl(parsed.query, keep_blank_values=True))
+        canonical_query = urlencode(sorted_query, doseq=True)
+        return urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                canonical_query,
+                parsed.fragment,
+            )
+        )

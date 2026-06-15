@@ -6,12 +6,12 @@ import pytest
 from ranking.core.cache import CachePolicy, HTTPCacheV1
 
 
-def test_derive_cache_key_uses_full_url() -> None:
+def test_derive_cache_key_ignores_query_order() -> None:
     url = "https://example.com/page?a=1&b=2"
     same_without_query_order = "https://example.com/page?b=2&a=1"
 
     assert HTTPCacheV1.derive_cache_key(url) == "f80e340458ac3ee4f3a7f61d523a36608f8fabd5"
-    assert HTTPCacheV1.derive_cache_key(url) != HTTPCacheV1.derive_cache_key(
+    assert HTTPCacheV1.derive_cache_key(url) == HTTPCacheV1.derive_cache_key(
         same_without_query_order
     )
 

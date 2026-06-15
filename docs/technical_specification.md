@@ -133,7 +133,9 @@ the authoritative identifier.
 
 Each cached resource is identified by a deterministic cache key derived from the request URL.
 
-- The cache key is computed from the **full URL string**, including query parameters.
+- The cache key is computed from a **canonicalized full URL**, including query parameters.
+- Query parameters are parsed and sorted by key before rebuilding the URL, so semantically
+  equivalent URLs map to the same cache key.
 - The hashing algorithm used in v1 is **SHA‑1**, applied to the UTF‑8 encoded URL.
 - The resulting hexadecimal digest is used as the cache file name.
 
