@@ -20,9 +20,11 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 **Goal:** never re-fetch the same URL
 
-- [ ] implement local file cache
-- [ ] fetch = read cache if exists, else HTTP + save
-- [ ] confirm it works offline
+- [ ] Implement a class resposible of the Cache v1 as defined in the [technical-specification]
+- [ ] Use the cache V1 (developed upper) in the fetch command as defined in the
+      [technical-specification]
+- [ ] Enable optional persistence of extracted JSON for debugging (see § Development Notes of the
+      [technical-specification])
 
 ## POC - Phase 2 — Clean Parsing
 
@@ -88,3 +90,5 @@ def run():
 - event-driven runtime
 - serverless execution (AWS)
 - distributed scraping
+
+[technical-specification]: ./docs/technical_specification.md
