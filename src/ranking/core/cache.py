@@ -111,7 +111,7 @@ class HTTPCacheV1:
         sorted_query = sorted(
             parse_qsl(parsed.query, keep_blank_values=True), key=lambda item: item[0]
         )
-        canonical_query = urlencode(sorted_query, doseq=True)
+        canonical_query = urlencode(sorted_query)
         return urlunparse(
             (
                 parsed.scheme,
