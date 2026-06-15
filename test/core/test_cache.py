@@ -9,8 +9,13 @@ from ranking.core.cache import CachePolicy, HTTPCacheV1
 def test_derive_cache_key_ignores_query_order() -> None:
     url = "https://example.com/page?a=1&b=2"
     same_without_query_order = "https://example.com/page?b=2&a=1"
+    with_different_query_value = "https://example.com/page?a=1&b=3"
+
     assert HTTPCacheV1.derive_cache_key(url) == HTTPCacheV1.derive_cache_key(
         same_without_query_order
+    )
+    assert HTTPCacheV1.derive_cache_key(url) != HTTPCacheV1.derive_cache_key(
+        with_different_query_value
     )
 
 
