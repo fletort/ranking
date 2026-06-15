@@ -108,7 +108,9 @@ class HTTPCacheV1:
     def _canonicalize_url(url: str) -> str:
         """Canonicalize URL by sorting query parameters to stabilize cache keys."""
         parsed = urlparse(url)
-        sorted_query = sorted(parse_qsl(parsed.query, keep_blank_values=True))
+        sorted_query = sorted(
+            parse_qsl(parsed.query, keep_blank_values=True), key=lambda item: item[0]
+        )
         canonical_query = urlencode(sorted_query, doseq=True)
         return urlunparse(
             (
