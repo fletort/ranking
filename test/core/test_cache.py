@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -9,8 +10,12 @@ from ranking.core.cache import CachePolicy, HTTPCacheV1
 def test_derive_cache_key_ignores_query_order() -> None:
     url = "https://example.com/page?a=1&b=2"
     same_without_query_order = "https://example.com/page?b=2&a=1"
+    canonical_url = HTTPCacheV1._canonicalize_url(same_without_query_order)
 
-    assert HTTPCacheV1.derive_cache_key(url) == "f80e340458ac3ee4f3a7f61d523a36608f8fabd5"
+    assert canonical_url == "https://example.com/page?a=1&b=2"
+    assert (
+        HTTPCacheV1.derive_cache_key(url) == hashlib.sha1(canonical_url.encode("utf-8")).hexdigest()
+    )
     assert HTTPCacheV1.derive_cache_key(url) == HTTPCacheV1.derive_cache_key(
         same_without_query_order
     )
