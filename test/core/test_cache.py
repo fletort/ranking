@@ -10,7 +10,9 @@ def test_derive_cache_key_uses_full_url() -> None:
     same_without_query_order = "https://example.com/page?b=2&a=1"
 
     assert HTTPCacheV1.derive_cache_key(url) == "f80e340458ac3ee4f3a7f61d523a36608f8fabd5"
-    assert HTTPCacheV1.derive_cache_key(url) != HTTPCacheV1.derive_cache_key(same_without_query_order)
+    assert HTTPCacheV1.derive_cache_key(url) != HTTPCacheV1.derive_cache_key(
+        same_without_query_order
+    )
 
 
 def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:

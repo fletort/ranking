@@ -44,7 +44,9 @@ class HTTPCacheV1:
             self._write_current(current_path, content)
             return content
 
-        existing_content = current_path.read_text(encoding="utf-8") if current_path.exists() else None
+        existing_content = (
+            current_path.read_text(encoding="utf-8") if current_path.exists() else None
+        )
         fetched_content = self.fetcher(url)
 
         if existing_content is not None and existing_content != fetched_content:
