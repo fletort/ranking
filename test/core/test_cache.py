@@ -85,3 +85,62 @@ def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="Network error"):
         cache.fetch("https://example.com/fail", CachePolicy.CACHE_IF_PRESENT)
+
+
+def test_save_extracted_json_disabled_by_default(tmp_path: Path) -> None:
+    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path)
+    url = "https://example.com/events"
+
+    cache.save_extracted_json(url, {"key": "value"})
+
+    assert not cache.extracted_json_path(url).exists()
+
+
+def test_save_extracted_json_persists_when_enabled(tmp_path: Path) -> None:
+    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    url = "https://example.com/events"
+    data = [{"name": "Race A", "distance": 10}]
+
+    cache.save_extracted_json(url, data)
+
+    path = cache.extracted_json_path(url)
+    assert path.exists()
+    import json
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved == data
+
+
+def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None:
+    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    url = "https://example.com/page?b=2&a=1"
+    url_reordered = "https://example.com/page?a=1&b=2"
+
+    cache.save_extracted_json(url, {"x": 1})
+    path_reordered = cache.extracted_json_path(url_reordered)
+
+    assert path_reordered.exists()
+
+
+def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None:
+    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    url = "https://example.com/results"
+
+    cache.save_extracted_json(url, {"results": []})
+
+    key = HTTPCacheV1.derive_cache_key(url)
+    shard = key[:2]
+    expected_path = tmp_path / "demo" / "extracted" / shard / f"{key}.json"
+    assert expected_path.exists()
+
+
+def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:
+    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    url = "https://example.com/detail"
+    data = {"name": "Alice", "time": "01:23:45"}
+
+    cache.save_extracted_json(url, data)
+
+    raw = cache.extracted_json_path(url).read_text(encoding="utf-8")
+    assert "\n" in raw
+    assert "  " in raw
