@@ -24,10 +24,11 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 - [x] Implement a class resposible of the Cache v1 as defined in the [technical-specification]
       [#18](https://github.com/fletort/ranking/issues/18)
-- [ ] Use the cache V1 (developed upper) in the fetch command as defined in the
-      [technical-specification]
+- [ ] Use the cache V1 (developed in #18) in the cli. fetch.py becomes the fetcher_httpx that can be
+      used with the cache. [technical-specification].
+      [#20](https://github.com/fletort/ranking/issues/20)
 - [ ] Enable optional persistence of extracted JSON for debugging (see § Development Notes of the
-      [technical-specification])
+      [technical-specification]) [#21](https://github.com/fletort/ranking/issues/21)
 
 ## POC - Phase 2 — Clean Parsing
 
