@@ -15,6 +15,7 @@ dependencies = [
 ruff = "^0.15"
 mypy = "^2.1.0"
 pytest = "^9.0.3"
+pytest-httpx = "^0.36.0"
 
 [project.scripts]
 ranking = "ranking.cli:main"
