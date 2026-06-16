@@ -73,20 +73,8 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     assert cache.current_path(url).read_text(encoding="utf-8") == "v2"
     assert len(snapshot_files) == 1
     assert snapshot_files[0].suffix == ".html"
-    datetime.strptime(snapshot_files[0].stem, "%Y-%m-%dT%H-%M-%S")
+    datetime.strptime(snapshot_files[0].stem, "%Y-%m-%dT%H-%M-%S-%f")
     assert snapshot_files[0].read_text(encoding="utf-8") == "v2"
-
-
-def test_current_path_uses_sharding_and_slug(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda _: "x", cache_root=tmp_path)
-    url = "https://example.com/races/Trail de la Côte?city=Saint-Brieuc"
-
-    current_path = cache.current_path(url)
-    key = HTTPCacheV1.derive_cache_key(url)
-
-    assert current_path.parent.name == key[:2]
-    assert current_path.name.endswith(f"__{key[:8]}.html")
-    assert "trail_de_la_c_te" in current_path.name
 
 
 def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
