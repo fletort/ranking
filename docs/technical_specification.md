@@ -54,11 +54,13 @@ The cache is **not** a performance optimization layer and **not** a data storage
 
 Cache v1 applies only to **raw HTTP responses** (HTML or text content).
 
-It does **not**:
+The cache stores raw HTTP responses and remains agnostic of content semantics.
 
-- interpret or normalize content
-- persist structured data
-- implement expiration or eviction
+However, when using REFRESH_AND_CACHE, a plugin-provided normalization step may be applied before
+comparing the fetched content with the cached version to determine whether a snapshot should be
+created.
+
+This normalization is not persisted and is used only for change detection purposes.
 
 ---
 
@@ -105,13 +107,13 @@ The cache is disk-based and organized as follows:
   plugin_name/
     http/
       current/
-        3f/
-          events__3fa91c2b.html
-        91/
-          results_10km_saucisson__91ab3f09.html
+        1c/
+          1c4230b146f1e14eae42b75a7b64f117e561dea7.html
+        25/
+          252659e0ea47a78c24a82acf647450add45ac9b3.html
       snapshots/
-        3f/
-          events__3fa91c2b/
+        1c/
+          1c4230b146f1e14eae42b75a7b64f117e561dea7/
             2026-06-08T10-12-03.html
 ```
 
@@ -123,11 +125,7 @@ The cache is disk-based and organized as follows:
 - To avoid large flat directories, cache entries may be sharded using a prefix derived from the
   cache hash (e.g. the first two hexadecimal characters).
 
-Cache file names can include a human-readable slug derived from the URL, combined with the
-deterministic cache hash.
-
-The slug is informational only and does not participate in cache key derivation. The hash remains
-the authoritative identifier.
+Cache entries are identified exclusively by their hash.
 
 ### Cache Key Derivation
 
@@ -145,11 +143,9 @@ The hash generation logic must remain stable across runs to ensure cache reusabi
 
 ### Behavioral Rules
 
-- No automatic refresh or eviction.
-- Cached content is trusted as-is when allowed by the policy.
-- Network errors are propagated to the caller.
-- Snapshot retention and cleanup are manual and out of scope for v1.
-- Snapshots are created only when content changes to avoid redundant versions.
+- Snapshot creation is based on comparison of normalized content when a normalization plugin is
+  provided.
+- Raw content is always stored without modification.
 
 ### Non-Goals (v1)
 
@@ -202,20 +198,10 @@ the cache):
 ```text
 .cache/
   plugin_name/
-    http/
-      current/
-        3f/
-          events__3fa91c2b.html
-        91/
-          results_10km_saucisson__91ab3f09.html
-      snapshots/
-        3f/
-          events__3fa91c2b/
-            2026-06-08T10-12-03.html
-
+    http/ ## See upper
     extracted/
-      3f/
-        events__3fa91c2b.json
-      91/
-        results_10km_saucisson__91ab3f09.json
+      1C/
+        1c4230b146f1e14eae42b75a7b64f117e561dea7.json
+      25/
+        252659e0ea47a78c24a82acf647450add45ac9b3.json
 ```

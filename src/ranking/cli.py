@@ -4,6 +4,7 @@ from ranking.core.cache import CachePolicy
 from ranking.core.cache_httpx import CacheHttpx
 from ranking.plugins.breizhchrono.eventdetail import extract_event_detail
 from ranking.plugins.breizhchrono.eventlist import EVENTS_LIST_URL, extract_events_list
+from ranking.plugins.breizhchrono.plugin import normalize_breizhchrono
 from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
@@ -11,7 +12,7 @@ PLUGIN_NAME = "breizhchrono"
 
 
 def main() -> None:
-    cache = CacheHttpx(PLUGIN_NAME)
+    cache = CacheHttpx(PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono)
 
     try:
         html = cache.fetch(EVENTS_LIST_URL, CachePolicy.REFRESH_AND_CACHE)

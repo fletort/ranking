@@ -53,3 +53,6 @@ cdk.out/
 # Temporary files
 tmp/
 *.tmp
+
+# Local ranking cache file
+.cache/
