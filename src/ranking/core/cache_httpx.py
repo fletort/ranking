@@ -15,6 +15,7 @@ class CacheHttpx(HTTPCacheV1):
         plugin_name: str,
         cache_root: Path | str = ".cache",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
+        save_extracted: bool = False,
     ) -> None:
         """Initialize the cache with httpx as the fetcher."""
         super().__init__(
@@ -22,4 +23,5 @@ class CacheHttpx(HTTPCacheV1):
             fetcher=httpx_fetcher,
             cache_root=cache_root,
             normalize_for_comparison=normalize_for_comparison,
+            save_extracted=save_extracted,
         )

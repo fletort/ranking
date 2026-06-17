@@ -12,7 +12,9 @@ PLUGIN_NAME = "breizhchrono"
 
 
 def main() -> None:
-    cache = CacheHttpx(PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono)
+    cache = CacheHttpx(
+        PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono, save_extracted=True
+    )
 
     try:
         html = cache.fetch(EVENTS_LIST_URL, CachePolicy.REFRESH_AND_CACHE)
@@ -21,6 +23,7 @@ def main() -> None:
         return
 
     events = extract_events_list(html)
+    cache.save_extracted_json(EVENTS_LIST_URL, events)
     print(f"Extracted {len(events)} events:")
     print(events)
     print("-----------------------------------------------------------------------------")
@@ -36,6 +39,7 @@ def main() -> None:
         return
 
     event_detail = extract_event_detail(event_html)
+    cache.save_extracted_json(first_event_url, event_detail)
     print("Event detail:")
     print(event_detail)
     print("-----------------------------------------------------------------------------")
@@ -58,6 +62,7 @@ def main() -> None:
         "heat_computed": first_race["heat_computed"],
     }
     results = extract_race_results(race_html, race_information)
+    cache.save_extracted_json(first_race_url, results)
     print("Race results:")
     print(results)
     print("-----------------------------------------------------------------------------")
@@ -70,13 +75,15 @@ def main() -> None:
         print("No computed result detail URL found")
         return
 
+    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
     try:
-        detail_html = cache.fetch(EVENTS_LIST_URL + result_detail_url, CachePolicy.CACHE_IF_PRESENT)
+        detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
     except RuntimeError as exc:
         print(f"Fetch error: {exc}")
         return
 
     detail = extract_result_detail(detail_html)
+    cache.save_extracted_json(full_result_detail_url, detail)
     print("Result detail:")
     print(detail)
     print("-----------------------------------------------------------------------------")

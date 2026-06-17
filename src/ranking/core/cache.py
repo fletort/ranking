@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
@@ -25,11 +26,13 @@ class HTTPCacheV1:
         fetcher: Callable[[str], str],
         cache_root: Path | str = ".cache",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
+        save_extracted: bool = False,
     ) -> None:
         """Initialize a cache instance scoped to a plugin name and cache root path."""
         self.plugin_name = plugin_name
         self.fetcher = fetcher
         self.cache_root = Path(cache_root)
+        self.save_extracted = save_extracted
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
@@ -93,6 +96,22 @@ class HTTPCacheV1:
         key = self.derive_cache_key(url)
         shard = key[:2]
         return self.cache_root / self.plugin_name / "http" / "snapshots" / shard / key
+
+    def extracted_json_path(self, url: str) -> Path:
+        """Return the path of the extracted JSON file for a URL."""
+        key = self.derive_cache_key(url)
+        shard = key[:2]
+        return self.cache_root / self.plugin_name / "extracted" / shard / f"{key}.json"
+
+    def save_extracted_json(self, url: str, data: Any) -> None:
+        """Persist extracted JSON data to disk if save_extracted is enabled."""
+        if not self.save_extracted:
+            return
+        path = self.extracted_json_path(url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
+        )
 
     def _write_current(self, current_path: Path, content: str) -> None:
         """Persist content as the current cache file."""
