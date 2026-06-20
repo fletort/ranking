@@ -75,10 +75,13 @@ class HTTPCacheV1:
         if cache_policy is CachePolicy.REFRESH_AND_CACHE:
             fetched_content = self.fetcher(url)
 
+            if existing_content is None:
+                self._write_current(current_path, fetched_content)
+
             if existing_content is not None and self._has_changed(
                 url, existing_content, fetched_content
             ):
-                self._write_snapshot(url, fetched_content)
+                self._write_snapshot(url, existing_content)
                 self._write_current(current_path, fetched_content)
 
             return fetched_content

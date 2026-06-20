@@ -82,9 +82,9 @@ Supported policies:
 
 - **REFRESH_AND_CACHE**
   - Always fetch from the network.
-  - Overwrite the active cache entry.
-  - Keep a timestamped snapshot for debugging **only when the fetched content differs from the**
-    **currently cached version**.
+  - Then **only when the fetched content differs from the** **currently cached version**:
+    - Overwrite the active cache entry.
+    - Keep a timestamped snapshot of the previous version (if exist) for debugging
   - Used for pages that must be refreshed regularly but still need replayability (e.g. event listing
     pages).
 

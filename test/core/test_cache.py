@@ -1,3 +1,5 @@
+import os
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -54,7 +56,7 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
 
 
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:
-    response_values = ["v1", "v1", "v2"]
+    response_values = ["v1", "v1", "v2", "v3"]
 
     def fetcher(_: str) -> str:
         return response_values.pop(0)
@@ -62,19 +64,51 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     cache = HTTPCacheV1("demo", fetcher=fetcher, cache_root=tmp_path)
     url = "https://example.com/events/list"
 
-    cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
-    cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
-    assert list(cache.snapshots_dir(url).glob("*.html")) == []
-
-    updated = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+    first = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+    # Check that the first fetch created the current cache
+    assert first == "v1"
+    assert cache.current_path(url).read_text(encoding="utf-8") == "v1"
     snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
+    assert len(snapshot_files) == 0
+    first_current_stat = os.stat(cache.current_path(url))
 
+    same = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+    # Check that current cache is still the same and no snapshot was created
+    assert same == "v1"
+    assert os.stat(cache.current_path(url)) == first_current_stat
+    assert cache.current_path(url).read_text(encoding="utf-8") == "v1"
+    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
+    assert len(snapshot_files) == 0
+
+    time.sleep(0.01)  # Ensure the timestamp changes for the next snapshot
+    updated = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+    # Check that the current cache was updated and a snapshot was created
     assert updated == "v2"
     assert cache.current_path(url).read_text(encoding="utf-8") == "v2"
+    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
     assert len(snapshot_files) == 1
-    assert snapshot_files[0].suffix == ".html"
-    datetime.strptime(snapshot_files[0].stem, "%Y-%m-%dT%H-%M-%S-%f")
-    assert snapshot_files[0].read_text(encoding="utf-8") == "v2"
+    first_snapshot_file = snapshot_files[0]
+    first_snapshot_file_stat = os.stat(first_snapshot_file)
+    assert first_snapshot_file.read_text(encoding="utf-8") == "v1"
+    datetime.strptime(first_snapshot_file.stem, "%Y-%m-%dT%H-%M-%S-%f")
+
+    time.sleep(0.01)  # Ensure the timestamp changes for the next snapshot
+    updated = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+    # Check that the current cache was updated and a new snapshot was created
+    assert updated == "v3"
+    assert cache.current_path(url).read_text(encoding="utf-8") == "v3"
+    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
+    assert len(snapshot_files) == 2
+    assert first_snapshot_file in snapshot_files
+    for file in snapshot_files:
+        if file == first_snapshot_file:
+            assert os.path.samefile(file, first_snapshot_file)
+            assert os.stat(file) == first_snapshot_file_stat
+            assert file.read_text(encoding="utf-8") == "v1"
+        else:
+            datetime.strptime(file.stem, "%Y-%m-%dT%H-%M-%S-%f")
+            assert os.path.getmtime(file) > os.path.getmtime(first_snapshot_file)
+            assert file.read_text(encoding="utf-8") == "v2"
 
 
 def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
