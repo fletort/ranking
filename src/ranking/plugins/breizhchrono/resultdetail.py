@@ -4,6 +4,7 @@ import re
 import unicodedata
 from typing import TypedDict
 
+import structlog
 from bs4 import BeautifulSoup, Tag
 
 
@@ -71,6 +72,10 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
     Returns None if parsing fails entirely.
     """
     try:
+        log = structlog.get_logger().bind(
+            component="parser",
+            entity="result_detail",
+        )
         soup = BeautifulSoup(html_content, "html.parser")
         result: ResultDetail = {
             "name_bib": "",
@@ -88,8 +93,12 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
         h1 = soup.select_one("h1.title")
         if h1:
             result["name_bib"] = h1.get_text(" ", strip=True)
+            log.debug("extracted_data", type="element", name="h1.title", text=result["name_bib"])
+        else:
+            log.warning("missing_data", type="element", name="h1.title")
 
         identity = soup.find(id="identity")
+        log.debug("parse_start", has_identity=bool(identity))
         if isinstance(identity, Tag):
             field_mapping = {
                 "sex": "sex",
@@ -103,12 +112,43 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
                     value = extract_identity_value(field)
                     if value:
                         result[field_key] = value  # type: ignore[literal-required]
+                        log.debug(
+                            "extracted_data",
+                            type="field",
+                            name=field_key,
+                            text=value,
+                            location="identity_section",
+                        )
+                else:
+                    log.warning(
+                        "missing_data", type="field", name=field_key, location="identity_section"
+                    )
 
-        result["global_ranks"] = extract_global_rank_values(soup)
-        result["global_times"] = extract_global_time_values(soup)
-        result["other_ranktimes"] = extract_other_ranktime_values(soup)
+        result["global_ranks"] = extract_global_rank_values(soup, log)
+        log.debug(
+            "extracted_data", type="field", name="global_ranks", count=len(result["global_ranks"])
+        )
+        result["global_times"] = extract_global_time_values(soup, log)
+        log.debug(
+            "extracted_data", type="field", name="global_times", count=len(result["global_times"])
+        )
+        result["other_ranktimes"] = extract_other_ranktime_values(soup, log)
+        log.debug(
+            "extracted_data",
+            type="field",
+            name="other_ranktimes",
+            count=len(result["other_ranktimes"]),
+        )
+
+        log.info(
+            "parse_success",
+            global_ranks_count=len(result["global_ranks"]),
+            global_times_count=len(result["global_times"]),
+            other_ranktimes_count=len(result["other_ranktimes"]),
+        )
         return result
     except Exception:
+        log.exception("parse_failed")
         return None
 
 
@@ -143,7 +183,7 @@ def normalize_text(text: str) -> str:
     return value
 
 
-def extract_global_rank_values(soup: BeautifulSoup) -> list[RankItem]:
+def extract_global_rank_values(soup: BeautifulSoup, log: structlog.BoundLogger) -> list[RankItem]:
     """Extract all global ranking fields from the page.
     Each ranking block is rendered as a ``<div class="bloc-classement">`` containing
     a title span (``<span class="classementTitle">``) and a rank index span
@@ -157,6 +197,7 @@ def extract_global_rank_values(soup: BeautifulSoup) -> list[RankItem]:
         title_spans = bloc.select("span.classementTitle")
         rank_span = bloc.select_one("span.classementIndex")
         if len(title_spans) < 1 or rank_span is None:
+            log.warning("missing_data", type="element", name="classement_block")
             continue
 
         rank_key = title_spans[0].get_text(" ", strip=True)
@@ -187,7 +228,7 @@ def extract_rank_value(rank_span: Tag) -> str:
     return rank_span.get_text(" ", strip=True)
 
 
-def extract_global_time_values(soup: BeautifulSoup) -> list[TimeItem]:
+def extract_global_time_values(soup: BeautifulSoup, log: structlog.BoundLogger) -> list[TimeItem]:
     """Extract all time fields from the page.
 
     Handles two HTML patterns used by BreizhChrono:
@@ -228,11 +269,21 @@ def extract_global_time_values(soup: BeautifulSoup) -> list[TimeItem]:
             another_time: TimeItem = {"name": key, "value": value}
             result.append(another_time)
             processed_parents.add(id(parent))
+        else:
+            log.warning(
+                "missing_data",
+                type="element",
+                name="secondaryTime_pair",
+                parent_name=parent.name,
+                parent_id=parent.get("id"),
+            )
 
     return result
 
 
-def extract_other_ranktime_values(soup: BeautifulSoup) -> list[RankTimeItem]:
+def extract_other_ranktime_values(
+    soup: BeautifulSoup, log: structlog.BoundLogger
+) -> list[RankTimeItem]:
     """Extract all other rank-time fields from the page.
     These are rendered in a table with four columns: label, time, overall rank, category rank.
     The table is inside a ``<div class="table-responsive">``.
@@ -255,16 +306,36 @@ def extract_other_ranktime_values(soup: BeautifulSoup) -> list[RankTimeItem]:
         normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead > tr > th")
     ]
     if len(headers) < len(EXPECTED_HEADERS) or headers[: len(EXPECTED_HEADERS)] != EXPECTED_HEADERS:
-        print("[WARN] Unexpected table headers:", headers)
+        log.warning(
+            "invalid_format",
+            type="element",
+            name="thead",
+            headers=headers,
+            headers_expected=EXPECTED_HEADERS,
+        )
         return []
 
     for row in table.select("tbody > tr"):
         columns = row.find_all("td")
         if len(columns) < len(EXPECTED_HEADERS):
+            log.warning(
+                "invalid_format",
+                type="element",
+                name="tr",
+                columns_count=len(columns),
+                columns_expected=len(EXPECTED_HEADERS),
+                location="ranktime_table",
+            )
             continue
 
         name = columns[0].get_text(" ", strip=True)
         if not name:
+            log.warning(
+                "missing_data",
+                type="field",
+                name="name",
+                location="ranktime_table",
+            )
             continue
 
         result.append(

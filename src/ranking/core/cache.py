@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import structlog
+
 
 class CachePolicy(Enum):
     """Defines v1 cache behavior for each fetch call."""
@@ -27,10 +29,12 @@ class HTTPCacheV1:
         cache_root: Path | str = ".cache",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
+        logger: Any = structlog.get_logger(),
     ) -> None:
         """Initialize a cache instance scoped to a plugin name and cache root path."""
         self.plugin_name = plugin_name
         self.fetcher = fetcher
+        self.logger = logger
         self.cache_root = Path(cache_root)
         self.save_extracted = save_extracted
 
@@ -56,6 +60,7 @@ class HTTPCacheV1:
     def fetch(self, url: str, cache_policy: CachePolicy) -> str:
         """Fetch content according to policy and update on-disk cache when needed."""
         if cache_policy is CachePolicy.NO_CACHE:
+            self.logger.info("No cache policy, fetching directly", url=url)
             return self.fetcher(url)
 
         existing_content = None
@@ -65,22 +70,28 @@ class HTTPCacheV1:
 
         if cache_policy is CachePolicy.CACHE_IF_PRESENT:
             if existing_content is not None:
-                print(f"[INFO]Cache hit for {url} at {current_path}")
+                self.logger.info("Cache hit", url=url, path=current_path)
                 return existing_content
 
+            self.logger.info("Cache miss, fetching", url=url, path=current_path)
             content = self.fetcher(url)
             self._write_current(current_path, content)
             return content
 
         if cache_policy is CachePolicy.REFRESH_AND_CACHE:
+            self.logger.info("Cache refresh", url=url, path=current_path)
             fetched_content = self.fetcher(url)
 
             if existing_content is None:
+                self.logger.info(
+                    "No existing content, writing current cache", url=url, path=current_path
+                )
                 self._write_current(current_path, fetched_content)
 
             if existing_content is not None and self._has_changed(
                 url, existing_content, fetched_content
             ):
+                self.logger.info("Content changed, updating cache", url=url, path=current_path)
                 self._write_snapshot(url, existing_content)
                 self._write_current(current_path, fetched_content)
 
@@ -127,6 +138,7 @@ class HTTPCacheV1:
         snapshots_dir.mkdir(parents=True, exist_ok=True)
         snapshot_path = snapshots_dir / f"{self._snapshot_timestamp()}.html"
         snapshot_path.write_text(content, encoding="utf-8", newline="\n")
+        self.logger.info("Snapshot created", url=url, path=snapshot_path)
 
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""

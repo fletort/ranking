@@ -4,6 +4,7 @@ import base64
 import re
 from collections.abc import Mapping
 
+import structlog
 from bs4 import BeautifulSoup
 
 EXPECTED = [
@@ -63,19 +64,30 @@ def check_decode_order(soup: BeautifulSoup) -> None:
 def extract_race_results(
     html: str, race_information: Mapping[str, str] | None = None
 ) -> list[dict]:
+    log = structlog.get_logger().bind(
+        component="parser",
+        entity="race_results",
+    )
     soup = BeautifulSoup(html, "html.parser")
     check_decode_order(soup)
 
     ref = race_information.get("ref_computed", "") if race_information else ""
     heat = race_information.get("heat_computed", "") if race_information else ""
-
+    log.debug(
+        "race_context",
+        ref=ref,
+        heat=heat,
+    )
     data_tag = soup.find(id="data")
     if not data_tag:
+        log.error("missing_data", type="element", name="data")
         return []
 
     encoded = data_tag.get_text(strip=True)
+    log.debug("extracted_data", type="element", name="data", text=encoded)
 
     decoded = decode_data(encoded)
+    log.debug("decoded_data", text=decoded)
 
     results = []
 
@@ -86,6 +98,14 @@ def extract_race_results(
         parts = line.split("|")
 
         if len(parts) < len(EXPECTED):
+            log.warning(
+                "invalid_format",
+                type="field",
+                name="result_line",
+                text=line,
+                parts_count=len(parts),
+                parts_expected=len(EXPECTED),
+            )
             continue  # safety
 
         result = {key: parts[i] if i < len(parts) else None for i, key in enumerate(EXPECTED)}
@@ -98,4 +118,5 @@ def extract_race_results(
 
         results.append(result)
 
+    log.info("parse_success", results_count=len(results))
     return results
