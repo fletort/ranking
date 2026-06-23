@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 import httpx
+import structlog
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -27,12 +28,16 @@ def httpx_fetcher(url: str) -> str:
         RuntimeError: On HTTP error status codes or network-level errors.
     """
     try:
+        log = structlog.get_logger()
+        log.info("Fetching URL", url=url)
         response = httpx.get(
             url, headers=HEADERS, follow_redirects=True, verify=VERIFY_SSL, timeout=10.0
         )
         response.raise_for_status()
         return response.text
     except httpx.HTTPStatusError as e:
+        log.error("HTTP error fetching URL", url=url, status_code=e.response.status_code)
         raise RuntimeError(f"HTTP error {e.response.status_code} for URL: {url}") from e
     except httpx.RequestError as e:
+        log.error("Network error fetching URL", url=url, error=str(e))
         raise RuntimeError(f"Network error fetching URL: {url}") from e
