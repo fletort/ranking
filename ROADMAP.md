@@ -30,61 +30,101 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 - [x] Enable optional persistence of extracted JSON for debugging (see § Development Notes of the
       [technical-specification]) [#21](https://github.com/fletort/ranking/issues/21)
 
-## POC - Phase 2 — Clean Parsing
+## 🚧 Phase 2 — Observability & Debug (HIGH PRIORITY)
 
-**Goal:** make parsing testable and maintainable
+Goal: understand what happens during real runs
 
-- [ ] separate
-  - `fetch`
-  - `parse_events`
-  - `parse_races`
-  - `parse_results`
+- [ ] add structured logging:
+  - fetch start / end
+  - cache hit / miss
+  - snapshot created / skipped
+  - parsing success / failure
+- [ ] make CLI output readable for long runs
+- [ ] optionally log normalization effects (debug)
 
-- [ ] save HTML fixtures
-- [ ] write basic tests
+## 🚧 Phase 3 — Limited Real Crawl (B+)
 
-## POC - Phase 3 — Simple Plugin
+Goal: validate the pipeline on real data (not manual selection)
 
-**Goal:** introduce structure (without complexity)
+- [ ] fetch first events list page
+- [ ] dynamically select first N events (10–20)
+- [ ] for each event:
+  - fetch races
+  - fetch results
+- [ ] debug all problems
 
-- [ ] implement plugin:
+👉 First real end-to-end validation.
 
-```python
-def run():
-    events = list_events()
-    event = select_one(events)
+## 🚧 Phase 4 — Observation & Analysis (B2)
 
-    races = list_races(event)
-    race = select_one(races)
+Goal: understand variability before structuring anything
 
-    return get_results(race)
-```
+- [x] persist extracted JSON (already done)
+- [ ] inspect:
+  - field presence / absence
+  - structure variations
+  - anomalies
+- [ ] identify stable concepts:
+  - event
+  - race
+  - participant
+  - result
 
-## POC - Phase 4 — Pagination
+👉 DO NOT define a strict model yet.
 
-**Goal:** scrape multiple items
+## 🚧 Phase 5 — Extended Crawl (A)
 
-- [ ] loop over events
-- [ ] loop over races per event
-- [ ] fetch all result pages
-- [ ] cache every request
+Goal: scale data collection
 
-## POC - Phase 5 — Stabilization
+- [ ] implement pagination on event list
+- [ ] crawl multiple pages of events
+- [ ] validate stability at scale
+- [ ] monitor:
+  - performance
+  - cache efficiency
+  - parsing robustness
 
-**Goal:** make scraper reliable
+## 🚧 Phase 6 — Parsing Stabilization
+
+Goal: clean and harden parsing based on real observations
 
 - [ ] handle missing fields
 - [ ] handle format inconsistencies
 - [ ] improve parsing robustness
-- [ ] extend fixtures
+- [ ] extend fixtures from real cases
 
-## POC - Phase 6 — Incremental Improvements
+👉 This phase is driven by real data, not anticipation.
 
-**Goal:** make things cleaner (no overkill)
+## 🚧 Phase 7 — Data Model Definition (D)
 
-- [ ] improve cache structure
-- [ ] add basic logging (progress, cache hit)
+Goal: define a stable, shared model
+
+- [ ] define core entities:
+  - Event
+  - Race
+  - Participant
+  - Result
+- [ ] normalize fields across pages
+- [ ] introduce Pydantic models
+- [ ] validate extracted data
+
+👉 Only after enough observation (Phases 3–5)
+
+## 🔄 Phase 8 — Simple Plugin Structure
+
+Goal: formalize plugin structure when needed
+
+- [ ] refactor plugin into explicit structure
+- [ ] define minimal plugin contract
+- [ ] isolate parsing + normalization clearly
+
+👉 Only useful when complexity grows or second plugin appears.
+
+## 🔄 Phase 9 — Incremental Improvements
+
+- [ ] improve logging
 - [ ] cleanup code
+- [ ] minor cache improvements if needed
 
 ## Future Axes
 
