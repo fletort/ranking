@@ -32,9 +32,12 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 ## 🚧 Phase 2 — Observability & Debug (HIGH PRIORITY)
 
+**Milestone:** [POC - Phase 1](https://github.com/fletort/ranking/milestone/3)
+
 Goal: make the pipeline observable during real runs
 
-- [ ] instrument pipeline with structured logging (fetch, cache, parsing, orchestration)
+- [x] instrument pipeline with structured logging (fetch, cache, parsing, orchestration)
+      [#32](https://github.com/fletort/ranking/issues/32)
 
 ## 🚧 Phase 3 — Limited Real Crawl (B+)
 
@@ -67,20 +70,17 @@ Goal: clean and harden parsing based on real observations
 
 👉 This phase is driven by real data, not anticipation.
 
-## 🚧 Phase 6 — Data Model Definition (D)
+## 🚧 Phase 6 — Parsing & Normalization
 
-Goal: define a stable, shared model
+Goal: transform extracted data into consistent structured values
 
-- [ ] define core entities:
-  - Event
-  - Race
-  - Participant
-  - Result
-- [ ] normalize fields across pages
-- [ ] introduce Pydantic models
-- [ ] validate extracted data
+- [ ] refine parsing logic based on observed variations
+- [ ] extract structured values from raw fields (dates, times, categories, etc.)
+- [ ] normalize values into consistent formats (datetime, enums, etc.)
+- [ ] handle optional and missing fields explicitly
+- [ ] define core entities: Event, Race, Participant, Result with Pydantic models.
 
-👉 Only after enough observation (Phases 3–5)
+👉 This phase bridges raw extraction and the final data model.
 
 ## 🔄 Phase 8 — Simple Plugin Structure
 
