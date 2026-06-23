@@ -32,47 +32,19 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 ## 🚧 Phase 2 — Observability & Debug (HIGH PRIORITY)
 
-Goal: understand what happens during real runs
+Goal: make the pipeline observable during real runs
 
-- [ ] add structured logging:
-  - fetch start / end
-  - cache hit / miss
-  - snapshot created / skipped
-  - parsing success / failure
-- [ ] make CLI output readable for long runs
-- [ ] optionally log normalization effects (debug)
+- [ ] instrument pipeline with structured logging (fetch, cache, parsing, orchestration)
 
 ## 🚧 Phase 3 — Limited Real Crawl (B+)
 
-Goal: validate the pipeline on real data (not manual selection)
+Goal: validate and stabilize the pipeline on real data
 
-- [ ] fetch first events list page
-- [ ] dynamically select first N events (10–20)
-- [ ] for each event:
-  - fetch races
-  - fetch results
-- [ ] debug all problems
+- [ ] run the full pipeline on a limited set of events (10–20) and iteratively
 
 👉 First real end-to-end validation.
 
-## 🚧 Phase 4 — Observation & Analysis (B2)
-
-Goal: understand variability before structuring anything
-
-- [x] persist extracted JSON (already done)
-- [ ] inspect:
-  - field presence / absence
-  - structure variations
-  - anomalies
-- [ ] identify stable concepts:
-  - event
-  - race
-  - participant
-  - result
-
-👉 DO NOT define a strict model yet.
-
-## 🚧 Phase 5 — Extended Crawl (A)
+## 🚧 Phase 4 — Extended Crawl (A)
 
 Goal: scale data collection
 
@@ -84,7 +56,7 @@ Goal: scale data collection
   - cache efficiency
   - parsing robustness
 
-## 🚧 Phase 6 — Parsing Stabilization
+## 🚧 Phase 5 — Parsing Stabilization
 
 Goal: clean and harden parsing based on real observations
 
@@ -95,7 +67,7 @@ Goal: clean and harden parsing based on real observations
 
 👉 This phase is driven by real data, not anticipation.
 
-## 🚧 Phase 7 — Data Model Definition (D)
+## 🚧 Phase 6 — Data Model Definition (D)
 
 Goal: define a stable, shared model
 
@@ -120,16 +92,9 @@ Goal: formalize plugin structure when needed
 
 👉 Only useful when complexity grows or second plugin appears.
 
-## 🔄 Phase 9 — Incremental Improvements
-
-- [ ] improve logging
-- [ ] cleanup code
-- [ ] minor cache improvements if needed
-
 ## Future Axes
 
 - plugin abstraction system
-
 - advanced HTTP cache (TTL, policies)
 - event-driven runtime
 - serverless execution (AWS)
