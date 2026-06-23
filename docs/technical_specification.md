@@ -9,6 +9,7 @@
 | Data validation       | Pydantic v2         |
 | HTTP client           | httpx (async-ready) |
 | Web extraction        | beautifulsoup4      |
+| Log                   | structlog           |
 | Linter / formatter    | ruff                |
 | Type checker          | mypy                |
 | Tests                 | pytest + pytest-cov |
@@ -205,3 +206,21 @@ the cache):
       25/
         252659e0ea47a78c24a82acf647450add45ac9b3.json
 ```
+
+### Structured Logging (Observability)
+
+The scraping pipeline may emit structured logs to support debugging and understanding of real-world
+runs.
+
+Logging is intended to provide visibility into key steps of the pipeline, such as:
+
+- HTTP fetching
+- cache usage (hit/miss)
+- snapshot creation
+- parsing success or failure
+
+Logs are structured as key-value events (e.g. using `structlog`) to allow both human readability and
+machine processing.
+
+Logging is considered a development and operational aid. It does not affect functional behavior and
+may evolve without impacting the core architecture. ``
