@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import time
+
 import structlog
 
 from ranking.core.cache import CachePolicy
@@ -11,6 +14,9 @@ from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
 PLUGIN_NAME = "breizhchrono"
+
+
+structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.INFO))
 
 
 def main() -> None:
@@ -31,56 +37,62 @@ def main() -> None:
     if not events:
         return
 
-    first_event_url = "https://resultats.breizhchrono.com/resultats-courses/triathlon-de-la-cote-de-granit-rose-tregastel-2026-1295405190290-19/triathlon-m"
-    try:
-        event_html = cache.fetch(first_event_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
-        print(f"Fetch error: {exc}")
-        return
+    # first_event_url = "https://resultats.breizhchrono.com/resultats-courses/triathlon-de-la-cote-de-granit-rose-tregastel-2026-1295405190290-19/triathlon-m"
 
-    event_detail = extract_event_detail(event_html)
-    cache.save_extracted_json(first_event_url, event_detail)
-    log.info("extracted_event_detail", event_detail=event_detail)
+    for event in events:
+        event_url = EVENTS_LIST_URL + event["url"]
+        try:
+            time.sleep(1)  # be nice to the server
+            event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
+        except RuntimeError as exc:
+            log.error("fetch_error", error=str(exc), event_url=event_url)
+            continue
 
-    if not event_detail or "races" not in event_detail or not event_detail["races"]:
-        log.warning("no_event_detail_or_races_found")
-        return
+        event_detail = extract_event_detail(event_html)
+        cache.save_extracted_json(event_url, event_detail)
+        log.info("extracted_event_detail", event_url=event_url, event_detail=event_detail)
 
-    first_race_url = EVENTS_LIST_URL + event_detail["races"][0]["url"]
+        if not event_detail or "races" not in event_detail or not event_detail["races"]:
+            log.warning("no_event_detail_or_races_found", event_url=event_url)
+            continue
 
-    try:
-        race_html = cache.fetch(first_race_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
-        log.error("fetch_error", error=str(exc))
-        return
+        first_race_url = EVENTS_LIST_URL + event_detail["races"][0]["url"]
 
-    first_race = event_detail["races"][0]
-    race_information = {
-        "ref_computed": first_race["ref_computed"],
-        "heat_computed": first_race["heat_computed"],
-    }
-    results = extract_race_results(race_html, race_information)
-    cache.save_extracted_json(first_race_url, results)
-    log.info("extracted_race_results", results=results)
+        try:
+            time.sleep(1)  # be nice to the server
+            race_html = cache.fetch(first_race_url, CachePolicy.CACHE_IF_PRESENT)
+        except RuntimeError as exc:
+            log.error("fetch_error", error=str(exc))
+            return
 
-    if not results:
-        return
+        first_race = event_detail["races"][0]
+        race_information = {
+            "ref_computed": first_race["ref_computed"],
+            "heat_computed": first_race["heat_computed"],
+        }
+        results = extract_race_results(race_html, race_information)
+        cache.save_extracted_json(first_race_url, results)
+        log.info("extracted_race_results", results=results)
 
-    result_detail_url = results[0].get("result_detail_url_computed")
-    if not isinstance(result_detail_url, str) or not result_detail_url:
-        log.error("no_computed_result_detail_url_found")
-        return
+        if not results:
+            return
 
-    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
-    try:
-        detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
-        log.error("fetch_error", error=str(exc))
-        return
+        result_detail_url = results[0].get("result_detail_url_computed")
+        if not isinstance(result_detail_url, str) or not result_detail_url:
+            log.error("no_computed_result_detail_url_found")
+            return
 
-    detail = extract_result_detail(detail_html)
-    cache.save_extracted_json(full_result_detail_url, detail)
-    log.info("extracted_result_detail", result_detail=detail)
+        full_result_detail_url = EVENTS_LIST_URL + result_detail_url
+        try:
+            time.sleep(1)  # be nice to the server
+            detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
+        except RuntimeError as exc:
+            log.error("fetch_error", error=str(exc))
+            return
+
+        detail = extract_result_detail(detail_html)
+        cache.save_extracted_json(full_result_detail_url, detail)
+        log.info("extracted_result_detail", result_detail=detail)
 
 
 if __name__ == "__main__":
