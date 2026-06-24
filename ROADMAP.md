@@ -32,7 +32,7 @@ Goal: prove you can traverse a _classical_ site and extract results (first stati
 
 ## 🚧 Phase 2 — Observability & Debug (HIGH PRIORITY)
 
-**Milestone:** [POC - Phase 1](https://github.com/fletort/ranking/milestone/3)
+**Milestone:** [POC - Phase 2](https://github.com/fletort/ranking/milestone/3)
 
 Goal: make the pipeline observable during real runs
 
@@ -41,12 +41,17 @@ Goal: make the pipeline observable during real runs
 
 ## 🚧 Phase 3 — Limited Real Crawl (B+)
 
+**Milestone:** [POC - Phase 3](https://github.com/fletort/ranking/milestone/4)
+
 Goal: validate and stabilize the pipeline on real data
 
 - [ ] cli: fetch/parse all event of the first page by default
+      [#37](https://github.com/fletort/ranking/issues/37)
 - [ ] cli: add logging level filter (info by default, --debug to get debug trace too)
-- [ ] cli: add event url argument
+      [#38](https://github.com/fletort/ranking/issues/38)
+- [ ] cli: add event url argument (--event-url) [#39](https://github.com/fletort/ranking/issues/39)
 - [ ] run the full pipeline on a limited set of events (10–20) and iteratively fix problems
+      [#35](https://github.com/fletort/ranking/issues/35)
 
 👉 First real end-to-end validation.
 
