@@ -43,7 +43,10 @@ Goal: make the pipeline observable during real runs
 
 Goal: validate and stabilize the pipeline on real data
 
-- [ ] run the full pipeline on a limited set of events (10–20) and iteratively
+- [ ] cli: fetch/parse all event of the first page by default
+- [ ] cli: add logging level filter (info by default, --debug to get debug trace too)
+- [ ] cli: add event url argument
+- [ ] run the full pipeline on a limited set of events (10–20) and iteratively fix problems
 
 👉 First real end-to-end validation.
 
