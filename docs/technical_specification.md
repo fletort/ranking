@@ -9,6 +9,7 @@
 | Data validation       | Pydantic v2         |
 | HTTP client           | httpx (async-ready) |
 | Web extraction        | beautifulsoup4      |
+| Cli management        | click               |
 | Log                   | structlog           |
 | Linter / formatter    | ruff                |
 | Type checker          | mypy                |
