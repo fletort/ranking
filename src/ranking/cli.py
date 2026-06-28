@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
+import sys
 import time
+from datetime import datetime
+from pathlib import Path
 
+import click
 import structlog
 
 from ranking.core.cache import CachePolicy
@@ -16,10 +20,66 @@ from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 PLUGIN_NAME = "breizhchrono"
 
 
-structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.INFO))
+def setup_logging(debug: bool = False) -> None:
+    level = logging.DEBUG if debug else logging.INFO
+
+    # Créer dossier .log
+    log_dir = Path(".log")
+    log_dir.mkdir(exist_ok=True)
+
+    # Nom fichier avec timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_file = log_dir / f"run-{timestamp}.log"
+
+    # --- Handlers ---
+
+    # Console handler (avec couleurs)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+
+    # File handler (sans couleurs)
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(level)
+
+    # Root logger
+    logging.basicConfig(
+        level=level,
+        handlers=[console_handler, file_handler],
+        format="%(message)s",
+    )
+
+    # --- Structlog config ---
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.format_exc_info,
+            # Différenciation console / fichier
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+    )
+
+    # --- Formatters ---
+
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.dev.ConsoleRenderer(colors=True)
+    )
+
+    file_formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.dev.ConsoleRenderer(colors=False)
+    )
+
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(file_formatter)
 
 
-def main() -> None:
+@click.command()
+@click.option("--debug", is_flag=True, help="Enable debug logging", default=False)
+def main(debug: bool) -> None:
+    setup_logging(debug)
     log = structlog.get_logger().bind(component="cli")
     cache = CacheHttpx(
         PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono, save_extracted=True
@@ -41,6 +101,7 @@ def main() -> None:
 
     for event in events:
         event_url = EVENTS_LIST_URL + event["url"]
+        log.info("event_processing", url=event_url, name=event["name"])
         try:
             time.sleep(1)  # be nice to the server
             event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
