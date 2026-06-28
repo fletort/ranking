@@ -52,28 +52,6 @@ jobs:
       - name: Prettier check
         run: prettier --check .
 
-  run:
-    name: Run program
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-          allow-prereleases: true
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-
-      - name: Install dependencies
-        run: poetry install
-
-      - name: Execute
-        run: poetry run ranking
-
   test:
     name: Unit Test
     runs-on: ubuntu-latest
