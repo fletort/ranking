@@ -56,3 +56,5 @@ tmp/
 
 # Local ranking cache file
 .cache/
+# Local ranking log files
+.log/
