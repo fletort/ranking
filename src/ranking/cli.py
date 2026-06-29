@@ -112,7 +112,7 @@ def list(ctx) -> None:
 
     events = extract_events_list(html)
     cache.save_extracted_json(EVENTS_LIST_URL, events)
-    log.info("extracted_events", count=len(events), events=events)
+    log.info("extracted_events", count=len(events))
     if not events:
         return
 
@@ -157,14 +157,24 @@ def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundL
 
     event_detail = extract_event_detail(event_html)
     cache.save_extracted_json(event_url, event_detail)
-    log.info("extracted_event_detail", event_url=event_url, event_detail=event_detail)
-
     if not event_detail or "races" not in event_detail or not event_detail["races"]:
         log.warning("no_event_detail_or_races_found", event_url=event_url)
         return
+    else:
+        log.info(
+            "extracted_event_detail",
+            event_url=event_url,
+            event_name=event_detail["event_race_raw"],
+            races_count=len(event_detail["races"]),
+        )
+        log.debug(
+            "event_detail_race_sample",
+            event_url=event_url,
+            sample=event_detail["races"][:1],
+        )
 
-    first_race = event_detail["races"][0]
-    process_race(first_race, cache, log)
+    for race in event_detail["races"]:
+        process_race(race, cache, log)
 
 
 def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) -> None:
@@ -183,9 +193,15 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
     }
     results = extract_race_results(race_html, race_information)
     cache.save_extracted_json(race_url, results)
-    log.info("extracted_race_results", results=results, race_url=race_url)
+    log.info("extracted_race_results", results_count=len(results), race_url=race_url)
 
-    if not results:
+    if results:
+        log.debug(
+            "race_results_sample",
+            race_url=race_url,
+            sample=results[:1],
+        )
+    else:
         return
 
     result_detail_url = results[0].get("result_detail_url_computed")
@@ -204,5 +220,15 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
     detail = extract_result_detail(detail_html)
     cache.save_extracted_json(full_result_detail_url, detail)
     log.info(
-        "extracted_result_detail", result_detail=detail, result_detail_url=full_result_detail_url
+        "extracted_result_detail",
+        result_detail_url=full_result_detail_url,
+        global_rank_count=len(
+            detail["global_ranks"] if detail and "global_ranks" in detail else []
+        ),
+        global_times_count=len(
+            detail["global_times"] if detail and "global_times" in detail else []
+        ),
+        other_ranktimes_count=len(
+            detail["other_ranktimes"] if detail and "other_ranktimes" in detail else []
+        ),
     )

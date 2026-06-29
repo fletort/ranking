@@ -123,6 +123,7 @@ class HTTPCacheV1:
             return
         path = self.extracted_json_path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.logger.info("save_extracted_json", url=url, path=path)
         path.write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
         )
