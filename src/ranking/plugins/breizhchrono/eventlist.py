@@ -96,7 +96,7 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
                     "location_raw": location_raw,
                 }
             )
-
+        log.info("parse_success", events_count=len(events))
         return events
     except Exception:
         log.exception("parse_failed")

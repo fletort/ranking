@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -19,13 +20,12 @@ class CachePolicy(Enum):
     REFRESH_AND_CACHE = "REFRESH_AND_CACHE"
 
 
-class HTTPCacheV1:
+class HttpClientWithCache(ABC):
     """Deterministic, disk-backed HTTP cache with policy-driven reads and writes."""
 
     def __init__(
         self,
         plugin_name: str,
-        fetcher: Callable[[str], str],
         cache_root: Path | str = ".cache",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
@@ -33,7 +33,6 @@ class HTTPCacheV1:
     ) -> None:
         """Initialize a cache instance scoped to a plugin name and cache root path."""
         self.plugin_name = plugin_name
-        self.fetcher = fetcher
         self.logger = logger
         self.cache_root = Path(cache_root)
         self.save_extracted = save_extracted
@@ -41,10 +40,15 @@ class HTTPCacheV1:
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
 
+    @abstractmethod
+    def fetcher(self, url: str) -> str:
+        """Fetch a resource, without using the cache. This is the network-level fetcher."""
+        pass
+
     @staticmethod
     def derive_cache_key(url: str) -> str:
         """Derive a deterministic SHA-1 key from a canonicalized full URL string."""
-        canonical_url = HTTPCacheV1._canonicalize_url(url)
+        canonical_url = HttpClientWithCache._canonicalize_url(url)
         return hashlib.sha1(canonical_url.encode("utf-8")).hexdigest()  # noqa: S324
 
     def _has_changed(self, url: str, old: str, new: str) -> bool:

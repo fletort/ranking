@@ -10,8 +10,13 @@ import click
 import structlog
 
 from ranking.core.cache import CachePolicy
-from ranking.core.cache_httpx import CacheHttpx
-from ranking.plugins.breizhchrono.eventdetail import RaceItem, extract_event_detail
+from ranking.core.cache_httpx import HttpxClientWithCache
+from ranking.core.errors import ExternalRedirectError
+from ranking.plugins.breizhchrono.eventdetail import (
+    RaceItem,
+    build_event_detail_no_info,
+    extract_event_detail,
+)
 from ranking.plugins.breizhchrono.eventlist import (
     EVENTS_LIST_URL,
     EventListItem,
@@ -91,8 +96,11 @@ def cli(ctx, debug) -> None:
     setup_logging(debug)
     ctx.obj = {
         "log": structlog.get_logger().bind(component="cli"),
-        "cache": CacheHttpx(
-            PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono, save_extracted=True
+        "cache": HttpxClientWithCache(
+            PLUGIN_NAME,
+            normalize_for_comparison=normalize_breizhchrono,
+            save_extracted=True,
+            base_url=EVENTS_LIST_URL,
         ),
     }
 
@@ -112,7 +120,7 @@ def list(ctx) -> None:
 
     events = extract_events_list(html)
     cache.save_extracted_json(EVENTS_LIST_URL, events)
-    log.info("extracted_events", count=len(events))
+    log.info("event_list_processed", url=EVENTS_LIST_URL)
     if not events:
         return
 
@@ -145,7 +153,9 @@ def event(ctx, url) -> None:
     process_event(event, cache, log)
 
 
-def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundLogger) -> None:
+def process_event(
+    event: EventListItem, cache: HttpxClientWithCache, log: structlog.BoundLogger
+) -> None:
     event_url = EVENTS_LIST_URL + event["url"]
     log.info("event_processing", url=event_url, name=event["name"])
     try:
@@ -154,6 +164,16 @@ def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundL
     except RuntimeError as exc:
         log.error("fetch_error", error=str(exc), event_url=event_url)
         return
+    except ExternalRedirectError as exc:
+        log.info(
+            "event_skipped",
+            reason="external_redirect",
+            from_url=exc.requested_url,
+            to_url=exc.final_url,
+        )
+        no_event_detail = build_event_detail_no_info(status="external_redirect")
+        cache.save_extracted_json(event_url, no_event_detail)
+        return
 
     event_detail = extract_event_detail(event_html)
     cache.save_extracted_json(event_url, event_detail)
@@ -161,12 +181,7 @@ def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundL
         log.warning("no_event_detail_or_races_found", event_url=event_url)
         return
     else:
-        log.info(
-            "extracted_event_detail",
-            event_url=event_url,
-            event_name=event_detail["event_race_raw"],
-            races_count=len(event_detail["races"]),
-        )
+        log.info("event_processed", event_url=event_url, event_name=event_detail["event_race_raw"])
         log.debug(
             "event_detail_race_sample",
             event_url=event_url,
@@ -177,7 +192,7 @@ def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundL
         process_race(race, cache, log)
 
 
-def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) -> None:
+def process_race(race: RaceItem, cache: HttpxClientWithCache, log: structlog.BoundLogger) -> None:
     race_url = EVENTS_LIST_URL + race["url"]
 
     try:
@@ -193,7 +208,7 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
     }
     results = extract_race_results(race_html, race_information)
     cache.save_extracted_json(race_url, results)
-    log.info("extracted_race_results", results_count=len(results), race_url=race_url)
+    log.info("race_processed", race_url=race_url)
 
     if results:
         log.debug(
@@ -206,7 +221,11 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
 
     result_detail_url = results[0].get("result_detail_url_computed")
     if not isinstance(result_detail_url, str) or not result_detail_url:
-        log.error("no_computed_result_detail_url_found", race_url=race_url)
+        log.info(
+            "partial_data_available",
+            missing="result_detail",
+            race_url=race_url,
+        )
         return
 
     full_result_detail_url = EVENTS_LIST_URL + result_detail_url
@@ -219,16 +238,4 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
 
     detail = extract_result_detail(detail_html)
     cache.save_extracted_json(full_result_detail_url, detail)
-    log.info(
-        "extracted_result_detail",
-        result_detail_url=full_result_detail_url,
-        global_rank_count=len(
-            detail["global_ranks"] if detail and "global_ranks" in detail else []
-        ),
-        global_times_count=len(
-            detail["global_times"] if detail and "global_times" in detail else []
-        ),
-        other_ranktimes_count=len(
-            detail["other_ranktimes"] if detail and "other_ranktimes" in detail else []
-        ),
-    )
+    log.info("result_detail_processed", url=full_result_detail_url)
