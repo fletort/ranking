@@ -111,9 +111,13 @@ def test_extract_result_detail_returns_expected_fields() -> None:
         ],
         "global_times": [
             {
+                "name": "Temps Officiel",
+                "value": "00:29:40",
+            },
+            {
                 "name": "Temps Réel",
                 "value": "00:29:41",
-            }
+            },
         ],
         "other_ranktimes": [
             {

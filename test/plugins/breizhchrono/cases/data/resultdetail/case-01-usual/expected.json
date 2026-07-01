@@ -1,0 +1,62 @@
+{
+  "name_bib": "NAME Surname (N°123)",
+  "sex": "Sexe : M",
+  "nationality": "Nationalité : FRA",
+  "birth": "Année de naissance : 1994",
+  "category": "Catégorie : S3",
+  "global_ranks": [
+    {
+      "name": "Classement général",
+      "value": "5ᵉ",
+      "total": "239"
+    },
+    {
+      "name": "Classement catégorie",
+      "value": "1",
+      "total": "19"
+    },
+    {
+      "name": "Classement Sexe",
+      "value": "5ᵉ",
+      "total": "205"
+    }
+  ],
+  "global_times": [
+    {
+      "name": "Temps Officiel",
+      "value": "04:29:22"
+    }
+  ],
+  "other_ranktimes": [
+    {
+      "name": "Natation",
+      "time": "00:28:21",
+      "overall_rank": "5ᵉ",
+      "category_rank": "2"
+    },
+    {
+      "name": "Chg Nat.",
+      "time": "00:00:55",
+      "overall_rank": "3",
+      "category_rank": "1"
+    },
+    {
+      "name": "Vélo",
+      "time": "02:26:45",
+      "overall_rank": "5ᵉ",
+      "category_rank": "2"
+    },
+    {
+      "name": "Chg Vélo",
+      "time": "00:01:07",
+      "overall_rank": "48ᵉ",
+      "category_rank": "3"
+    },
+    {
+      "name": "Course",
+      "time": "01:32:16",
+      "overall_rank": "22ᵉ",
+      "category_rank": "2"
+    }
+  ]
+}

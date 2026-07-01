@@ -248,8 +248,14 @@ def extract_global_time_values(soup: BeautifulSoup, log: structlog.BoundLogger) 
     """
     result: list[TimeItem] = []
     for label in soup.select("span.timeTitle"):
-        value_tag = label.find_next_sibling("span.timeValue")
+        value_tag = label.find_next_sibling("span", class_="timeValue")
         if not isinstance(value_tag, Tag):
+            log.warning(
+                "missing_data",
+                type="element",
+                name="timeValue",
+                label_text=label.get_text(" ", strip=True),
+            )
             continue
         key = label.get_text(" ", strip=True)
         value = value_tag.get_text(" ", strip=True)
