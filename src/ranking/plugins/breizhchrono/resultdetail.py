@@ -28,21 +28,6 @@ class TimeItem(TypedDict):
     value: str
 
 
-class RankTimeItem(TypedDict):
-    """Represents a single rank-time field extracted from a BreizhChrono result detail page.
-    Each rank-time field has a name, a time value, an overall rank value, and a category
-    rank value.
-    """
-
-    name: str
-    time: str
-    overall_rank: str
-    category_rank: str
-
-
-EXPECTED_HEADERS = ["", "temps", "classement", "classement_categorie"]
-
-
 class ResultDetail(TypedDict):
     """Raw extracted fields from a BreizhChrono runner result detail page."""
 
@@ -58,8 +43,8 @@ class ResultDetail(TypedDict):
     # "Classement général", "Classement catégorie", "Classement Sexe".
     # Time fields (official, real, …) from the primary time blocks.
     global_times: list[TimeItem]
-    # Time fields from other time-ranking blocks.
-    other_ranktimes: list[RankTimeItem]
+    # Fields from intermediate information block.
+    intermediates: list[dict[str, str]]
 
 
 def extract_result_detail(html_content: str) -> ResultDetail | None:
@@ -85,7 +70,7 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
             "category": "",
             "global_ranks": [],
             "global_times": [],
-            "other_ranktimes": [],
+            "intermediates": [],
         }
 
         # Keep the full header text as a single raw field; name and bib number
@@ -132,19 +117,19 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
         log.debug(
             "extracted_data", type="field", name="global_times", count=len(result["global_times"])
         )
-        result["other_ranktimes"] = extract_other_ranktime_values(soup, log)
+        result["intermediates"] = extract_intermediate(soup, log)
         log.debug(
             "extracted_data",
             type="field",
-            name="other_ranktimes",
-            count=len(result["other_ranktimes"]),
+            name="intermediates",
+            count=len(result["intermediates"]),
         )
 
         log.info(
             "parse_success",
             global_ranks_count=len(result["global_ranks"]),
             global_times_count=len(result["global_times"]),
-            other_ranktimes_count=len(result["other_ranktimes"]),
+            intermediates_count=len(result["intermediates"]),
         )
         return result
     except Exception:
@@ -287,70 +272,47 @@ def extract_global_time_values(soup: BeautifulSoup, log: structlog.BoundLogger) 
     return result
 
 
-def extract_other_ranktime_values(
-    soup: BeautifulSoup, log: structlog.BoundLogger
-) -> list[RankTimeItem]:
-    """Extract all other rank-time fields from the page.
-    These are rendered in a table with four columns: label, time, overall rank, category rank.
+def extract_intermediate(soup: BeautifulSoup, log: structlog.BoundLogger) -> list[dict[str, str]]:
+    """Extract all other intermediate information (rank, time, ...) from the page.
+    These are rendered in a table with various columns.
+    Usually columns are: label, time, overall rank, category rank.
+    But sometimes category rank is missing, so the table has only three columns.
+    Other times we can also found theses columns: Passage, Classement, Classement catégorie,
+    Temps global, Dernier temps, Distance globale.
+    So we need to be flexible on this extracion phase.
     The table is inside a ``<div class="table-responsive">``.
-    The Header row is expected to contain the four columns: "", "temps", "classement",
-    "classement_categorie".
-    The first column is the label.
-    The second column is the time value.
-    The third column is the overall rank value.
-    The fourth column is the category rank value.
-    The function returns a list of RankTimeItem dictionaries, each containing the extracted values.
-    If the table is not found or the headers do not match the expected values,
-    it returns an empty list.
+    The Header row is taken to define the key of data.
+
+    The function returns a list of dictionaries, each containing the extracted values.
+    If the table is not found it returns an empty list.
     """
-    result: list[RankTimeItem] = []
+    result: list[dict[str, str]] = []
     table = soup.select_one("div.table-responsive > table")
     if table is None:
         return []
 
-    headers = [
-        normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead > tr > th")
-    ]
-    if len(headers) < len(EXPECTED_HEADERS) or headers[: len(EXPECTED_HEADERS)] != EXPECTED_HEADERS:
-        log.warning(
-            "invalid_format",
-            type="element",
-            name="thead",
-            headers=headers,
-            headers_expected=EXPECTED_HEADERS,
-        )
-        return []
+    headers = [th.get_text(" ", strip=True) for th in table.select("thead > tr > th")]
 
     for row in table.select("tbody > tr"):
-        columns = row.find_all("td")
-        if len(columns) < len(EXPECTED_HEADERS):
+        cells = row.find_all("td")
+        if len(cells) < len(headers):
             log.warning(
                 "invalid_format",
                 type="element",
                 name="tr",
-                columns_count=len(columns),
-                columns_expected=len(EXPECTED_HEADERS),
-                location="ranktime_table",
+                columns_count=len(cells),
+                columns_expected=len(headers),
+                location="intermediate_table",
             )
             continue
 
-        name = columns[0].get_text(" ", strip=True)
-        if not name:
-            log.warning(
-                "missing_data",
-                type="field",
-                name="name",
-                location="ranktime_table",
-            )
-            continue
+        d = {}
+        for cell, header in zip(cells, headers):
+            if cell.find("img"):
+                d[header] = extract_rank_value(cell)
+            else:
+                d[header] = cell.get_text(" ", strip=True)
 
-        result.append(
-            {
-                "name": name,
-                "time": columns[1].get_text(" ", strip=True),
-                "overall_rank": extract_rank_value(columns[2]),
-                "category_rank": extract_rank_value(columns[3]),
-            }
-        )
+        result.append(d)
 
     return result

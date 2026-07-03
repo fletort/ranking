@@ -1,0 +1,5 @@
+id: case-02
+name: Triathlon detailed result page with no category rank
+description:
+  Only one category was without category rank on this race result. Other was ok. Funny. The global
+  category rank is masked on the page.

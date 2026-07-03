@@ -1,0 +1,2452 @@
+{
+  "name_bib": "NON EQUIPE A RALLONGE - (N°56)",
+  "sex": "Sexe : M",
+  "nationality": "Nationalité : FRA",
+  "birth": "Année de naissance : 0",
+  "category": "Catégorie : SE",
+  "global_ranks": [
+    {
+      "name": "Classement général",
+      "value": "16ᵉ",
+      "total": "97"
+    },
+    {
+      "name": "Classement catégorie",
+      "value": "16ᵉ",
+      "total": "0"
+    },
+    {
+      "name": "Classement Sexe",
+      "value": "16ᵉ",
+      "total": "97"
+    }
+  ],
+  "global_times": [
+    {
+      "name": "Tours",
+      "value": "302"
+    },
+    {
+      "name": "Distance",
+      "value": "453 km"
+    }
+  ],
+  "intermediates": [
+    {
+      "Passage": "N° 1",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "00:13:40",
+      "Dernier temps": "00:13:40",
+      "Distance globale": "1.5 km"
+    },
+    {
+      "Passage": "N° 2",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "00:13:42",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "3.0 km"
+    },
+    {
+      "Passage": "N° 3",
+      "Classement": "53ᵉ",
+      "Classement catégorie": "53ᵉ",
+      "Temps global": "00:19:07",
+      "Dernier temps": "00:05:25",
+      "Distance globale": "4.5 km"
+    },
+    {
+      "Passage": "N° 4",
+      "Classement": "49ᵉ",
+      "Classement catégorie": "49ᵉ",
+      "Temps global": "00:19:08",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "6.0 km"
+    },
+    {
+      "Passage": "N° 5",
+      "Classement": "40ᵉ",
+      "Classement catégorie": "40ᵉ",
+      "Temps global": "00:19:10",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "7.5 km"
+    },
+    {
+      "Passage": "N° 6",
+      "Classement": "37ᵉ",
+      "Classement catégorie": "37ᵉ",
+      "Temps global": "00:19:10",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "9.0 km"
+    },
+    {
+      "Passage": "N° 7",
+      "Classement": "44ᵉ",
+      "Classement catégorie": "44ᵉ",
+      "Temps global": "00:21:15",
+      "Dernier temps": "00:02:05",
+      "Distance globale": "10.5 km"
+    },
+    {
+      "Passage": "N° 8",
+      "Classement": "39ᵉ",
+      "Classement catégorie": "39ᵉ",
+      "Temps global": "00:21:15",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "12.0 km"
+    },
+    {
+      "Passage": "N° 9",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "00:21:16",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "13.5 km"
+    },
+    {
+      "Passage": "N° 10",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "00:21:18",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "15.0 km"
+    },
+    {
+      "Passage": "N° 11",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "00:21:19",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "16.5 km"
+    },
+    {
+      "Passage": "N° 12",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "00:21:22",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "18.0 km"
+    },
+    {
+      "Passage": "N° 13",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "00:25:03",
+      "Dernier temps": "00:03:41",
+      "Distance globale": "19.5 km"
+    },
+    {
+      "Passage": "N° 14",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "00:25:04",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "21.0 km"
+    },
+    {
+      "Passage": "N° 15",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "00:25:05",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "22.5 km"
+    },
+    {
+      "Passage": "N° 16",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "00:25:06",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "24.0 km"
+    },
+    {
+      "Passage": "N° 17",
+      "Classement": "26ᵉ",
+      "Classement catégorie": "26ᵉ",
+      "Temps global": "00:28:33",
+      "Dernier temps": "00:03:27",
+      "Distance globale": "25.5 km"
+    },
+    {
+      "Passage": "N° 18",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "00:28:35",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "27.0 km"
+    },
+    {
+      "Passage": "N° 19",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "00:28:39",
+      "Dernier temps": "00:00:04",
+      "Distance globale": "28.5 km"
+    },
+    {
+      "Passage": "N° 20",
+      "Classement": "39ᵉ",
+      "Classement catégorie": "39ᵉ",
+      "Temps global": "00:38:24",
+      "Dernier temps": "00:09:45",
+      "Distance globale": "30.0 km"
+    },
+    {
+      "Passage": "N° 21",
+      "Classement": "37ᵉ",
+      "Classement catégorie": "37ᵉ",
+      "Temps global": "00:38:24",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "31.5 km"
+    },
+    {
+      "Passage": "N° 22",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "00:38:26",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "33.0 km"
+    },
+    {
+      "Passage": "N° 23",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "00:38:26",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "34.5 km"
+    },
+    {
+      "Passage": "N° 24",
+      "Classement": "40ᵉ",
+      "Classement catégorie": "40ᵉ",
+      "Temps global": "00:44:04",
+      "Dernier temps": "00:05:38",
+      "Distance globale": "36.0 km"
+    },
+    {
+      "Passage": "N° 25",
+      "Classement": "39ᵉ",
+      "Classement catégorie": "39ᵉ",
+      "Temps global": "00:44:06",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "37.5 km"
+    },
+    {
+      "Passage": "N° 26",
+      "Classement": "38ᵉ",
+      "Classement catégorie": "38ᵉ",
+      "Temps global": "00:44:08",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "39.0 km"
+    },
+    {
+      "Passage": "N° 27",
+      "Classement": "36ᵉ",
+      "Classement catégorie": "36ᵉ",
+      "Temps global": "00:44:09",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "40.5 km"
+    },
+    {
+      "Passage": "N° 28",
+      "Classement": "40ᵉ",
+      "Classement catégorie": "40ᵉ",
+      "Temps global": "00:46:24",
+      "Dernier temps": "00:02:15",
+      "Distance globale": "42.0 km"
+    },
+    {
+      "Passage": "N° 29",
+      "Classement": "39ᵉ",
+      "Classement catégorie": "39ᵉ",
+      "Temps global": "00:46:25",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "43.5 km"
+    },
+    {
+      "Passage": "N° 30",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "00:46:27",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "45.0 km"
+    },
+    {
+      "Passage": "N° 31",
+      "Classement": "43ᵉ",
+      "Classement catégorie": "43ᵉ",
+      "Temps global": "00:50:37",
+      "Dernier temps": "00:04:10",
+      "Distance globale": "46.5 km"
+    },
+    {
+      "Passage": "N° 32",
+      "Classement": "39ᵉ",
+      "Classement catégorie": "39ᵉ",
+      "Temps global": "00:50:39",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "48.0 km"
+    },
+    {
+      "Passage": "N° 33",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "00:50:41",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "49.5 km"
+    },
+    {
+      "Passage": "N° 34",
+      "Classement": "34ᵉ",
+      "Classement catégorie": "34ᵉ",
+      "Temps global": "00:50:42",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "51.0 km"
+    },
+    {
+      "Passage": "N° 35",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "00:50:45",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "52.5 km"
+    },
+    {
+      "Passage": "N° 36",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "00:50:45",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "54.0 km"
+    },
+    {
+      "Passage": "N° 37",
+      "Classement": "29ᵉ",
+      "Classement catégorie": "29ᵉ",
+      "Temps global": "00:50:46",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "55.5 km"
+    },
+    {
+      "Passage": "N° 38",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "00:50:47",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "57.0 km"
+    },
+    {
+      "Passage": "N° 39",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "00:50:48",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "58.5 km"
+    },
+    {
+      "Passage": "N° 40",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "00:50:49",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "60.0 km"
+    },
+    {
+      "Passage": "N° 41",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "00:58:44",
+      "Dernier temps": "00:07:55",
+      "Distance globale": "61.5 km"
+    },
+    {
+      "Passage": "N° 42",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "00:58:45",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "63.0 km"
+    },
+    {
+      "Passage": "N° 43",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "00:58:47",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "64.5 km"
+    },
+    {
+      "Passage": "N° 44",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "00:58:49",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "66.0 km"
+    },
+    {
+      "Passage": "N° 45",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "01:01:20",
+      "Dernier temps": "00:02:31",
+      "Distance globale": "67.5 km"
+    },
+    {
+      "Passage": "N° 46",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "01:01:20",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "69.0 km"
+    },
+    {
+      "Passage": "N° 47",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:01:22",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "70.5 km"
+    },
+    {
+      "Passage": "N° 48",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "01:03:13",
+      "Dernier temps": "00:01:51",
+      "Distance globale": "72.0 km"
+    },
+    {
+      "Passage": "N° 49",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "01:03:14",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "73.5 km"
+    },
+    {
+      "Passage": "N° 50",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "01:03:15",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "75.0 km"
+    },
+    {
+      "Passage": "N° 51",
+      "Classement": "30ᵉ",
+      "Classement catégorie": "30ᵉ",
+      "Temps global": "01:03:16",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "76.5 km"
+    },
+    {
+      "Passage": "N° 52",
+      "Classement": "37ᵉ",
+      "Classement catégorie": "37ᵉ",
+      "Temps global": "01:11:52",
+      "Dernier temps": "00:08:36",
+      "Distance globale": "78.0 km"
+    },
+    {
+      "Passage": "N° 53",
+      "Classement": "37ᵉ",
+      "Classement catégorie": "37ᵉ",
+      "Temps global": "01:11:53",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "79.5 km"
+    },
+    {
+      "Passage": "N° 54",
+      "Classement": "35ᵉ",
+      "Classement catégorie": "35ᵉ",
+      "Temps global": "01:11:54",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "81.0 km"
+    },
+    {
+      "Passage": "N° 55",
+      "Classement": "34ᵉ",
+      "Classement catégorie": "34ᵉ",
+      "Temps global": "01:11:54",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "82.5 km"
+    },
+    {
+      "Passage": "N° 56",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:11:56",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "84.0 km"
+    },
+    {
+      "Passage": "N° 57",
+      "Classement": "29ᵉ",
+      "Classement catégorie": "29ᵉ",
+      "Temps global": "01:11:57",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "85.5 km"
+    },
+    {
+      "Passage": "N° 58",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:13:40",
+      "Dernier temps": "00:01:43",
+      "Distance globale": "87.0 km"
+    },
+    {
+      "Passage": "N° 59",
+      "Classement": "29ᵉ",
+      "Classement catégorie": "29ᵉ",
+      "Temps global": "01:13:40",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "88.5 km"
+    },
+    {
+      "Passage": "N° 60",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:13:40",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "90.0 km"
+    },
+    {
+      "Passage": "N° 61",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:13:41",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "91.5 km"
+    },
+    {
+      "Passage": "N° 62",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:13:43",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "93.0 km"
+    },
+    {
+      "Passage": "N° 63",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:13:44",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "94.5 km"
+    },
+    {
+      "Passage": "N° 64",
+      "Classement": "30ᵉ",
+      "Classement catégorie": "30ᵉ",
+      "Temps global": "01:17:46",
+      "Dernier temps": "00:04:02",
+      "Distance globale": "96.0 km"
+    },
+    {
+      "Passage": "N° 65",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:17:48",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "97.5 km"
+    },
+    {
+      "Passage": "N° 66",
+      "Classement": "34ᵉ",
+      "Classement catégorie": "34ᵉ",
+      "Temps global": "01:25:03",
+      "Dernier temps": "00:07:15",
+      "Distance globale": "99.0 km"
+    },
+    {
+      "Passage": "N° 67",
+      "Classement": "34ᵉ",
+      "Classement catégorie": "34ᵉ",
+      "Temps global": "01:25:05",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "100.5 km"
+    },
+    {
+      "Passage": "N° 68",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "01:25:05",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "102.0 km"
+    },
+    {
+      "Passage": "N° 69",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:25:08",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "103.5 km"
+    },
+    {
+      "Passage": "N° 70",
+      "Classement": "34ᵉ",
+      "Classement catégorie": "34ᵉ",
+      "Temps global": "01:32:32",
+      "Dernier temps": "00:07:24",
+      "Distance globale": "105.0 km"
+    },
+    {
+      "Passage": "N° 71",
+      "Classement": "33ᵉ",
+      "Classement catégorie": "33ᵉ",
+      "Temps global": "01:32:33",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "106.5 km"
+    },
+    {
+      "Passage": "N° 72",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:32:35",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "108.0 km"
+    },
+    {
+      "Passage": "N° 73",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:32:36",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "109.5 km"
+    },
+    {
+      "Passage": "N° 74",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "01:37:59",
+      "Dernier temps": "00:05:23",
+      "Distance globale": "111.0 km"
+    },
+    {
+      "Passage": "N° 75",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "01:37:59",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "112.5 km"
+    },
+    {
+      "Passage": "N° 76",
+      "Classement": "32ᵉ",
+      "Classement catégorie": "32ᵉ",
+      "Temps global": "01:38:08",
+      "Dernier temps": "00:00:09",
+      "Distance globale": "114.0 km"
+    },
+    {
+      "Passage": "N° 77",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:38:08",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "115.5 km"
+    },
+    {
+      "Passage": "N° 78",
+      "Classement": "31ᵉ",
+      "Classement catégorie": "31ᵉ",
+      "Temps global": "01:38:08",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "117.0 km"
+    },
+    {
+      "Passage": "N° 79",
+      "Classement": "30ᵉ",
+      "Classement catégorie": "30ᵉ",
+      "Temps global": "01:38:09",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "118.5 km"
+    },
+    {
+      "Passage": "N° 80",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:38:10",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "120.0 km"
+    },
+    {
+      "Passage": "N° 81",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:38:12",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "121.5 km"
+    },
+    {
+      "Passage": "N° 82",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:38:21",
+      "Dernier temps": "00:00:09",
+      "Distance globale": "123.0 km"
+    },
+    {
+      "Passage": "N° 83",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:38:24",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "124.5 km"
+    },
+    {
+      "Passage": "N° 84",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:41:58",
+      "Dernier temps": "00:03:34",
+      "Distance globale": "126.0 km"
+    },
+    {
+      "Passage": "N° 85",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:41:59",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "127.5 km"
+    },
+    {
+      "Passage": "N° 86",
+      "Classement": "28ᵉ",
+      "Classement catégorie": "28ᵉ",
+      "Temps global": "01:42:00",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "129.0 km"
+    },
+    {
+      "Passage": "N° 87",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:42:01",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "130.5 km"
+    },
+    {
+      "Passage": "N° 88",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:42:17",
+      "Dernier temps": "00:00:16",
+      "Distance globale": "132.0 km"
+    },
+    {
+      "Passage": "N° 89",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:42:19",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "133.5 km"
+    },
+    {
+      "Passage": "N° 90",
+      "Classement": "27ᵉ",
+      "Classement catégorie": "27ᵉ",
+      "Temps global": "01:44:56",
+      "Dernier temps": "00:02:37",
+      "Distance globale": "135.0 km"
+    },
+    {
+      "Passage": "N° 91",
+      "Classement": "26ᵉ",
+      "Classement catégorie": "26ᵉ",
+      "Temps global": "01:44:57",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "136.5 km"
+    },
+    {
+      "Passage": "N° 92",
+      "Classement": "25ᵉ",
+      "Classement catégorie": "25ᵉ",
+      "Temps global": "01:44:57",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "138.0 km"
+    },
+    {
+      "Passage": "N° 93",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "01:44:58",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "139.5 km"
+    },
+    {
+      "Passage": "N° 94",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "01:45:00",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "141.0 km"
+    },
+    {
+      "Passage": "N° 95",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:45:03",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "142.5 km"
+    },
+    {
+      "Passage": "N° 96",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:45:05",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "144.0 km"
+    },
+    {
+      "Passage": "N° 97",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:45:06",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "145.5 km"
+    },
+    {
+      "Passage": "N° 98",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:45:07",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "147.0 km"
+    },
+    {
+      "Passage": "N° 99",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "01:45:08",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "148.5 km"
+    },
+    {
+      "Passage": "N° 100",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "01:51:17",
+      "Dernier temps": "00:06:09",
+      "Distance globale": "150.0 km"
+    },
+    {
+      "Passage": "N° 101",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "01:51:19",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "151.5 km"
+    },
+    {
+      "Passage": "N° 102",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:51:21",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "153.0 km"
+    },
+    {
+      "Passage": "N° 103",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:51:22",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "154.5 km"
+    },
+    {
+      "Passage": "N° 104",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "01:52:53",
+      "Dernier temps": "00:01:31",
+      "Distance globale": "156.0 km"
+    },
+    {
+      "Passage": "N° 105",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "01:57:15",
+      "Dernier temps": "00:04:22",
+      "Distance globale": "157.5 km"
+    },
+    {
+      "Passage": "N° 106",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "01:57:17",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "159.0 km"
+    },
+    {
+      "Passage": "N° 107",
+      "Classement": "25ᵉ",
+      "Classement catégorie": "25ᵉ",
+      "Temps global": "02:00:12",
+      "Dernier temps": "00:02:55",
+      "Distance globale": "160.5 km"
+    },
+    {
+      "Passage": "N° 108",
+      "Classement": "25ᵉ",
+      "Classement catégorie": "25ᵉ",
+      "Temps global": "02:00:14",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "162.0 km"
+    },
+    {
+      "Passage": "N° 109",
+      "Classement": "25ᵉ",
+      "Classement catégorie": "25ᵉ",
+      "Temps global": "02:00:29",
+      "Dernier temps": "00:00:15",
+      "Distance globale": "163.5 km"
+    },
+    {
+      "Passage": "N° 110",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "02:00:31",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "165.0 km"
+    },
+    {
+      "Passage": "N° 111",
+      "Classement": "24ᵉ",
+      "Classement catégorie": "24ᵉ",
+      "Temps global": "02:03:03",
+      "Dernier temps": "00:02:32",
+      "Distance globale": "166.5 km"
+    },
+    {
+      "Passage": "N° 112",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "02:03:05",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "168.0 km"
+    },
+    {
+      "Passage": "N° 113",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:03:18",
+      "Dernier temps": "00:00:13",
+      "Distance globale": "169.5 km"
+    },
+    {
+      "Passage": "N° 114",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:03:19",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "171.0 km"
+    },
+    {
+      "Passage": "N° 115",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:03:22",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "172.5 km"
+    },
+    {
+      "Passage": "N° 116",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:03:23",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "174.0 km"
+    },
+    {
+      "Passage": "N° 117",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:05:49",
+      "Dernier temps": "00:02:26",
+      "Distance globale": "175.5 km"
+    },
+    {
+      "Passage": "N° 118",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:05:49",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "177.0 km"
+    },
+    {
+      "Passage": "N° 119",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:05:50",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "178.5 km"
+    },
+    {
+      "Passage": "N° 120",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:06:25",
+      "Dernier temps": "00:00:35",
+      "Distance globale": "180.0 km"
+    },
+    {
+      "Passage": "N° 121",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:06:26",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "181.5 km"
+    },
+    {
+      "Passage": "N° 122",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:06:27",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "183.0 km"
+    },
+    {
+      "Passage": "N° 123",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:06:28",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "184.5 km"
+    },
+    {
+      "Passage": "N° 124",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:09:28",
+      "Dernier temps": "00:03:00",
+      "Distance globale": "186.0 km"
+    },
+    {
+      "Passage": "N° 125",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:09:29",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "187.5 km"
+    },
+    {
+      "Passage": "N° 126",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "02:16:56",
+      "Dernier temps": "00:07:27",
+      "Distance globale": "189.0 km"
+    },
+    {
+      "Passage": "N° 127",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "02:16:58",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "190.5 km"
+    },
+    {
+      "Passage": "N° 128",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "02:17:41",
+      "Dernier temps": "00:00:43",
+      "Distance globale": "192.0 km"
+    },
+    {
+      "Passage": "N° 129",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "22ᵉ",
+      "Temps global": "02:17:42",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "193.5 km"
+    },
+    {
+      "Passage": "N° 130",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:17:42",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "195.0 km"
+    },
+    {
+      "Passage": "N° 131",
+      "Classement": "21ᵉ",
+      "Classement catégorie": "21ᵉ",
+      "Temps global": "02:17:43",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "196.5 km"
+    },
+    {
+      "Passage": "N° 132",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "02:20:55",
+      "Dernier temps": "00:03:12",
+      "Distance globale": "198.0 km"
+    },
+    {
+      "Passage": "N° 133",
+      "Classement": "23ᵉ",
+      "Classement catégorie": "23ᵉ",
+      "Temps global": "02:20:56",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "199.5 km"
+    },
+    {
+      "Passage": "N° 134",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:22:47",
+      "Dernier temps": "00:01:51",
+      "Distance globale": "201.0 km"
+    },
+    {
+      "Passage": "N° 135",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:22:50",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "202.5 km"
+    },
+    {
+      "Passage": "N° 136",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:23:50",
+      "Dernier temps": "00:01:00",
+      "Distance globale": "204.0 km"
+    },
+    {
+      "Passage": "N° 137",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:23:51",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "205.5 km"
+    },
+    {
+      "Passage": "N° 138",
+      "Classement": "19ᵉ",
+      "Classement catégorie": "19ᵉ",
+      "Temps global": "02:23:53",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "207.0 km"
+    },
+    {
+      "Passage": "N° 139",
+      "Classement": "19ᵉ",
+      "Classement catégorie": "19ᵉ",
+      "Temps global": "02:23:55",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "208.5 km"
+    },
+    {
+      "Passage": "N° 140",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:27:54",
+      "Dernier temps": "00:03:59",
+      "Distance globale": "210.0 km"
+    },
+    {
+      "Passage": "N° 141",
+      "Classement": "20ᵉ",
+      "Classement catégorie": "20ᵉ",
+      "Temps global": "02:27:56",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "211.5 km"
+    },
+    {
+      "Passage": "N° 142",
+      "Classement": "19ᵉ",
+      "Classement catégorie": "19ᵉ",
+      "Temps global": "02:28:54",
+      "Dernier temps": "00:00:58",
+      "Distance globale": "213.0 km"
+    },
+    {
+      "Passage": "N° 143",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:28:56",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "214.5 km"
+    },
+    {
+      "Passage": "N° 144",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:28:57",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "216.0 km"
+    },
+    {
+      "Passage": "N° 145",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:29:12",
+      "Dernier temps": "00:00:15",
+      "Distance globale": "217.5 km"
+    },
+    {
+      "Passage": "N° 146",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:29:13",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "219.0 km"
+    },
+    {
+      "Passage": "N° 147",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:34:18",
+      "Dernier temps": "00:05:05",
+      "Distance globale": "220.5 km"
+    },
+    {
+      "Passage": "N° 148",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:34:20",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "222.0 km"
+    },
+    {
+      "Passage": "N° 149",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:36:35",
+      "Dernier temps": "00:02:15",
+      "Distance globale": "223.5 km"
+    },
+    {
+      "Passage": "N° 150",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:36:36",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "225.0 km"
+    },
+    {
+      "Passage": "N° 151",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:36:37",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "226.5 km"
+    },
+    {
+      "Passage": "N° 152",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:36:39",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "228.0 km"
+    },
+    {
+      "Passage": "N° 153",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:38:47",
+      "Dernier temps": "00:02:08",
+      "Distance globale": "229.5 km"
+    },
+    {
+      "Passage": "N° 154",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:41:59",
+      "Dernier temps": "00:03:12",
+      "Distance globale": "231.0 km"
+    },
+    {
+      "Passage": "N° 155",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:42:01",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "232.5 km"
+    },
+    {
+      "Passage": "N° 156",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:43:11",
+      "Dernier temps": "00:01:10",
+      "Distance globale": "234.0 km"
+    },
+    {
+      "Passage": "N° 157",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:43:13",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "235.5 km"
+    },
+    {
+      "Passage": "N° 158",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:43:34",
+      "Dernier temps": "00:00:21",
+      "Distance globale": "237.0 km"
+    },
+    {
+      "Passage": "N° 159",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:43:36",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "238.5 km"
+    },
+    {
+      "Passage": "N° 160",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:47:20",
+      "Dernier temps": "00:03:44",
+      "Distance globale": "240.0 km"
+    },
+    {
+      "Passage": "N° 161",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:47:23",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "241.5 km"
+    },
+    {
+      "Passage": "N° 162",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:47:23",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "243.0 km"
+    },
+    {
+      "Passage": "N° 163",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:47:25",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "244.5 km"
+    },
+    {
+      "Passage": "N° 164",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:50:01",
+      "Dernier temps": "00:02:36",
+      "Distance globale": "246.0 km"
+    },
+    {
+      "Passage": "N° 165",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:50:01",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "247.5 km"
+    },
+    {
+      "Passage": "N° 166",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:50:02",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "249.0 km"
+    },
+    {
+      "Passage": "N° 167",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:51:43",
+      "Dernier temps": "00:01:41",
+      "Distance globale": "250.5 km"
+    },
+    {
+      "Passage": "N° 168",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:51:44",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "252.0 km"
+    },
+    {
+      "Passage": "N° 169",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:51:44",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "253.5 km"
+    },
+    {
+      "Passage": "N° 170",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:51:46",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "255.0 km"
+    },
+    {
+      "Passage": "N° 171",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "02:51:48",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "256.5 km"
+    },
+    {
+      "Passage": "N° 172",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:57:17",
+      "Dernier temps": "00:05:29",
+      "Distance globale": "258.0 km"
+    },
+    {
+      "Passage": "N° 173",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:57:18",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "259.5 km"
+    },
+    {
+      "Passage": "N° 174",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:59:13",
+      "Dernier temps": "00:01:55",
+      "Distance globale": "261.0 km"
+    },
+    {
+      "Passage": "N° 175",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "02:59:15",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "262.5 km"
+    },
+    {
+      "Passage": "N° 176",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "03:07:00",
+      "Dernier temps": "00:07:45",
+      "Distance globale": "264.0 km"
+    },
+    {
+      "Passage": "N° 177",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "03:07:01",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "265.5 km"
+    },
+    {
+      "Passage": "N° 178",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "03:07:01",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "267.0 km"
+    },
+    {
+      "Passage": "N° 179",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "03:07:02",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "268.5 km"
+    },
+    {
+      "Passage": "N° 180",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "03:07:49",
+      "Dernier temps": "00:00:47",
+      "Distance globale": "270.0 km"
+    },
+    {
+      "Passage": "N° 181",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:07:51",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "271.5 km"
+    },
+    {
+      "Passage": "N° 182",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:09:18",
+      "Dernier temps": "00:01:27",
+      "Distance globale": "273.0 km"
+    },
+    {
+      "Passage": "N° 183",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:09:21",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "274.5 km"
+    },
+    {
+      "Passage": "N° 184",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:09:38",
+      "Dernier temps": "00:00:17",
+      "Distance globale": "276.0 km"
+    },
+    {
+      "Passage": "N° 185",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:09:40",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "277.5 km"
+    },
+    {
+      "Passage": "N° 186",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:10:01",
+      "Dernier temps": "00:00:21",
+      "Distance globale": "279.0 km"
+    },
+    {
+      "Passage": "N° 187",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:10:02",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "280.5 km"
+    },
+    {
+      "Passage": "N° 188",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:10:03",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "282.0 km"
+    },
+    {
+      "Passage": "N° 189",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:10:04",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "283.5 km"
+    },
+    {
+      "Passage": "N° 190",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:12:11",
+      "Dernier temps": "00:02:07",
+      "Distance globale": "285.0 km"
+    },
+    {
+      "Passage": "N° 191",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:12:14",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "286.5 km"
+    },
+    {
+      "Passage": "N° 192",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:15:26",
+      "Dernier temps": "00:03:12",
+      "Distance globale": "288.0 km"
+    },
+    {
+      "Passage": "N° 193",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:15:28",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "289.5 km"
+    },
+    {
+      "Passage": "N° 194",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:24:18",
+      "Dernier temps": "00:08:50",
+      "Distance globale": "291.0 km"
+    },
+    {
+      "Passage": "N° 195",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:24:18",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "292.5 km"
+    },
+    {
+      "Passage": "N° 196",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:25:48",
+      "Dernier temps": "00:01:30",
+      "Distance globale": "294.0 km"
+    },
+    {
+      "Passage": "N° 197",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:25:49",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "295.5 km"
+    },
+    {
+      "Passage": "N° 198",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:25:51",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "297.0 km"
+    },
+    {
+      "Passage": "N° 199",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:25:51",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "298.5 km"
+    },
+    {
+      "Passage": "N° 200",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:27:06",
+      "Dernier temps": "00:01:15",
+      "Distance globale": "300.0 km"
+    },
+    {
+      "Passage": "N° 201",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:27:07",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "301.5 km"
+    },
+    {
+      "Passage": "N° 202",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:27:08",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "303.0 km"
+    },
+    {
+      "Passage": "N° 203",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:27:10",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "304.5 km"
+    },
+    {
+      "Passage": "N° 204",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:28:15",
+      "Dernier temps": "00:01:05",
+      "Distance globale": "306.0 km"
+    },
+    {
+      "Passage": "N° 205",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:28:18",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "307.5 km"
+    },
+    {
+      "Passage": "N° 206",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:29:43",
+      "Dernier temps": "00:01:25",
+      "Distance globale": "309.0 km"
+    },
+    {
+      "Passage": "N° 207",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:29:45",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "310.5 km"
+    },
+    {
+      "Passage": "N° 208",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:30:53",
+      "Dernier temps": "00:01:08",
+      "Distance globale": "312.0 km"
+    },
+    {
+      "Passage": "N° 209",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:30:54",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "313.5 km"
+    },
+    {
+      "Passage": "N° 210",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:36:33",
+      "Dernier temps": "00:05:39",
+      "Distance globale": "315.0 km"
+    },
+    {
+      "Passage": "N° 211",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:36:35",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "316.5 km"
+    },
+    {
+      "Passage": "N° 212",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:40:58",
+      "Dernier temps": "00:04:23",
+      "Distance globale": "318.0 km"
+    },
+    {
+      "Passage": "N° 213",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:40:59",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "319.5 km"
+    },
+    {
+      "Passage": "N° 214",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:00",
+      "Dernier temps": "00:02:01",
+      "Distance globale": "321.0 km"
+    },
+    {
+      "Passage": "N° 215",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:00",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "322.5 km"
+    },
+    {
+      "Passage": "N° 216",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:00",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "324.0 km"
+    },
+    {
+      "Passage": "N° 217",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:02",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "325.5 km"
+    },
+    {
+      "Passage": "N° 218",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:02",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "327.0 km"
+    },
+    {
+      "Passage": "N° 219",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:03",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "328.5 km"
+    },
+    {
+      "Passage": "N° 220",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:50",
+      "Dernier temps": "00:00:47",
+      "Distance globale": "330.0 km"
+    },
+    {
+      "Passage": "N° 221",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:43:51",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "331.5 km"
+    },
+    {
+      "Passage": "N° 222",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:47:16",
+      "Dernier temps": "00:03:25",
+      "Distance globale": "333.0 km"
+    },
+    {
+      "Passage": "N° 223",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:47:17",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "334.5 km"
+    },
+    {
+      "Passage": "N° 224",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:48:48",
+      "Dernier temps": "00:01:31",
+      "Distance globale": "336.0 km"
+    },
+    {
+      "Passage": "N° 225",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:48:49",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "337.5 km"
+    },
+    {
+      "Passage": "N° 226",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:52:29",
+      "Dernier temps": "00:03:40",
+      "Distance globale": "339.0 km"
+    },
+    {
+      "Passage": "N° 227",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:52:46",
+      "Dernier temps": "00:00:17",
+      "Distance globale": "340.5 km"
+    },
+    {
+      "Passage": "N° 228",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:59:30",
+      "Dernier temps": "00:06:44",
+      "Distance globale": "342.0 km"
+    },
+    {
+      "Passage": "N° 229",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "03:59:31",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "343.5 km"
+    },
+    {
+      "Passage": "N° 230",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:02:58",
+      "Dernier temps": "00:03:27",
+      "Distance globale": "345.0 km"
+    },
+    {
+      "Passage": "N° 231",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:03:00",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "346.5 km"
+    },
+    {
+      "Passage": "N° 232",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:03:07",
+      "Dernier temps": "00:00:07",
+      "Distance globale": "348.0 km"
+    },
+    {
+      "Passage": "N° 233",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:03:09",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "349.5 km"
+    },
+    {
+      "Passage": "N° 234",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:33",
+      "Dernier temps": "00:06:24",
+      "Distance globale": "351.0 km"
+    },
+    {
+      "Passage": "N° 235",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:34",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "352.5 km"
+    },
+    {
+      "Passage": "N° 236",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:35",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "354.0 km"
+    },
+    {
+      "Passage": "N° 237",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:36",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "355.5 km"
+    },
+    {
+      "Passage": "N° 238",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:36",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "357.0 km"
+    },
+    {
+      "Passage": "N° 239",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:37",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "358.5 km"
+    },
+    {
+      "Passage": "N° 240",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:47",
+      "Dernier temps": "00:00:10",
+      "Distance globale": "360.0 km"
+    },
+    {
+      "Passage": "N° 241",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:48",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "361.5 km"
+    },
+    {
+      "Passage": "N° 242",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:50",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "363.0 km"
+    },
+    {
+      "Passage": "N° 243",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:09:51",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "364.5 km"
+    },
+    {
+      "Passage": "N° 244",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:16:27",
+      "Dernier temps": "00:06:36",
+      "Distance globale": "366.0 km"
+    },
+    {
+      "Passage": "N° 245",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:16:28",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "367.5 km"
+    },
+    {
+      "Passage": "N° 246",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:16:32",
+      "Dernier temps": "00:00:04",
+      "Distance globale": "369.0 km"
+    },
+    {
+      "Passage": "N° 247",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:17:41",
+      "Dernier temps": "00:01:09",
+      "Distance globale": "370.5 km"
+    },
+    {
+      "Passage": "N° 248",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:25:17",
+      "Dernier temps": "00:07:36",
+      "Distance globale": "372.0 km"
+    },
+    {
+      "Passage": "N° 249",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:25:18",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "373.5 km"
+    },
+    {
+      "Passage": "N° 250",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:25:20",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "375.0 km"
+    },
+    {
+      "Passage": "N° 251",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:29:18",
+      "Dernier temps": "00:03:58",
+      "Distance globale": "376.5 km"
+    },
+    {
+      "Passage": "N° 252",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:29:19",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "378.0 km"
+    },
+    {
+      "Passage": "N° 253",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:34:14",
+      "Dernier temps": "00:04:55",
+      "Distance globale": "379.5 km"
+    },
+    {
+      "Passage": "N° 254",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:34:16",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "381.0 km"
+    },
+    {
+      "Passage": "N° 255",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:39:34",
+      "Dernier temps": "00:05:18",
+      "Distance globale": "382.5 km"
+    },
+    {
+      "Passage": "N° 256",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:39:36",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "384.0 km"
+    },
+    {
+      "Passage": "N° 257",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:39:49",
+      "Dernier temps": "00:00:13",
+      "Distance globale": "385.5 km"
+    },
+    {
+      "Passage": "N° 258",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:40:44",
+      "Dernier temps": "00:00:55",
+      "Distance globale": "387.0 km"
+    },
+    {
+      "Passage": "N° 259",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:40:44",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "388.5 km"
+    },
+    {
+      "Passage": "N° 260",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:40:46",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "390.0 km"
+    },
+    {
+      "Passage": "N° 261",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:50:56",
+      "Dernier temps": "00:10:10",
+      "Distance globale": "391.5 km"
+    },
+    {
+      "Passage": "N° 262",
+      "Classement": "18ᵉ",
+      "Classement catégorie": "18ᵉ",
+      "Temps global": "04:54:44",
+      "Dernier temps": "00:03:48",
+      "Distance globale": "393.0 km"
+    },
+    {
+      "Passage": "N° 263",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:54:47",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "394.5 km"
+    },
+    {
+      "Passage": "N° 264",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:58:08",
+      "Dernier temps": "00:03:21",
+      "Distance globale": "396.0 km"
+    },
+    {
+      "Passage": "N° 265",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:58:08",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "397.5 km"
+    },
+    {
+      "Passage": "N° 266",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:58:08",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "399.0 km"
+    },
+    {
+      "Passage": "N° 267",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:58:10",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "400.5 km"
+    },
+    {
+      "Passage": "N° 268",
+      "Classement": "17ᵉ",
+      "Classement catégorie": "17ᵉ",
+      "Temps global": "04:58:10",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "402.0 km"
+    },
+    {
+      "Passage": "N° 269",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "04:58:11",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "403.5 km"
+    },
+    {
+      "Passage": "N° 270",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "04:58:13",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "405.0 km"
+    },
+    {
+      "Passage": "N° 271",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "04:58:15",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "406.5 km"
+    },
+    {
+      "Passage": "N° 272",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "04:58:18",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "408.0 km"
+    },
+    {
+      "Passage": "N° 273",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "04:58:19",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "409.5 km"
+    },
+    {
+      "Passage": "N° 274",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:07:56",
+      "Dernier temps": "00:09:37",
+      "Distance globale": "411.0 km"
+    },
+    {
+      "Passage": "N° 275",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:07:58",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "412.5 km"
+    },
+    {
+      "Passage": "N° 276",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:10:09",
+      "Dernier temps": "00:02:11",
+      "Distance globale": "414.0 km"
+    },
+    {
+      "Passage": "N° 277",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:10:11",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "415.5 km"
+    },
+    {
+      "Passage": "N° 278",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:14:24",
+      "Dernier temps": "00:04:13",
+      "Distance globale": "417.0 km"
+    },
+    {
+      "Passage": "N° 279",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:14:25",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "418.5 km"
+    },
+    {
+      "Passage": "N° 280",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "05:14:26",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "420.0 km"
+    },
+    {
+      "Passage": "N° 281",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:14",
+      "Dernier temps": "00:04:48",
+      "Distance globale": "421.5 km"
+    },
+    {
+      "Passage": "N° 282",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:23",
+      "Dernier temps": "00:00:09",
+      "Distance globale": "423.0 km"
+    },
+    {
+      "Passage": "N° 283",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:24",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "424.5 km"
+    },
+    {
+      "Passage": "N° 284",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:25",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "426.0 km"
+    },
+    {
+      "Passage": "N° 285",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:25",
+      "Dernier temps": "00:00:00",
+      "Distance globale": "427.5 km"
+    },
+    {
+      "Passage": "N° 286",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:19:28",
+      "Dernier temps": "00:00:03",
+      "Distance globale": "429.0 km"
+    },
+    {
+      "Passage": "N° 287",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:24:48",
+      "Dernier temps": "00:05:20",
+      "Distance globale": "430.5 km"
+    },
+    {
+      "Passage": "N° 288",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:24:50",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "432.0 km"
+    },
+    {
+      "Passage": "N° 289",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:29:57",
+      "Dernier temps": "00:05:07",
+      "Distance globale": "433.5 km"
+    },
+    {
+      "Passage": "N° 290",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:29:58",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "435.0 km"
+    },
+    {
+      "Passage": "N° 291",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:32:33",
+      "Dernier temps": "00:02:35",
+      "Distance globale": "436.5 km"
+    },
+    {
+      "Passage": "N° 292",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:32:37",
+      "Dernier temps": "00:00:04",
+      "Distance globale": "438.0 km"
+    },
+    {
+      "Passage": "N° 293",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:39:10",
+      "Dernier temps": "00:06:33",
+      "Distance globale": "439.5 km"
+    },
+    {
+      "Passage": "N° 294",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:39:11",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "441.0 km"
+    },
+    {
+      "Passage": "N° 295",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:46:13",
+      "Dernier temps": "00:07:02",
+      "Distance globale": "442.5 km"
+    },
+    {
+      "Passage": "N° 296",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:46:15",
+      "Dernier temps": "00:00:02",
+      "Distance globale": "444.0 km"
+    },
+    {
+      "Passage": "N° 297",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:53:43",
+      "Dernier temps": "00:07:28",
+      "Distance globale": "445.5 km"
+    },
+    {
+      "Passage": "N° 298",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:53:44",
+      "Dernier temps": "00:00:01",
+      "Distance globale": "447.0 km"
+    },
+    {
+      "Passage": "N° 299",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "05:59:49",
+      "Dernier temps": "00:06:05",
+      "Distance globale": "448.5 km"
+    },
+    {
+      "Passage": "N° 300",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "06:00:15",
+      "Dernier temps": "00:00:26",
+      "Distance globale": "450.0 km"
+    },
+    {
+      "Passage": "N° 301",
+      "Classement": "15ᵉ",
+      "Classement catégorie": "15ᵉ",
+      "Temps global": "06:03:54",
+      "Dernier temps": "00:03:39",
+      "Distance globale": "451.5 km"
+    },
+    {
+      "Passage": "N° 302",
+      "Classement": "16ᵉ",
+      "Classement catégorie": "16ᵉ",
+      "Temps global": "06:09:07",
+      "Dernier temps": "00:05:13",
+      "Distance globale": "453.0 km"
+    }
+  ]
+}

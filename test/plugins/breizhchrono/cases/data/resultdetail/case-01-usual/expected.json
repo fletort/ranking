@@ -27,36 +27,36 @@
       "value": "04:29:22"
     }
   ],
-  "other_ranktimes": [
+  "intermediates": [
     {
-      "name": "Natation",
-      "time": "00:28:21",
-      "overall_rank": "5ᵉ",
-      "category_rank": "2"
+      "": "Natation",
+      "Temps": "00:28:21",
+      "Classement": "5ᵉ",
+      "Classement catégorie": "2"
     },
     {
-      "name": "Chg Nat.",
-      "time": "00:00:55",
-      "overall_rank": "3",
-      "category_rank": "1"
+      "": "Chg Nat.",
+      "Temps": "00:00:55",
+      "Classement": "3",
+      "Classement catégorie": "1"
     },
     {
-      "name": "Vélo",
-      "time": "02:26:45",
-      "overall_rank": "5ᵉ",
-      "category_rank": "2"
+      "": "Vélo",
+      "Temps": "02:26:45",
+      "Classement": "5ᵉ",
+      "Classement catégorie": "2"
     },
     {
-      "name": "Chg Vélo",
-      "time": "00:01:07",
-      "overall_rank": "48ᵉ",
-      "category_rank": "3"
+      "": "Chg Vélo",
+      "Temps": "00:01:07",
+      "Classement": "48ᵉ",
+      "Classement catégorie": "3"
     },
     {
-      "name": "Course",
-      "time": "01:32:16",
-      "overall_rank": "22ᵉ",
-      "category_rank": "2"
+      "": "Course",
+      "Temps": "01:32:16",
+      "Classement": "22ᵉ",
+      "Classement catégorie": "2"
     }
   ]
 }

@@ -1,0 +1,5 @@
+id: case-03
+name: Some kind of event limited in time
+description:
+  The purpose seems to do more km (laps), so usual global_times area is not time, and intermediate
+  informations are laps informations
