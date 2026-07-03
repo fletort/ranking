@@ -105,7 +105,7 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
                             location="identity_section",
                         )
                 else:
-                    log.warning(
+                    log.info(
                         "missing_data", type="field", name=field_key, location="identity_section"
                     )
 
