@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import sys
 import time
@@ -22,6 +23,7 @@ from ranking.plugins.breizhchrono.eventlist import (
     EventListItem,
     extract_events_list,
 )
+from ranking.plugins.breizhchrono.extractors import EXTRACTORS
 from ranking.plugins.breizhchrono.plugin import normalize_breizhchrono
 from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
@@ -239,3 +241,42 @@ def process_race(race: RaceItem, cache: HttpxClientWithCache, log: structlog.Bou
     detail = extract_result_detail(detail_html)
     cache.save_extracted_json(full_result_detail_url, detail)
     log.info("result_detail_processed", url=full_result_detail_url)
+
+
+@cli.command()
+@click.option("--plugin", required=True)
+@click.option("--entity", required=True)
+@click.option("--input", "input_file", type=click.Path(exists=True), required=True)
+@click.option("--output", type=click.Path(), required=False)
+def extract(
+    plugin: str,
+    entity: str,
+    input_file: str,
+    output: str | None,
+) -> None:
+    input_path = Path(input_file)
+
+    html = input_path.read_text(encoding="utf-8")
+
+    if plugin != "breizhchrono":
+        raise click.ClickException(f"Unsupported plugin: {plugin}")
+
+    extractor = EXTRACTORS.get(entity)
+    if extractor is None:
+        raise click.ClickException(f"Unknown extractor: {entity}")
+
+    result = extractor(html)
+
+    json_result = json.dumps(
+        result,
+        indent=2,
+        ensure_ascii=False,
+    )
+
+    if output:
+        Path(output).write_text(
+            json_result,
+            encoding="utf-8",
+        )
+    else:
+        click.echo(json_result)
