@@ -1,0 +1,2 @@
+# Ignore Cases HTML files:
+test/**/cases/**/*.html
