@@ -39,7 +39,10 @@ def _extract_next_url(soup: BeautifulSoup) -> str | None:
     if next_link is None:
         return None
     parent_li = next_link.parent
-    if parent_li is None or "disabled" in parent_li.get("class", []):
+    if parent_li is None:
+        return None
+    classes = parent_li.get("class")
+    if classes is not None and "disabled" in classes:
         return None
     href = _as_text(next_link.get("href"))
     return href if href else None
