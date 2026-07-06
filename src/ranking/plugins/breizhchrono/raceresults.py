@@ -3,9 +3,12 @@ from __future__ import annotations
 import base64
 import re
 from collections.abc import Mapping
+from typing import TypedDict
 
 import structlog
 from bs4 import BeautifulSoup
+
+from ranking.plugins.breizhchrono.pagination import extract_next_url
 
 EXPECTED = [
     "dossard",
@@ -21,6 +24,11 @@ EXPECTED = [
     "reel",
     "endurance",
 ]
+
+
+class RaceResultsResult(TypedDict):
+    results: list[dict]
+    next_url: str | None
 
 
 def decode_data(encoded: str, key_char: str = "K") -> str:
@@ -63,7 +71,7 @@ def check_decode_order(soup: BeautifulSoup) -> None:
 
 def extract_race_results(
     html: str, race_information: Mapping[str, str] | None = None
-) -> list[dict]:
+) -> RaceResultsResult:
     log = structlog.get_logger().bind(
         component="parser",
         entity="race_results",
@@ -81,7 +89,7 @@ def extract_race_results(
     data_tag = soup.find(id="data")
     if not data_tag:
         log.error("missing_data", type="element", name="data")
-        return []
+        return {"results": [], "next_url": None}
 
     encoded = data_tag.get_text(strip=True)
     log.debug("extracted_data", type="element", name="data", text=encoded)
@@ -118,5 +126,6 @@ def extract_race_results(
 
         results.append(result)
 
-    log.info("parse_success", results_count=len(results))
-    return results
+    next_url = extract_next_url(soup)
+    log.info("parse_success", results_count=len(results), next_url=next_url)
+    return {"results": results, "next_url": next_url}

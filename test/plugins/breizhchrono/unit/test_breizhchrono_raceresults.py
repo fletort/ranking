@@ -17,7 +17,7 @@ def _encode(text: str, key_char: str = "K") -> str:
     return base64.b64encode(encoded_bytes).decode("ascii")
 
 
-def _make_html(encoded_data: str, js_fields: list[str] | None = None) -> str:
+def _make_html(encoded_data: str, js_fields: list[str] | None = None, pagination: str = "") -> str:
     fields_str = ", ".join(js_fields if js_fields is not None else EXPECTED)
     return f"""
     <html>
@@ -28,6 +28,7 @@ def _make_html(encoded_data: str, js_fields: list[str] | None = None) -> str:
           }}
         </script>
         <div id="data">{encoded_data}</div>
+        {pagination}
       </body>
     </html>
     """
@@ -40,6 +41,37 @@ def _make_row(*values: str) -> str:
 SAMPLE_ROW = _make_row(
     "42", "", "1", "1", "Jean Dupont", "SH", "M", "Club de Brest", "", "00:45:12", "00:45:10", ""
 )
+
+PAGINATION_FIRST_PAGE = """
+    <ul class="pagination justify-content-center flex-wrap">
+        <li class="page-item disabled">
+            <a class="page-link" href="?page=-1">Précédent</a>
+        </li>
+        <li class="page-item active">
+            <a class="page-link" href="?page=0">1</a>
+        </li>
+        <li class="page-item ">
+            <a class="page-link" href="?page=1">2</a>
+        </li>
+        <li class="page-item ">
+            <a class="page-link" href="?page=1">Suivant</a>
+        </li>
+    </ul>
+"""
+
+PAGINATION_LAST_PAGE = """
+    <ul class="pagination justify-content-center flex-wrap">
+        <li class="page-item ">
+            <a class="page-link" href="?page=60">Précédent</a>
+        </li>
+        <li class="page-item active">
+            <a class="page-link" href="?page=61">62</a>
+        </li>
+        <li class="page-item disabled">
+            <a class="page-link" href="?page=62">Suivant</a>
+        </li>
+    </ul>
+"""
 
 
 # --- decode_data ---
@@ -102,25 +134,25 @@ def test_extract_race_results_returns_parsed_results() -> None:
     encoded = _encode(SAMPLE_ROW + "\n")
     html = _make_html(encoded)
 
-    results = extract_race_results(html)
+    result = extract_race_results(html)
 
-    assert len(results) == 1
-    assert results[0]["dossard"] == "42"
-    assert results[0]["nom"] == "Jean Dupont"
-    assert results[0]["officiel"] == "00:45:12"
-    assert results[0]["reel"] == "00:45:10"
-    assert results[0]["sexe"] == "M"
+    assert len(result["results"]) == 1
+    assert result["results"][0]["dossard"] == "42"
+    assert result["results"][0]["nom"] == "Jean Dupont"
+    assert result["results"][0]["officiel"] == "00:45:12"
+    assert result["results"][0]["reel"] == "00:45:10"
+    assert result["results"][0]["sexe"] == "M"
 
 
 def test_extract_race_results_adds_result_detail_url_when_race_information_exists() -> None:
     encoded = _encode(SAMPLE_ROW + "\n")
     html = _make_html(encoded)
 
-    results = extract_race_results(
+    result = extract_race_results(
         html, {"ref_computed": "1488071608761-916", "heat_computed": "10h-relais-solidaire"}
     )
 
-    assert results[0]["result_detail_url_computed"] == (
+    assert result["results"][0]["result_detail_url_computed"] == (
         "/bc/resultats/coureur.jsp?ref=1488071608761-916&heat=10h-relais-solidaire&dossard=42"
     )
 
@@ -129,33 +161,36 @@ def test_extract_race_results_returns_all_expected_keys() -> None:
     encoded = _encode(SAMPLE_ROW + "\n")
     html = _make_html(encoded)
 
-    results = extract_race_results(html)
+    result = extract_race_results(html)
 
-    assert len(results) == 1
-    assert list(results[0].keys()) == EXPECTED
+    assert len(result["results"]) == 1
+    assert list(result["results"][0].keys()) == EXPECTED
 
 
 def test_extract_race_results_returns_empty_when_no_data_tag() -> None:
     html = "<html><body></body></html>"
-    assert extract_race_results(html) == []
+    result = extract_race_results(html)
+    assert result["results"] == []
+    assert result["next_url"] is None
 
 
 def test_extract_race_results_returns_empty_when_data_tag_is_empty() -> None:
     html = '<html><body><div id="data"></div></body></html>'
-    assert extract_race_results(html) == []
+    result = extract_race_results(html)
+    assert result["results"] == []
 
 
 def test_extract_race_results_skips_lines_with_too_few_parts() -> None:
     short_row = "42|1|1"
     encoded = _encode(short_row + "\n")
     html = _make_html(encoded)
-    assert extract_race_results(html) == []
+    assert extract_race_results(html)["results"] == []
 
 
 def test_extract_race_results_skips_empty_lines() -> None:
     encoded = _encode("\n\n\n")
     html = _make_html(encoded)
-    assert extract_race_results(html) == []
+    assert extract_race_results(html)["results"] == []
 
 
 def test_extract_race_results_returns_multiple_rows() -> None:
@@ -165,9 +200,36 @@ def test_extract_race_results_returns_multiple_rows() -> None:
     encoded = _encode(SAMPLE_ROW + "\n" + row2 + "\n")
     html = _make_html(encoded)
 
-    results = extract_race_results(html)
+    result = extract_race_results(html)
 
-    assert len(results) == 2
-    assert results[0]["nom"] == "Jean Dupont"
-    assert results[1]["nom"] == "Marie Martin"
-    assert results[1]["sexe"] == "F"
+    assert len(result["results"]) == 2
+    assert result["results"][0]["nom"] == "Jean Dupont"
+    assert result["results"][1]["nom"] == "Marie Martin"
+    assert result["results"][1]["sexe"] == "F"
+
+
+def test_extract_race_results_returns_next_url_when_on_first_page() -> None:
+    encoded = _encode(SAMPLE_ROW + "\n")
+    html = _make_html(encoded, pagination=PAGINATION_FIRST_PAGE)
+
+    result = extract_race_results(html)
+
+    assert result["next_url"] == "?page=1"
+
+
+def test_extract_race_results_returns_no_next_url_when_on_last_page() -> None:
+    encoded = _encode(SAMPLE_ROW + "\n")
+    html = _make_html(encoded, pagination=PAGINATION_LAST_PAGE)
+
+    result = extract_race_results(html)
+
+    assert result["next_url"] is None
+
+
+def test_extract_race_results_returns_no_next_url_when_no_pagination() -> None:
+    encoded = _encode(SAMPLE_ROW + "\n")
+    html = _make_html(encoded)
+
+    result = extract_race_results(html)
+
+    assert result["next_url"] is None

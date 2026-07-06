@@ -115,8 +115,14 @@ def cli(ctx, debug) -> None:
     default=None,
     help="Maximum number of event list pages to process",
 )
+@click.option(
+    "--page-race-max",
+    type=int,
+    default=None,
+    help="Maximum number of race result pages to process per race",
+)
 @click.pass_context
-def list(ctx, page_event_max) -> None:
+def list(ctx, page_event_max, page_race_max) -> None:
     log = ctx.obj["log"]
     cache = ctx.obj["cache"]
 
@@ -139,7 +145,7 @@ def list(ctx, page_event_max) -> None:
         pages_processed += 1
 
         for event in events:
-            process_event(event, cache, log)
+            process_event(event, cache, log, page_race_max)
 
         next_url = result["next_url"]
         if not next_url:
@@ -153,8 +159,14 @@ def list(ctx, page_event_max) -> None:
 
 @cli.command()
 @click.option("--url", type=str, required=True, help="Process a single event by URL")
+@click.option(
+    "--page-race-max",
+    type=int,
+    default=None,
+    help="Maximum number of race result pages to process per race",
+)
 @click.pass_context
-def event(ctx, url) -> None:
+def event(ctx, url, page_race_max) -> None:
     log = ctx.obj["log"]
     cache = ctx.obj["cache"]
 
@@ -171,11 +183,14 @@ def event(ctx, url) -> None:
         "location_raw": "",
     }
 
-    process_event(event, cache, log)
+    process_event(event, cache, log, page_race_max)
 
 
 def process_event(
-    event: EventListItem, cache: HttpxClientWithCache, log: structlog.BoundLogger
+    event: EventListItem,
+    cache: HttpxClientWithCache,
+    log: structlog.BoundLogger,
+    page_race_max: int | None = None,
 ) -> None:
     event_url = EVENTS_LIST_URL + event["url"]
     log.info("event_processing", url=event_url, name=event["name"])
@@ -210,56 +225,74 @@ def process_event(
         )
 
     for race in event_detail["races"]:
-        process_race(race, cache, log)
+        process_race(race, cache, log, page_race_max)
 
 
-def process_race(race: RaceItem, cache: HttpxClientWithCache, log: structlog.BoundLogger) -> None:
-    race_url = EVENTS_LIST_URL + race["url"]
-
-    try:
-        time.sleep(1)  # be nice to the server
-        race_html = cache.fetch(race_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
-        log.error("fetch_error", error=str(exc), race_url=race_url)
-        return
-
+def process_race(
+    race: RaceItem,
+    cache: HttpxClientWithCache,
+    log: structlog.BoundLogger,
+    page_race_max: int | None = None,
+) -> None:
+    base_race_url = EVENTS_LIST_URL + race["url"]
+    current_url = base_race_url
     race_information = {
         "ref_computed": race["ref_computed"],
         "heat_computed": race["heat_computed"],
     }
-    results = extract_race_results(race_html, race_information)
-    cache.save_extracted_json(race_url, results)
-    log.info("race_processed", race_url=race_url)
+    pages_processed = 0
 
-    if results:
-        log.debug(
-            "race_results_sample",
-            race_url=race_url,
-            sample=results[:1],
-        )
-    else:
-        return
+    while True:
+        try:
+            time.sleep(1)  # be nice to the server
+            race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
+        except RuntimeError as exc:
+            log.error("fetch_error", error=str(exc), race_url=current_url)
+            return
 
-    result_detail_url = results[0].get("result_detail_url_computed")
-    if not isinstance(result_detail_url, str) or not result_detail_url:
-        log.info(
-            "partial_data_available",
-            missing="result_detail",
-            race_url=race_url,
-        )
-        return
+        race_result = extract_race_results(race_html, race_information)
+        results = race_result["results"]
+        cache.save_extracted_json(current_url, race_result)
+        log.info("race_processed", race_url=current_url)
+        pages_processed += 1
 
-    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
-    try:
-        time.sleep(1)  # be nice to the server
-        detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
-        log.error("fetch_error", error=str(exc), result_detail_url=full_result_detail_url)
-        return
+        if results:
+            log.debug(
+                "race_results_sample",
+                race_url=current_url,
+                sample=results[:1],
+            )
 
-    detail = extract_result_detail(detail_html)
-    cache.save_extracted_json(full_result_detail_url, detail)
-    log.info("result_detail_processed", url=full_result_detail_url)
+            result_detail_url = results[0].get("result_detail_url_computed")
+            if not isinstance(result_detail_url, str) or not result_detail_url:
+                log.info(
+                    "partial_data_available",
+                    missing="result_detail",
+                    race_url=current_url,
+                )
+            else:
+                full_result_detail_url = EVENTS_LIST_URL + result_detail_url
+                try:
+                    time.sleep(1)  # be nice to the server
+                    detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
+                except RuntimeError as exc:
+                    log.error(
+                        "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
+                    )
+                    return
+
+                detail = extract_result_detail(detail_html)
+                cache.save_extracted_json(full_result_detail_url, detail)
+                log.info("result_detail_processed", url=full_result_detail_url)
+
+        next_url = race_result["next_url"]
+        if not next_url:
+            break
+        if page_race_max is not None and pages_processed >= page_race_max:
+            log.info("race_max_pages_reached", pages=pages_processed)
+            break
+
+        current_url = urljoin(base_race_url, next_url)
 
 
 @cli.command()
