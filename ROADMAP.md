@@ -55,28 +55,42 @@ Goal: validate and stabilize the pipeline on real data
 
 👉 First real end-to-end validation.
 
-## 🚧 Phase 4 — Extended Crawl (A)
+## 🚧 Phase 4 — Extended Crawl (A) & Parsing Stabilization
 
-Goal: scale data collection
+**Milestone:** [POC - Phase 4](https://github.com/fletort/ranking/milestone/5)
 
-- [ ] implement pagination on event list
-- [ ] crawl multiple pages of events
-- [ ] validate stability at scale
-- [ ] monitor:
-  - performance
-  - cache efficiency
-  - parsing robustness
+Goal: Validate the scraper on larger datasets and improve robustness based on real observations.
 
-## 🚧 Phase 5 — Parsing Stabilization
-
-Goal: clean and harden parsing based on real observations
-
-- [ ] handle missing fields
-- [ ] handle format inconsistencies
-- [ ] improve parsing robustness
-- [ ] extend fixtures from real cases
+- [ ] implement event list pagination [#47](https://github.com/fletort/ranking/issues/47)
+- [ ] implement race results pagination [#48](https://github.com/fletort/ranking/issues/48)
+- [ ] add crawl execution summary: [#49](https://github.com/fletort/ranking/issues/49)
+  - duration
+  - cache hits/misses
+  - events processed
+  - races processed
+  - results processed
+  - skipped items
+  - failures
+- [ ] run large-scale validation crawl on local cache and fix problems
+      [#50](https://github.com/fletort/ranking/issues/50)
+  - identify and fix edge cases discovered during large-scale runs
+    - handle missing fields
+    - handle format inconsistencies
+    - improve parsing robustness
 
 👉 This phase is driven by real data, not anticipation.
+
+## 🚧 Phase 5 — Runtime & Storage
+
+Goal: prepare long-term execution
+
+- [ ] define storage strategy
+- [ ] evaluate S3-backed cache
+- [ ] define data retention rules
+- [ ] prepare server deployment
+- [ ] add crawl statistics
+- [ ] add execution summaries
+- [ ] support resumable crawls
 
 ## 🚧 Phase 6 — Parsing & Normalization
 
@@ -90,7 +104,7 @@ Goal: transform extracted data into consistent structured values
 
 👉 This phase bridges raw extraction and the final data model.
 
-## 🔄 Phase 8 — Simple Plugin Structure
+## 🔄 Phase 7 — Simple Plugin Structure
 
 Goal: formalize plugin structure when needed
 
