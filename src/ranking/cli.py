@@ -299,6 +299,11 @@ def process_race(
         try:
             sleep(1, summary)  # be nice to the server
             race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
+        except RuntimeError as exc:
+            if summary is not None:
+                summary.races_failed_count += 1
+            log.error("fetch_error", error=str(exc), race_url=current_url)
+            return
         except ExternalRedirectError as exc:
             if summary is not None:
                 summary.races_external_count += 1
@@ -308,11 +313,6 @@ def process_race(
                 from_url=exc.requested_url,
                 to_url=exc.final_url,
             )
-            return
-        except RuntimeError as exc:
-            if summary is not None:
-                summary.races_failed_count += 1
-            log.error("fetch_error", error=str(exc), race_url=current_url)
             return
 
         race_result = extract_race_results(race_html, race_information)
