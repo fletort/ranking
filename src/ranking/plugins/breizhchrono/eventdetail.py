@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 import structlog
 from bs4 import BeautifulSoup
@@ -16,6 +16,15 @@ class RaceItem(TypedDict):
 class EventDetail(TypedDict):
     event_race_raw: str
     races: list[RaceItem]
+    status: NotRequired[str]
+
+
+def build_event_detail_no_info(status: str) -> EventDetail:
+    return {
+        "event_race_raw": "",
+        "races": [],
+        "status": status,
+    }
 
 
 def extract_event_detail(html_content: str) -> EventDetail | None:

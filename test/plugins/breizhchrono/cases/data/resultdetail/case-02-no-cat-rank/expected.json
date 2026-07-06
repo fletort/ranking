@@ -1,0 +1,47 @@
+{
+  "name_bib": "NAME Surname (N°135)",
+  "sex": "Sexe : M",
+  "nationality": "Nationalité : FRA",
+  "birth": "Année de naissance : 2003",
+  "category": "Catégorie : S",
+  "global_ranks": [
+    {
+      "name": "Classement général",
+      "value": "50ᵉ",
+      "total": "260"
+    },
+    {
+      "name": "Classement catégorie",
+      "value": "9ᵉ",
+      "total": "0"
+    },
+    {
+      "name": "Classement Sexe",
+      "value": "44ᵉ",
+      "total": "156"
+    }
+  ],
+  "global_times": [
+    {
+      "name": "Temps Officiel",
+      "value": "00:46:04"
+    }
+  ],
+  "intermediates": [
+    {
+      "": "Natation + T1",
+      "Temps": "00:05:58",
+      "Classement": "7ᵉ"
+    },
+    {
+      "": "Vélo + T2",
+      "Temps": "00:26:40",
+      "Classement": "86ᵉ"
+    },
+    {
+      "": "Course à pied",
+      "Temps": "00:13:26",
+      "Classement": "70ᵉ"
+    }
+  ]
+}

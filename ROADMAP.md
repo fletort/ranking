@@ -50,7 +50,7 @@ Goal: validate and stabilize the pipeline on real data
 - [x] cli: add logging level filter (info by default, --debug to get debug trace too)
       [#38](https://github.com/fletort/ranking/issues/38)
 - [x] cli: add event url argument (--event-url) [#39](https://github.com/fletort/ranking/issues/39)
-- [ ] run the full pipeline on a limited set of events (10–20) and iteratively fix problems
+- [x] run the full pipeline on a limited set of events (10–20) and iteratively fix problems
       [#35](https://github.com/fletort/ranking/issues/35)
 
 👉 First real end-to-end validation.

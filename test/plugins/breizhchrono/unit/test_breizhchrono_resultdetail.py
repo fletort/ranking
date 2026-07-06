@@ -111,34 +111,38 @@ def test_extract_result_detail_returns_expected_fields() -> None:
         ],
         "global_times": [
             {
+                "name": "Temps Officiel",
+                "value": "00:29:40",
+            },
+            {
                 "name": "Temps Réel",
                 "value": "00:29:41",
-            }
+            },
         ],
-        "other_ranktimes": [
+        "intermediates": [
             {
-                "category_rank": "4ᵉ",
-                "name": "Natation",
-                "overall_rank": "28ᵉ",
-                "time": "00:24:11",
+                "Classement catégorie": "4ᵉ",
+                "": "Natation",
+                "Classement": "28ᵉ",
+                "Temps": "00:24:11",
             },
             {
-                "category_rank": "2",
-                "name": "T1",
-                "overall_rank": "16ᵉ",
-                "time": "00:00:53",
+                "Classement catégorie": "2",
+                "": "T1",
+                "Classement": "16ᵉ",
+                "Temps": "00:00:53",
             },
             {
-                "category_rank": "1",
-                "name": "VEL0",
-                "overall_rank": "2",
-                "time": "00:49:14",
+                "Classement catégorie": "1",
+                "": "VEL0",
+                "Classement": "2",
+                "Temps": "00:49:14",
             },
             {
-                "category_rank": "1",
-                "name": "T2  CAP",
-                "overall_rank": "1",
-                "time": "00:36:58",
+                "Classement catégorie": "1",
+                "": "T2  CAP",
+                "Classement": "1",
+                "Temps": "00:36:58",
             },
         ],
     }
@@ -152,6 +156,6 @@ def test_extract_result_detail_handles_missing_data() -> None:
         "global_times": [],
         "name_bib": "",
         "nationality": "",
-        "other_ranktimes": [],
+        "intermediates": [],
         "sex": "",
     }

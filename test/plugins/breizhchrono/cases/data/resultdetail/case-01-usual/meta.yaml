@@ -1,0 +1,3 @@
+id: case-01
+name: Basic triathlon detailed result
+description: Extract identity and result information from a triathlon detailed result page.

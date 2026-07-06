@@ -5,7 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from ranking.core.cache import CachePolicy, HTTPCacheV1
+from ranking.core.cache import CachePolicy, HttpClientWithCache
+
+
+class EmptyFetcher(HttpClientWithCache):
+    def __init__(self, cache_root, save_extracted=False) -> None:
+        super().__init__("demo", cache_root, save_extracted=save_extracted)
+
+    def fetcher(self, url: str) -> str:
+        return ""
 
 
 def test_derive_cache_key_ignores_query_parameter_order() -> None:
@@ -13,10 +21,10 @@ def test_derive_cache_key_ignores_query_parameter_order() -> None:
     same_without_query_order = "https://example.com/page?b=2&a=1"
     with_different_query_value = "https://example.com/page?a=1&b=3"
 
-    assert HTTPCacheV1.derive_cache_key(url) == HTTPCacheV1.derive_cache_key(
+    assert HttpClientWithCache.derive_cache_key(url) == HttpClientWithCache.derive_cache_key(
         same_without_query_order
     )
-    assert HTTPCacheV1.derive_cache_key(url) != HTTPCacheV1.derive_cache_key(
+    assert HttpClientWithCache.derive_cache_key(url) != HttpClientWithCache.derive_cache_key(
         with_different_query_value
     )
 
@@ -24,11 +32,15 @@ def test_derive_cache_key_ignores_query_parameter_order() -> None:
 def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
     calls: list[str] = []
 
-    def fetcher(url: str) -> str:
-        calls.append(url)
-        return "fresh-content"
+    class DummyFetcher(HttpClientWithCache):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path)
 
-    cache = HTTPCacheV1("demo", fetcher=fetcher, cache_root=tmp_path)
+        def fetcher(self, url: str) -> str:
+            calls.append(url)
+            return "fresh-content"
+
+    cache = DummyFetcher()
     content = cache.fetch("https://example.com/events", CachePolicy.NO_CACHE)
 
     assert content == "fresh-content"
@@ -39,11 +51,15 @@ def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
 def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
     calls: list[str] = []
 
-    def fetcher(url: str) -> str:
-        calls.append(url)
-        return "cached-content"
+    class DummyFetcher(HttpClientWithCache):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path)
 
-    cache = HTTPCacheV1("demo", fetcher=fetcher, cache_root=tmp_path)
+        def fetcher(self, url: str) -> str:
+            calls.append(url)
+            return "cached-content"
+
+    cache = DummyFetcher()
     url = "https://example.com/results/10km"
 
     first = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
@@ -58,10 +74,14 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:
     response_values = ["v1", "v1", "v2", "v3"]
 
-    def fetcher(_: str) -> str:
-        return response_values.pop(0)
+    class DummyFetcher(HttpClientWithCache):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path)
 
-    cache = HTTPCacheV1("demo", fetcher=fetcher, cache_root=tmp_path)
+        def fetcher(self, url: str) -> str:
+            return response_values.pop(0)
+
+    cache = DummyFetcher()
     url = "https://example.com/events/list"
 
     first = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
@@ -112,17 +132,22 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
 
 
 def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
-    def fetcher(_: str) -> str:
-        raise RuntimeError("Network error")
 
-    cache = HTTPCacheV1("demo", fetcher=fetcher, cache_root=tmp_path)
+    class DummyFetcher(HttpClientWithCache):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path)
+
+        def fetcher(self, url: str) -> str:
+            raise RuntimeError("Network error")
+
+    cache = DummyFetcher()
 
     with pytest.raises(RuntimeError, match="Network error"):
         cache.fetch("https://example.com/fail", CachePolicy.CACHE_IF_PRESENT)
 
 
 def test_save_extracted_json_disabled_by_default(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path)
+    cache = EmptyFetcher(cache_root=tmp_path)
     url = "https://example.com/events"
 
     cache.save_extracted_json(url, {"key": "value"})
@@ -131,7 +156,7 @@ def test_save_extracted_json_disabled_by_default(tmp_path: Path) -> None:
 
 
 def test_save_extracted_json_persists_when_enabled(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/events"
     data = [{"name": "Race A", "distance": 10}]
 
@@ -146,7 +171,7 @@ def test_save_extracted_json_persists_when_enabled(tmp_path: Path) -> None:
 
 
 def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/page?b=2&a=1"
     url_reordered = "https://example.com/page?a=1&b=2"
 
@@ -157,19 +182,19 @@ def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None
 
 
 def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/results"
 
     cache.save_extracted_json(url, {"results": []})
 
-    key = HTTPCacheV1.derive_cache_key(url)
+    key = HttpClientWithCache.derive_cache_key(url)
     shard = key[:2]
     expected_path = tmp_path / "demo" / "extracted" / shard / f"{key}.json"
     assert expected_path.exists()
 
 
 def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:
-    cache = HTTPCacheV1("demo", fetcher=lambda url: "", cache_root=tmp_path, save_extracted=True)
+    cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/detail"
     data = {"name": "Alice", "time": "01:23:45"}
 

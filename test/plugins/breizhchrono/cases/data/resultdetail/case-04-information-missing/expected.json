@@ -1,0 +1,51 @@
+{
+  "name_bib": "NAME Surname (N°253)",
+  "sex": "Sexe : M",
+  "nationality": "",
+  "birth": "Année de naissance : 1980",
+  "category": "Catégorie : V2",
+  "global_ranks": [
+    {
+      "name": "Classement général",
+      "value": "34ᵉ",
+      "total": "352"
+    },
+    {
+      "name": "Classement catégorie",
+      "value": "3",
+      "total": "33"
+    }
+  ],
+  "global_times": [
+    {
+      "name": "Temps Officiel",
+      "value": "02:05:06"
+    }
+  ],
+  "intermediates": [
+    {
+      "": "Natation",
+      "Temps": "",
+      "Classement": "",
+      "Classement catégorie": ""
+    },
+    {
+      "": "T1",
+      "Temps": "",
+      "Classement": "",
+      "Classement catégorie": ""
+    },
+    {
+      "": "VEL0",
+      "Temps": "",
+      "Classement": "",
+      "Classement catégorie": ""
+    },
+    {
+      "": "T2 + CAP",
+      "Temps": "",
+      "Classement": "",
+      "Classement catégorie": ""
+    }
+  ]
+}

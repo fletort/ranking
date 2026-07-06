@@ -20,11 +20,32 @@ The plugin contains all **site-specific logic**.
 
 ## 2. Conceptual Model
 
+```mermaid
+flowchart LR
+
+    HTML["HTML source"]
+
+    EXTRACT["Extraction"]
+    RAW["Raw Extracted Data"]
+
+    NORMALIZE["Normalization"]
+
+    MODEL["Common model"]
+
+    HTML --> EXTRACT
+    EXTRACT --> RAW
+    RAW --> NORMALIZE
+    NORMALIZE --> MODEL
+```
+
 Parsing typically follows three conceptual levels:
 
 ### 2.1 Extraction (required)
 
 Extract raw values directly from HTML (DOM parsing).
+
+The primary goal of extraction is to faithfully represent what is present in the source HTML, not to
+decide what is meaningful.
 
 Example:
 
@@ -33,6 +54,14 @@ Example:
     "date_raw": "du 10 juin au 12 juin"
 }
 ```
+
+#### Raw extraction principles
+
+- preserve source labels
+- preserve field ordering when meaningful
+- preserve empty values when the field exists
+- do not normalize during extraction
+- normalization is a separate stage
 
 ---
 
@@ -51,9 +80,9 @@ Example:
 
 ---
 
-### 2.3 Normalization (optional)
+### 2.3 Normalization (required)
 
-Convert values into consistent and comparable formats, as defined by the common Model.
+Convert extracted values into consistent and comparable formats defined by the common model.
 
 Example:
 
@@ -68,9 +97,13 @@ Example:
 
 ### Notes
 
-Only normalized output (level 3) is considered "final" The system does not enforce these levels
-strictly You may combine steps if it keeps the code simple. The fist step output is very usefull for
-debug purpose.
+Only normalized output (level 3) is considered final.
+
+The system does not enforce these levels strictly.
+
+You may combine steps when it helps keep the code simple.
+
+The raw extraction output is often useful for debugging, troubleshooting, and functional testing.
 
 👉 Prefer clarity over purity
 
@@ -104,6 +137,8 @@ def extract(html):
 ## 4. Structured Logging
 
 Structured logging is used to make the scraping pipeline observable and easy to debug.
+
+Logs should describe observations, not assumptions.
 
 ---
 

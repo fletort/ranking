@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import sys
 import time
@@ -10,13 +11,19 @@ import click
 import structlog
 
 from ranking.core.cache import CachePolicy
-from ranking.core.cache_httpx import CacheHttpx
-from ranking.plugins.breizhchrono.eventdetail import RaceItem, extract_event_detail
+from ranking.core.cache_httpx import HttpxClientWithCache
+from ranking.core.errors import ExternalRedirectError
+from ranking.plugins.breizhchrono.eventdetail import (
+    RaceItem,
+    build_event_detail_no_info,
+    extract_event_detail,
+)
 from ranking.plugins.breizhchrono.eventlist import (
     EVENTS_LIST_URL,
     EventListItem,
     extract_events_list,
 )
+from ranking.plugins.breizhchrono.extractors import EXTRACTORS
 from ranking.plugins.breizhchrono.plugin import normalize_breizhchrono
 from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
@@ -91,8 +98,11 @@ def cli(ctx, debug) -> None:
     setup_logging(debug)
     ctx.obj = {
         "log": structlog.get_logger().bind(component="cli"),
-        "cache": CacheHttpx(
-            PLUGIN_NAME, normalize_for_comparison=normalize_breizhchrono, save_extracted=True
+        "cache": HttpxClientWithCache(
+            PLUGIN_NAME,
+            normalize_for_comparison=normalize_breizhchrono,
+            save_extracted=True,
+            base_url=EVENTS_LIST_URL,
         ),
     }
 
@@ -112,7 +122,7 @@ def list(ctx) -> None:
 
     events = extract_events_list(html)
     cache.save_extracted_json(EVENTS_LIST_URL, events)
-    log.info("extracted_events", count=len(events), events=events)
+    log.info("event_list_processed", url=EVENTS_LIST_URL)
     if not events:
         return
 
@@ -145,7 +155,9 @@ def event(ctx, url) -> None:
     process_event(event, cache, log)
 
 
-def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundLogger) -> None:
+def process_event(
+    event: EventListItem, cache: HttpxClientWithCache, log: structlog.BoundLogger
+) -> None:
     event_url = EVENTS_LIST_URL + event["url"]
     log.info("event_processing", url=event_url, name=event["name"])
     try:
@@ -154,20 +166,35 @@ def process_event(event: EventListItem, cache: CacheHttpx, log: structlog.BoundL
     except RuntimeError as exc:
         log.error("fetch_error", error=str(exc), event_url=event_url)
         return
+    except ExternalRedirectError as exc:
+        log.info(
+            "event_skipped",
+            reason="external_redirect",
+            from_url=exc.requested_url,
+            to_url=exc.final_url,
+        )
+        no_event_detail = build_event_detail_no_info(status="external_redirect")
+        cache.save_extracted_json(event_url, no_event_detail)
+        return
 
     event_detail = extract_event_detail(event_html)
     cache.save_extracted_json(event_url, event_detail)
-    log.info("extracted_event_detail", event_url=event_url, event_detail=event_detail)
-
     if not event_detail or "races" not in event_detail or not event_detail["races"]:
         log.warning("no_event_detail_or_races_found", event_url=event_url)
         return
+    else:
+        log.info("event_processed", event_url=event_url, event_name=event_detail["event_race_raw"])
+        log.debug(
+            "event_detail_race_sample",
+            event_url=event_url,
+            sample=event_detail["races"][:1],
+        )
 
-    first_race = event_detail["races"][0]
-    process_race(first_race, cache, log)
+    for race in event_detail["races"]:
+        process_race(race, cache, log)
 
 
-def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) -> None:
+def process_race(race: RaceItem, cache: HttpxClientWithCache, log: structlog.BoundLogger) -> None:
     race_url = EVENTS_LIST_URL + race["url"]
 
     try:
@@ -183,14 +210,24 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
     }
     results = extract_race_results(race_html, race_information)
     cache.save_extracted_json(race_url, results)
-    log.info("extracted_race_results", results=results, race_url=race_url)
+    log.info("race_processed", race_url=race_url)
 
-    if not results:
+    if results:
+        log.debug(
+            "race_results_sample",
+            race_url=race_url,
+            sample=results[:1],
+        )
+    else:
         return
 
     result_detail_url = results[0].get("result_detail_url_computed")
     if not isinstance(result_detail_url, str) or not result_detail_url:
-        log.error("no_computed_result_detail_url_found", race_url=race_url)
+        log.info(
+            "partial_data_available",
+            missing="result_detail",
+            race_url=race_url,
+        )
         return
 
     full_result_detail_url = EVENTS_LIST_URL + result_detail_url
@@ -203,6 +240,43 @@ def process_race(race: RaceItem, cache: CacheHttpx, log: structlog.BoundLogger) 
 
     detail = extract_result_detail(detail_html)
     cache.save_extracted_json(full_result_detail_url, detail)
-    log.info(
-        "extracted_result_detail", result_detail=detail, result_detail_url=full_result_detail_url
+    log.info("result_detail_processed", url=full_result_detail_url)
+
+
+@cli.command()
+@click.option("--plugin", required=True)
+@click.option("--entity", required=True)
+@click.option("--input", "input_file", type=click.Path(exists=True), required=True)
+@click.option("--output", type=click.Path(), required=False)
+def extract(
+    plugin: str,
+    entity: str,
+    input_file: str,
+    output: str | None,
+) -> None:
+    input_path = Path(input_file)
+
+    html = input_path.read_text(encoding="utf-8")
+
+    if plugin != "breizhchrono":
+        raise click.ClickException(f"Unsupported plugin: {plugin}")
+
+    extractor = EXTRACTORS.get(entity)
+    if extractor is None:
+        raise click.ClickException(f"Unknown extractor: {entity}")
+
+    result = extractor(html)
+
+    json_result = json.dumps(
+        result,
+        indent=2,
+        ensure_ascii=False,
     )
+
+    if output:
+        Path(output).write_text(
+            json_result,
+            encoding="utf-8",
+        )
+    else:
+        click.echo(json_result)
