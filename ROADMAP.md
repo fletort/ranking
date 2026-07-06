@@ -61,7 +61,7 @@ Goal: validate and stabilize the pipeline on real data
 
 Goal: Validate the scraper on larger datasets and improve robustness based on real observations.
 
-- [ ] implement event list pagination [#47](https://github.com/fletort/ranking/issues/47)
+- [x] implement event list pagination [#47](https://github.com/fletort/ranking/issues/47)
 - [ ] implement race results pagination [#48](https://github.com/fletort/ranking/issues/48)
 - [ ] add crawl execution summary: [#49](https://github.com/fletort/ranking/issues/49)
   - duration

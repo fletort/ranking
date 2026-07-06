@@ -6,6 +6,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import click
 import structlog
@@ -108,28 +109,46 @@ def cli(ctx, debug) -> None:
 
 
 @cli.command()
+@click.option(
+    "--page-event-max",
+    type=int,
+    default=None,
+    help="Maximum number of event list pages to process",
+)
 @click.pass_context
-def list(ctx) -> None:
+def list(ctx, page_event_max) -> None:
     log = ctx.obj["log"]
     cache = ctx.obj["cache"]
 
     log.info("mode_selected", mode="event_list")
-    try:
-        html = cache.fetch(EVENTS_LIST_URL, CachePolicy.REFRESH_AND_CACHE)
-    except RuntimeError as exc:
-        log.error("fetch_error", error=str(exc))
-        return
 
-    events = extract_events_list(html)
-    cache.save_extracted_json(EVENTS_LIST_URL, events)
-    log.info("event_list_processed", url=EVENTS_LIST_URL)
-    if not events:
-        return
+    current_url = EVENTS_LIST_URL
+    pages_processed = 0
 
-    # first_event_url = "https://resultats.breizhchrono.com/resultats-courses/triathlon-de-la-cote-de-granit-rose-tregastel-2026-1295405190290-19/triathlon-m"
+    while True:
+        try:
+            html = cache.fetch(current_url, CachePolicy.REFRESH_AND_CACHE)
+        except RuntimeError as exc:
+            log.error("fetch_error", error=str(exc))
+            return
 
-    for event in events:
-        process_event(event, cache, log)
+        result = extract_events_list(html)
+        events = result["events"]
+        cache.save_extracted_json(current_url, result)
+        log.info("event_list_processed", url=current_url)
+        pages_processed += 1
+
+        for event in events:
+            process_event(event, cache, log)
+
+        next_url = result["next_url"]
+        if not next_url:
+            break
+        if page_event_max is not None and pages_processed >= page_event_max:
+            log.info("event_list_max_pages_reached", pages=pages_processed)
+            break
+
+        current_url = urljoin(EVENTS_LIST_URL, next_url)
 
 
 @cli.command()

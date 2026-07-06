@@ -16,6 +16,11 @@ class EventListItem(TypedDict):
     location_raw: str
 
 
+class EventListResult(TypedDict):
+    events: list[EventListItem]
+    next_url: str | None
+
+
 EXPECTED_HEADERS = ["nom de la course", "date", "département"]
 
 
@@ -29,7 +34,21 @@ def _as_text(value: object) -> str:
     return ""
 
 
-def extract_events_list(html_content: str) -> list[EventListItem]:
+def _extract_next_url(soup: BeautifulSoup) -> str | None:
+    next_link = soup.find("a", class_="page-link", string="Suivant")
+    if next_link is None:
+        return None
+    parent_li = next_link.parent
+    if parent_li is None:
+        return None
+    classes = parent_li.get("class")
+    if classes is not None and "disabled" in classes:
+        return None
+    href = _as_text(next_link.get("href"))
+    return href if href else None
+
+
+def extract_events_list(html_content: str) -> EventListResult:
     try:
         log = structlog.get_logger().bind(
             component="parser",
@@ -39,7 +58,7 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
         table = soup.select_one("div.table-responsive table")
         if table is None:
             log.error("missing_data", type="element", name="table")
-            return []
+            return {"events": [], "next_url": None}
 
         headers = [
             _normalize_text(th.get_text(" ", strip=True)) for th in table.select("thead > tr > th")
@@ -52,7 +71,7 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
                 headers=headers,
                 headers_expected=EXPECTED_HEADERS,
             )
-            return []
+            return {"events": [], "next_url": None}
 
         events: list[EventListItem] = []
         for row in table.select("tbody > tr"):
@@ -96,8 +115,10 @@ def extract_events_list(html_content: str) -> list[EventListItem]:
                     "location_raw": location_raw,
                 }
             )
-        log.info("parse_success", events_count=len(events))
-        return events
+
+        next_url = _extract_next_url(soup)
+        log.info("parse_success", events_count=len(events), next_url=next_url)
+        return {"events": events, "next_url": next_url}
     except Exception:
         log.exception("parse_failed")
-        return []
+        return {"events": [], "next_url": None}
