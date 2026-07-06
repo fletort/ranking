@@ -6,6 +6,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import click
 import structlog
@@ -147,7 +148,7 @@ def list(ctx, page_event_max) -> None:
             log.info("event_list_max_pages_reached", pages=pages_processed)
             break
 
-        current_url = EVENTS_LIST_URL + next_url
+        current_url = urljoin(EVENTS_LIST_URL, next_url)
 
 
 @cli.command()

@@ -35,15 +35,13 @@ def _as_text(value: object) -> str:
 
 
 def _extract_next_url(soup: BeautifulSoup) -> str | None:
-    last_li = soup.select_one("ul.pagination li.page-item:last-child")
-    if last_li is None:
+    next_link = soup.find("a", class_="page-link", string="Suivant")
+    if next_link is None:
         return None
-    if "disabled" in last_li.get("class", []):
+    parent_li = next_link.parent
+    if parent_li is None or "disabled" in parent_li.get("class", []):
         return None
-    a = last_li.find("a")
-    if a is None:
-        return None
-    href = _as_text(a.get("href"))
+    href = _as_text(next_link.get("href"))
     return href if href else None
 
 
