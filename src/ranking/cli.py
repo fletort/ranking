@@ -347,6 +347,8 @@ def process_race(
                     cache.save_extracted_json(full_result_detail_url, detail)
                     log.info("result_detail_processed", url=full_result_detail_url)
                 except ExternalRedirectError as exc:
+                    if summary is not None:
+                        summary.results_failed_count += 1
                     log.info(
                         "result_detail_skipped",
                         reason="external_redirect",
