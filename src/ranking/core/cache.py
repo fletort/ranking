@@ -39,6 +39,8 @@ class HttpClientWithCache(ABC):
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
+        self.cache_hits = 0
+        self.cache_misses = 0
 
     @abstractmethod
     def fetcher(self, url: str) -> str:
@@ -74,9 +76,11 @@ class HttpClientWithCache(ABC):
 
         if cache_policy is CachePolicy.CACHE_IF_PRESENT:
             if existing_content is not None:
+                self.cache_hits += 1
                 self.logger.info("Cache hit", url=url, path=current_path)
                 return existing_content
 
+            self.cache_misses += 1
             self.logger.info("Cache miss, fetching", url=url, path=current_path)
             content = self.fetcher(url)
             self._write_current(current_path, content)

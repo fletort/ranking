@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin
@@ -30,6 +31,48 @@ from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
 PLUGIN_NAME = "breizhchrono"
+
+
+@dataclass
+class CrawlSummary:
+    started_at: float
+    sleep_duration_seconds: float = 0
+    events_processed_count: int = 0
+    events_failed_count: int = 0
+    races_processed_count: int = 0
+    races_external_count: int = 0
+    races_failed_count: int = 0
+    results_processed_count: int = 0
+    results_failed_count: int = 0
+
+
+def sleep(seconds: int | float, summary: CrawlSummary | None = None) -> None:
+    time.sleep(seconds)
+    if summary is not None:
+        summary.sleep_duration_seconds += seconds
+
+
+def log_crawl_summary(
+    log: structlog.BoundLogger, summary: CrawlSummary, cache: HttpxClientWithCache
+) -> None:
+    wall_duration_seconds = int(time.monotonic() - summary.started_at)
+    sleep_duration_seconds = int(summary.sleep_duration_seconds)
+    processing_duration_seconds = max(0, wall_duration_seconds - sleep_duration_seconds)
+    log.info(
+        "crawl_summary",
+        wall_duration_seconds=wall_duration_seconds,
+        sleep_duration_seconds=sleep_duration_seconds,
+        processing_duration_seconds=processing_duration_seconds,
+        events_processed_count=summary.events_processed_count,
+        events_failed_count=summary.events_failed_count,
+        races_processed_count=summary.races_processed_count,
+        races_external_count=summary.races_external_count,
+        races_failed_count=summary.races_failed_count,
+        results_processed_count=summary.results_processed_count,
+        results_failed_count=summary.results_failed_count,
+        cache_hits_count=cache.cache_hits,
+        cache_misses_count=cache.cache_misses,
+    )
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -125,36 +168,40 @@ def cli(ctx, debug) -> None:
 def list(ctx, page_event_max, page_race_max) -> None:
     log = ctx.obj["log"]
     cache = ctx.obj["cache"]
+    summary = CrawlSummary(started_at=time.monotonic())
 
     log.info("mode_selected", mode="event_list")
 
     current_url = EVENTS_LIST_URL
     pages_processed = 0
 
-    while True:
-        try:
-            html = cache.fetch(current_url, CachePolicy.REFRESH_AND_CACHE)
-        except RuntimeError as exc:
-            log.error("fetch_error", error=str(exc))
-            return
+    try:
+        while True:
+            try:
+                html = cache.fetch(current_url, CachePolicy.REFRESH_AND_CACHE)
+            except RuntimeError as exc:
+                log.error("fetch_error", error=str(exc))
+                return
 
-        result = extract_events_list(html)
-        events = result["events"]
-        cache.save_extracted_json(current_url, result)
-        log.info("event_list_processed", url=current_url)
-        pages_processed += 1
+            result = extract_events_list(html)
+            events = result["events"]
+            cache.save_extracted_json(current_url, result)
+            log.info("event_list_processed", url=current_url)
+            pages_processed += 1
 
-        for event in events:
-            process_event(event, cache, log, page_race_max)
+            for event in events:
+                process_event(event, cache, log, page_race_max, summary=summary)
 
-        next_url = result["next_url"]
-        if not next_url:
-            break
-        if page_event_max is not None and pages_processed >= page_event_max:
-            log.info("event_list_max_pages_reached", pages=pages_processed)
-            break
+            next_url = result["next_url"]
+            if not next_url:
+                break
+            if page_event_max is not None and pages_processed >= page_event_max:
+                log.info("event_list_max_pages_reached", pages=pages_processed)
+                break
 
-        current_url = urljoin(EVENTS_LIST_URL, next_url)
+            current_url = urljoin(EVENTS_LIST_URL, next_url)
+    finally:
+        log_crawl_summary(log, summary, cache)
 
 
 @cli.command()
@@ -191,13 +238,16 @@ def process_event(
     cache: HttpxClientWithCache,
     log: structlog.BoundLogger,
     page_race_max: int | None = None,
+    summary: CrawlSummary | None = None,
 ) -> None:
     event_url = EVENTS_LIST_URL + event["url"]
     log.info("event_processing", url=event_url, name=event["name"])
     try:
-        time.sleep(1)  # be nice to the server
+        sleep(1, summary)  # be nice to the server
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
     except RuntimeError as exc:
+        if summary is not None:
+            summary.events_failed_count += 1
         log.error("fetch_error", error=str(exc), event_url=event_url)
         return
     except ExternalRedirectError as exc:
@@ -217,6 +267,8 @@ def process_event(
         log.warning("no_event_detail_or_races_found", event_url=event_url)
         return
     else:
+        if summary is not None:
+            summary.events_processed_count += 1
         log.info("event_processed", event_url=event_url, event_name=event_detail["event_race_raw"])
         log.debug(
             "event_detail_race_sample",
@@ -225,7 +277,7 @@ def process_event(
         )
 
     for race in event_detail["races"]:
-        process_race(race, cache, log, page_race_max)
+        process_race(race, cache, log, page_race_max, summary=summary)
 
 
 def process_race(
@@ -233,6 +285,7 @@ def process_race(
     cache: HttpxClientWithCache,
     log: structlog.BoundLogger,
     page_race_max: int | None = None,
+    summary: CrawlSummary | None = None,
 ) -> None:
     base_race_url = EVENTS_LIST_URL + race["url"]
     current_url = base_race_url
@@ -244,14 +297,29 @@ def process_race(
 
     while True:
         try:
-            time.sleep(1)  # be nice to the server
+            sleep(1, summary)  # be nice to the server
             race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
         except RuntimeError as exc:
+            if summary is not None:
+                summary.races_failed_count += 1
             log.error("fetch_error", error=str(exc), race_url=current_url)
+            return
+        except ExternalRedirectError as exc:
+            if summary is not None:
+                summary.races_external_count += 1
+            log.info(
+                "race_skipped",
+                reason="external_redirect",
+                from_url=exc.requested_url,
+                to_url=exc.final_url,
+            )
             return
 
         race_result = extract_race_results(race_html, race_information)
         results = race_result["results"]
+        if summary is not None:
+            summary.races_processed_count += 1
+            summary.results_processed_count += len(results)
         cache.save_extracted_json(current_url, race_result)
         log.info("race_processed", race_url=current_url)
         pages_processed += 1
@@ -273,12 +341,23 @@ def process_race(
             else:
                 full_result_detail_url = EVENTS_LIST_URL + result_detail_url
                 try:
-                    time.sleep(1)  # be nice to the server
+                    sleep(1, summary)  # be nice to the server
                     detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
                     detail = extract_result_detail(detail_html)
                     cache.save_extracted_json(full_result_detail_url, detail)
                     log.info("result_detail_processed", url=full_result_detail_url)
+                except ExternalRedirectError as exc:
+                    if summary is not None:
+                        summary.results_failed_count += 1
+                    log.info(
+                        "result_detail_skipped",
+                        reason="external_redirect",
+                        from_url=exc.requested_url,
+                        to_url=exc.final_url,
+                    )
                 except RuntimeError as exc:
+                    if summary is not None:
+                        summary.results_failed_count += 1
                     log.error(
                         "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
                     )

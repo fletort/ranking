@@ -69,6 +69,8 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
     assert second == "cached-content"
     assert calls == [url]
     assert cache.current_path(url).exists()
+    assert cache.cache_misses == 1
+    assert cache.cache_hits == 1
 
 
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:

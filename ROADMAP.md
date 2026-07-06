@@ -63,7 +63,7 @@ Goal: Validate the scraper on larger datasets and improve robustness based on re
 
 - [x] implement event list pagination [#47](https://github.com/fletort/ranking/issues/47)
 - [x] implement race results pagination [#48](https://github.com/fletort/ranking/issues/48)
-- [ ] add crawl execution summary: [#49](https://github.com/fletort/ranking/issues/49)
+- [x] add crawl execution summary: [#49](https://github.com/fletort/ranking/issues/49)
   - duration
   - cache hits/misses
   - events processed
