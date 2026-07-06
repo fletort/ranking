@@ -275,15 +275,13 @@ def process_race(
                 try:
                     time.sleep(1)  # be nice to the server
                     detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
+                    detail = extract_result_detail(detail_html)
+                    cache.save_extracted_json(full_result_detail_url, detail)
+                    log.info("result_detail_processed", url=full_result_detail_url)
                 except RuntimeError as exc:
                     log.error(
                         "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
                     )
-                    return
-
-                detail = extract_result_detail(detail_html)
-                cache.save_extracted_json(full_result_detail_url, detail)
-                log.info("result_detail_processed", url=full_result_detail_url)
 
         next_url = race_result["next_url"]
         if not next_url:
