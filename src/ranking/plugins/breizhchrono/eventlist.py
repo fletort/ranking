@@ -6,6 +6,8 @@ from typing import TypedDict
 import structlog
 from bs4 import BeautifulSoup
 
+from ranking.plugins.breizhchrono.pagination import extract_next_url
+
 EVENTS_LIST_URL = "https://resultats.breizhchrono.com/"
 
 
@@ -32,20 +34,6 @@ def _as_text(value: object) -> str:
     if isinstance(value, str):
         return value
     return ""
-
-
-def _extract_next_url(soup: BeautifulSoup) -> str | None:
-    next_link = soup.find("a", class_="page-link", string="Suivant")
-    if next_link is None:
-        return None
-    parent_li = next_link.parent
-    if parent_li is None:
-        return None
-    classes = parent_li.get("class")
-    if classes is not None and "disabled" in classes:
-        return None
-    href = _as_text(next_link.get("href"))
-    return href if href else None
 
 
 def extract_events_list(html_content: str) -> EventListResult:
@@ -116,7 +104,7 @@ def extract_events_list(html_content: str) -> EventListResult:
                 }
             )
 
-        next_url = _extract_next_url(soup)
+        next_url = extract_next_url(soup)
         log.info("parse_success", events_count=len(events), next_url=next_url)
         return {"events": events, "next_url": next_url}
     except Exception:
