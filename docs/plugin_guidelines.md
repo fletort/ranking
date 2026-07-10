@@ -177,14 +177,14 @@ Event names must be:
 
 #### Common categories
 
-| Category  | Examples                     |
-| --------- | ---------------------------- |
-| actions   | fetch_start, fetch_end       |
-| states    | cache_hit, cache_miss        |
-| success   | parse_success                |
-| failures  | parse_failed                 |
-| anomalies | missing_data, invalid_format |
-| data      | extracted_data, decoded_data |
+| Category  | Examples                                               |
+| --------- | ------------------------------------------------------ |
+| actions   | fetch_start, fetch_end                                 |
+| states    | cache_hit, cache_miss, optional_section_detected       |
+| success   | parse_success                                          |
+| failures  | parse_failed                                           |
+| anomalies | missing_data, invalid_format, unexpected_extra_section |
+| data      | extracted_data, decoded_data                           |
 
 ---
 

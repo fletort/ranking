@@ -71,7 +71,7 @@ Goal: Validate the scraper on larger datasets and improve robustness based on re
   - results processed
   - skipped items
   - failures
-- [ ] run large-scale validation crawl on local cache and fix problems
+- [x] run large-scale validation crawl on local cache and fix problems
       [#50](https://github.com/fletort/ranking/issues/50)
   - identify and fix edge cases discovered during large-scale runs
     - handle missing fields
@@ -79,6 +79,14 @@ Goal: Validate the scraper on larger datasets and improve robustness based on re
     - improve parsing robustness
 
 👉 This phase is driven by real data, not anticipation.
+
+## Phase 5 Additional Crawl Artifacts
+
+Goal: Manage document discovered in the previous large scale test
+
+- [ ] Add a generic download behavior for document
+- [ ] Manage Race document download
+- [ ] Manage optionals event documents download
 
 ## 🚧 Phase 5 — Runtime & Storage
 
@@ -121,5 +129,6 @@ Goal: formalize plugin structure when needed
 - event-driven runtime
 - serverless execution (AWS)
 - distributed scraping
+- document parsing (PDF/XLSX)
 
 [technical-specification]: ./docs/technical_specification.md
