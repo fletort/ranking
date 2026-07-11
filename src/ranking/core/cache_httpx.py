@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import urlparse
@@ -93,6 +94,44 @@ class HttpxClientWithCache(HttpClientWithCache):
         except httpx.RequestError as e:
             log.error("Network error fetching URL", url=url, error=str(e))
             raise RuntimeError(f"Network error fetching URL: {url}") from e
+
+    def download(self, url: str) -> Path:
+        """Download and cache a binary document from the given URL."""
+        key = self.derive_cache_key(url)
+        shard = key[:2]
+        parsed_url = urlparse(url)
+        original_name = Path(parsed_url.path).name or "document"
+        suffix = Path(original_name).suffix
+        stem = Path(original_name).stem or "document"
+        safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._") or "document"
+        filename = f"{safe_stem}_{key}{suffix}"
+        destination = self.cache_root / ".document" / self.plugin_name / shard / filename
+
+        if destination.exists():
+            self.logger.info("document_cache_hit", url=url, path=destination)
+            return destination
+
+        self.logger.info("document_cache_miss", url=url, path=destination)
+        try:
+            response = httpx.get(
+                url, headers=HEADERS, follow_redirects=True, verify=VERIFY_SSL, timeout=10.0
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "HTTP error downloading document", url=url, status_code=e.response.status_code
+            )
+            raise RuntimeError(f"HTTP error {e.response.status_code} for URL: {url}") from e
+        except httpx.RequestError as e:
+            self.logger.error("Network error downloading document", url=url, error=str(e))
+            raise RuntimeError(f"Network error downloading URL: {url}") from e
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(response.content)
+        self.logger.info(
+            "document_downloaded", url=url, path=destination, size=len(response.content)
+        )
+        return destination
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:

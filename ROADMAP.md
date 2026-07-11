@@ -86,7 +86,7 @@ Goal: Validate the scraper on larger datasets and improve robustness based on re
 
 Goal: Manage document discovered in the previous large scale test
 
-- [ ] Add a generic download behavior for document
+- [x] Add a generic download behavior for document
       [#57](https://github.com/fletort/ranking/issues/57)
 - [ ] Manage Race document download
 - [ ] Manage optionals event documents download
