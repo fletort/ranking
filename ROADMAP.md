@@ -82,13 +82,16 @@ Goal: Validate the scraper on larger datasets and improve robustness based on re
 
 ## Phase 5 Additional Crawl Artifacts
 
+**Milestone:** [POC - Phase 5](https://github.com/fletort/ranking/milestone/6)
+
 Goal: Manage document discovered in the previous large scale test
 
 - [ ] Add a generic download behavior for document
+      [#57](https://github.com/fletort/ranking/issues/57)
 - [ ] Manage Race document download
 - [ ] Manage optionals event documents download
 
-## 🚧 Phase 5 — Runtime & Storage
+## 🚧 Phase 6 — Runtime & Storage
 
 Goal: prepare long-term execution
 
@@ -100,7 +103,7 @@ Goal: prepare long-term execution
 - [ ] add execution summaries
 - [ ] support resumable crawls
 
-## 🚧 Phase 6 — Parsing & Normalization
+## 🚧 Phase 7 — Parsing & Normalization
 
 Goal: transform extracted data into consistent structured values
 
@@ -112,7 +115,7 @@ Goal: transform extracted data into consistent structured values
 
 👉 This phase bridges raw extraction and the final data model.
 
-## 🔄 Phase 7 — Simple Plugin Structure
+## 🔄 Phase 8 — Simple Plugin Structure
 
 Goal: formalize plugin structure when needed
 
