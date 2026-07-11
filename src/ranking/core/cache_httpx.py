@@ -30,6 +30,7 @@ class HttpxClientWithCache(HttpClientWithCache):
         self,
         plugin_name: str,
         cache_root: Path | str = ".cache",
+        document_root: Path | str = ".document",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,
@@ -42,6 +43,7 @@ class HttpxClientWithCache(HttpClientWithCache):
             save_extracted=save_extracted,
         )
         self.base_url = base_url
+        self.document_root = Path(document_root)
 
     def fetcher(self, url: str) -> str:
         """Fetch the HTML content of a page at the given URL using httpx.
@@ -106,7 +108,7 @@ class HttpxClientWithCache(HttpClientWithCache):
         stem = Path(original_name).stem
         safe_stem = re.sub(r"[^A-Za-z0-9_]+", "_", stem) or "document"
         filename = f"{safe_stem}_{key}{suffix}"
-        destination = self.cache_root / ".document" / self.plugin_name / shard / filename
+        destination = self.document_root / self.plugin_name / shard / filename
 
         if destination.exists():
             self.logger.info("document_found_in_cache", url=url, path=destination)

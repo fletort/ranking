@@ -26,7 +26,7 @@ def test_download_cache_miss_then_hit(tmp_path: Path, monkeypatch: pytest.Monkey
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", cache_root=tmp_path)
+    cache = HttpxClientWithCache("demo", document_root=tmp_path)
     url = "https://example.com/race_info.pdf"
 
     first = cache.download(url)
@@ -60,7 +60,7 @@ def test_download_preserves_file_extension(
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", cache_root=tmp_path)
+    cache = HttpxClientWithCache("demo", document_root=tmp_path)
 
     path = cache.download(url)
 
@@ -79,14 +79,14 @@ def test_download_uses_document_sharding_and_cache_key(
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("breizhchrono", cache_root=tmp_path)
+    cache = HttpxClientWithCache("breizhchrono", document_root=tmp_path)
     url = "https://example.com/files/race_info.pdf"
     key = HttpClientWithCache.derive_cache_key(url)
     shard = key[:2]
 
     path = cache.download(url)
 
-    assert path.parent == tmp_path / ".document" / "breizhchrono" / shard
+    assert path.parent == tmp_path / "breizhchrono" / shard
     assert path.name.endswith(f"_{key}.pdf")
     assert path.exists()
 
@@ -98,7 +98,7 @@ def test_download_raises_runtime_error_on_network_error(
         raise httpx.RequestError("boom", request=httpx.Request("GET", _extract_url(args, kwargs)))
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", cache_root=tmp_path)
+    cache = HttpxClientWithCache("demo", document_root=tmp_path)
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.download("https://example.com/missing.pdf")
