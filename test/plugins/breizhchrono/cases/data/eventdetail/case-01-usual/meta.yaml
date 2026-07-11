@@ -1,0 +1,5 @@
+id: case-01
+name: Basic event page
+description:
+  The event page is redirected to a race page that contains a list of all event's races. Extract
+  each race name with url, and computed url info (ref and heat).

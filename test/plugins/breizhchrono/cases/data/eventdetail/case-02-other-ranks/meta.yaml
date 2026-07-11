@@ -1,0 +1,6 @@
+id: case-01
+name: Event page with specific other rank files
+description:
+  The event page can contains a second list below the race list with pdf file rank that can be for
+  one of the race (team rank on individual race) or that can be a combined rank (rank on 3 races of
+  the event)

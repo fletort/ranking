@@ -1,0 +1,59 @@
+{
+  "event_race_raw": "MARATHON LOUDÉAC-PONTIVY - 10 KM - Powerade",
+  "races": [
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=marathon-loudeac--pontivy&query=&category=&sex=&inter=",
+      "name": "Marathon Loudéac > Pontivy",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "marathon-loudeac--pontivy"
+    },
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=semi-marathon-st-gonnery--pontivy&query=&category=&sex=&inter=",
+      "name": "Semi-Marathon St-Gonnery > Pontivy",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "semi-marathon-st-gonnery--pontivy"
+    },
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km-st-gerand--pontivy&query=&category=&sex=&inter=",
+      "name": "10 km St-Gérand > Pontivy",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "10-km-st-gerand--pontivy"
+    },
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=les-5-km-du-marathon-loudeac-pontivy&query=&category=&sex=&inter=",
+      "name": "Les 5 km du Marathon-Loudéac-Pontivy",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "les-5-km-du-marathon-loudeac-pontivy"
+    },
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=relais-marathon-loudeac--pontivy&query=&category=&sex=&inter=",
+      "name": "Relais Marathon Loudéac > Pontivy",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "relais-marathon-loudeac--pontivy"
+    },
+    {
+      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km---powerade&query=&category=&sex=&inter=",
+      "name": "10 KM - Powerade",
+      "ref_computed": "1526881753360-9",
+      "heat_computed": "10-km---powerade"
+    }
+  ],
+  "documents": [
+    {
+      "url": "https://resultats.breizhchrono.com/documents?reference=1526881753360-9&name=Classement-par-equipe---5-KM.pdf",
+      "name": "Classement par equipe   5 KM"
+    },
+    {
+      "url": "https://resultats.breizhchrono.com/documents?reference=1526881753360-9&name=Classement-par-equipe---10-KM.pdf",
+      "name": "Classement par equipe   10 KM"
+    },
+    {
+      "url": "https://resultats.breizhchrono.com/documents?reference=1526881753360-9&name=Classement-par-equipe---Marathon.pdf",
+      "name": "Classement par equipe   Marathon"
+    },
+    {
+      "url": "https://resultats.breizhchrono.com/documents?reference=1526881753360-9&name=Classement-par-equipe---Semi.pdf",
+      "name": "Classement par equipe   Semi"
+    }
+  ]
+}
