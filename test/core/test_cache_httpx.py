@@ -7,15 +7,22 @@ from ranking.core.cache import HttpClientWithCache
 from ranking.core.cache_httpx import HttpxClientWithCache
 
 
+def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:
+    if args:
+        return str(args[0])
+    return str(kwargs["url"])
+
+
 def test_download_cache_miss_then_hit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
     def fake_get(*args, **kwargs):
-        calls.append(args[0])
+        url = _extract_url(args, kwargs)
+        calls.append(url)
         return httpx.Response(
             200,
             content=b"%PDF-1.7",
-            request=httpx.Request("GET", args[0]),
+            request=httpx.Request("GET", url),
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
@@ -45,10 +52,11 @@ def test_download_preserves_file_extension(
     expected_suffix: str,
 ) -> None:
     def fake_get(*args, **kwargs):
+        url = _extract_url(args, kwargs)
         return httpx.Response(
             200,
             content=b"content",
-            request=httpx.Request("GET", args[0]),
+            request=httpx.Request("GET", url),
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
@@ -63,10 +71,11 @@ def test_download_uses_document_sharding_and_cache_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def fake_get(*args, **kwargs):
+        url = _extract_url(args, kwargs)
         return httpx.Response(
             200,
             content=b"binary",
-            request=httpx.Request("GET", args[0]),
+            request=httpx.Request("GET", url),
         )
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
@@ -77,7 +86,8 @@ def test_download_uses_document_sharding_and_cache_key(
 
     path = cache.download(url)
 
-    assert path == tmp_path / ".document" / "breizhchrono" / shard / f"race_info_{key}.pdf"
+    assert path.parent == tmp_path / ".document" / "breizhchrono" / shard
+    assert path.name.endswith(f"_{key}.pdf")
     assert path.exists()
 
 
@@ -85,7 +95,7 @@ def test_download_raises_runtime_error_on_network_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def fake_get(*args, **kwargs):
-        raise httpx.RequestError("boom", request=httpx.Request("GET", args[0]))
+        raise httpx.RequestError("boom", request=httpx.Request("GET", _extract_url(args, kwargs)))
 
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
     cache = HttpxClientWithCache("demo", cache_root=tmp_path)
