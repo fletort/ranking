@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import urlparse
@@ -19,6 +20,7 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Encoding": "gzip, deflate, br",
 }
+DOCUMENT_DOWNLOAD_TIMEOUT = 10.0
 
 
 class HttpxClientWithCache(HttpClientWithCache):
@@ -28,6 +30,7 @@ class HttpxClientWithCache(HttpClientWithCache):
         self,
         plugin_name: str,
         cache_root: Path | str = ".cache",
+        document_root: Path | str = ".document",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,
@@ -40,6 +43,7 @@ class HttpxClientWithCache(HttpClientWithCache):
             save_extracted=save_extracted,
         )
         self.base_url = base_url
+        self.document_root = Path(document_root)
 
     def fetcher(self, url: str) -> str:
         """Fetch the HTML content of a page at the given URL using httpx.
@@ -93,6 +97,48 @@ class HttpxClientWithCache(HttpClientWithCache):
         except httpx.RequestError as e:
             log.error("Network error fetching URL", url=url, error=str(e))
             raise RuntimeError(f"Network error fetching URL: {url}") from e
+
+    def download(self, url: str) -> Path:
+        """Download and cache a binary document from the given URL."""
+        key = self.derive_cache_key(url)
+        shard = key[:2]
+        parsed_url = urlparse(url)
+        original_name = Path(parsed_url.path).name or "document"
+        suffix = Path(original_name).suffix
+        stem = Path(original_name).stem
+        safe_stem = re.sub(r"[^A-Za-z0-9_]+", "_", stem) or "document"
+        filename = f"{safe_stem}_{key}{suffix}"
+        destination = self.document_root / self.plugin_name / shard / filename
+
+        if destination.exists():
+            self.logger.info("document_found_in_cache", url=url, path=destination)
+            return destination
+
+        self.logger.info("document_cache_miss", url=url, path=destination)
+        try:
+            response = httpx.get(
+                url,
+                headers=HEADERS,
+                follow_redirects=True,
+                verify=VERIFY_SSL,
+                timeout=DOCUMENT_DOWNLOAD_TIMEOUT,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            self.logger.error(
+                "HTTP error downloading document", url=url, status_code=e.response.status_code
+            )
+            raise RuntimeError(f"HTTP error {e.response.status_code} for URL: {url}") from e
+        except httpx.RequestError as e:
+            self.logger.error("Network error downloading URL", url=url, error=str(e))
+            raise RuntimeError(f"Network error downloading URL: {url}") from e
+
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(response.content)
+        self.logger.info(
+            "document_downloaded", url=url, path=destination, size=len(response.content)
+        )
+        return destination
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
