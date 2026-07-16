@@ -7,7 +7,8 @@ from bs4 import BeautifulSoup, Tag
 
 
 class RaceItem(TypedDict):
-    url: str
+    source_url: str
+    technical_url: str
     name: str
     ref_computed: str
     heat_computed: str
@@ -80,7 +81,8 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
             final_url, ref, heat = build_race_url(str(href))
             races.append(
                 {
-                    "url": final_url,
+                    "source_url": href,
+                    "technical_url": final_url,
                     "name": name,
                     "ref_computed": ref,
                     "heat_computed": heat,

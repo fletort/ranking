@@ -86,8 +86,7 @@ def test_download_uses_document_sharding_and_cache_key(
 
     path = cache.download(url)
 
-    assert path.parent == tmp_path / "breizhchrono" / shard
-    assert path.name.endswith(f"_{key}.pdf")
+    assert path.parent == tmp_path / "breizhchrono" / shard / key
     assert path.exists()
 
 

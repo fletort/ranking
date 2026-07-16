@@ -39,7 +39,11 @@ class CrawlSummary:
     sleep_duration_seconds: float = 0
     events_processed_count: int = 0
     events_failed_count: int = 0
+    events_document_downloaded_count: int = 0
+    events_document_failed_count: int = 0
     races_processed_count: int = 0
+    races_document_downloaded_count: int = 0
+    races_document_failed_count: int = 0
     races_external_count: int = 0
     races_failed_count: int = 0
     results_processed_count: int = 0
@@ -65,9 +69,13 @@ def log_crawl_summary(
         processing_duration_seconds=processing_duration_seconds,
         events_processed_count=summary.events_processed_count,
         events_failed_count=summary.events_failed_count,
+        events_document_downloaded_count=summary.events_document_downloaded_count,
+        events_document_failed_count=summary.events_document_failed_count,
         races_processed_count=summary.races_processed_count,
         races_external_count=summary.races_external_count,
         races_failed_count=summary.races_failed_count,
+        races_document_downloaded_count=summary.races_document_downloaded_count,
+        races_document_failed_count=summary.races_document_failed_count,
         results_processed_count=summary.results_processed_count,
         results_failed_count=summary.results_failed_count,
         cache_hits_count=cache.cache_hits,
@@ -276,6 +284,21 @@ def process_event(
             sample=event_detail["races"][:1],
         )
 
+    # Download optionals event documents
+    if "documents" in event_detail and event_detail["documents"]:
+        for document in event_detail["documents"]:
+            document_url = document["url"]
+            try:
+                sleep(1, summary)  # be nice to the server
+                cache.download(document_url)
+                if summary is not None:
+                    summary.events_document_downloaded_count += 1
+                log.info("document_downloaded", event_document_url=document_url)
+            except RuntimeError as exc:
+                if summary is not None:
+                    summary.events_document_failed_count += 1
+                log.error("download_error", error=str(exc), event_document_url=document_url)
+
     for race in event_detail["races"]:
         process_race(race, cache, log, page_race_max, summary=summary)
 
@@ -287,12 +310,8 @@ def process_race(
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
 ) -> None:
-    base_race_url = EVENTS_LIST_URL + race["url"]
+    base_race_url = EVENTS_LIST_URL + race["technical_url"]
     current_url = base_race_url
-    race_information = {
-        "ref_computed": race["ref_computed"],
-        "heat_computed": race["heat_computed"],
-    }
     pages_processed = 0
 
     while True:
@@ -315,7 +334,24 @@ def process_race(
             )
             return
 
-        race_result = extract_race_results(race_html, race_information)
+        race_result = extract_race_results(race_html, race)
+
+        # Download the results document
+        if pages_processed == 0:
+            race_document_url = race_result["document"]
+            if race_document_url:
+                full_document_url = EVENTS_LIST_URL + race_document_url
+                try:
+                    sleep(1, summary)  # be nice to the server
+                    cache.download(full_document_url)
+                    log.info("document_downloaded", race_document_url=full_document_url)
+                    if summary is not None:
+                        summary.races_document_downloaded_count += 1
+                except RuntimeError as exc:
+                    if summary is not None:
+                        summary.races_document_failed_count += 1
+                    log.error("download_error", error=str(exc), race_document_url=full_document_url)
+
         results = race_result["results"]
         if summary is not None:
             summary.races_processed_count += 1

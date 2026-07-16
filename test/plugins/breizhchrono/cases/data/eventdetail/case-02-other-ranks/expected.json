@@ -2,37 +2,43 @@
   "event_race_raw": "MARATHON LOUDÉAC-PONTIVY - 10 KM - Powerade",
   "races": [
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=marathon-loudeac--pontivy&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/marathon-loudeac--pontivy",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=marathon-loudeac--pontivy&query=&category=&sex=&inter=",
       "name": "Marathon Loudéac > Pontivy",
       "ref_computed": "1526881753360-9",
       "heat_computed": "marathon-loudeac--pontivy"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=semi-marathon-st-gonnery--pontivy&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/semi-marathon-st-gonnery--pontivy",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=semi-marathon-st-gonnery--pontivy&query=&category=&sex=&inter=",
       "name": "Semi-Marathon St-Gonnery > Pontivy",
       "ref_computed": "1526881753360-9",
       "heat_computed": "semi-marathon-st-gonnery--pontivy"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km-st-gerand--pontivy&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/10-km-st-gerand--pontivy",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km-st-gerand--pontivy&query=&category=&sex=&inter=",
       "name": "10 km St-Gérand > Pontivy",
       "ref_computed": "1526881753360-9",
       "heat_computed": "10-km-st-gerand--pontivy"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=les-5-km-du-marathon-loudeac-pontivy&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/les-5-km-du-marathon-loudeac-pontivy",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=les-5-km-du-marathon-loudeac-pontivy&query=&category=&sex=&inter=",
       "name": "Les 5 km du Marathon-Loudéac-Pontivy",
       "ref_computed": "1526881753360-9",
       "heat_computed": "les-5-km-du-marathon-loudeac-pontivy"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=relais-marathon-loudeac--pontivy&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/relais-marathon-loudeac--pontivy",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=relais-marathon-loudeac--pontivy&query=&category=&sex=&inter=",
       "name": "Relais Marathon Loudéac > Pontivy",
       "ref_computed": "1526881753360-9",
       "heat_computed": "relais-marathon-loudeac--pontivy"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km---powerade&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/marathon-loudeac-pontivy-2026-1526881753360-9/10-km---powerade",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1526881753360-9&heat=10-km---powerade&query=&category=&sex=&inter=",
       "name": "10 KM - Powerade",
       "ref_computed": "1526881753360-9",
       "heat_computed": "10-km---powerade"
