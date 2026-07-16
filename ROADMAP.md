@@ -93,17 +93,25 @@ Goal: Manage document discovered in the previous large scale test
 
 ## 🚧 Phase 6 — Runtime & Storage
 
-Goal: prepare long-term execution
+Goal: prepare long-term unattended execution
 
 - [ ] define storage strategy
-- [ ] evaluate S3-backed cache
-- [ ] define data retention rules
-- [ ] prepare server deployment
-- [ ] add crawl statistics
-- [ ] add execution summaries
-- [ ] support resumable crawls
+- [ ] implement S3-backed storage
+- [ ] validate restart behavior using persistent storage
+- [ ] prepare VM deployment
 
-## 🚧 Phase 7 — Parsing & Normalization
+## 🚧 Phase 7 — Incremental Crawling
+
+Goal: Add a technical (plugin) incremental crawl strategy
+
+- [ ] define refresh window strategy (ex: REFRESH_LAST_EVENTS (days ?))
+- [ ] define incremental crawl strategy (ex: STOP_AFTER_KNOWN_EVENTS (int))
+- [ ] detect new events
+- [ ] revisit recent events
+- [ ] track crawl state
+- [ ] evaluate plugin-oriented persistence
+
+## 🚧 Phase 8 — Parsing & Normalization
 
 Goal: transform extracted data into consistent structured values
 
@@ -115,7 +123,7 @@ Goal: transform extracted data into consistent structured values
 
 👉 This phase bridges raw extraction and the final data model.
 
-## 🔄 Phase 8 — Simple Plugin Structure
+## 🔄 Phase 9 — Simple Plugin Structure
 
 Goal: formalize plugin structure when needed
 
