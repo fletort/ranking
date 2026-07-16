@@ -2,37 +2,43 @@
   "event_race_raw": "Triathlon La Rincerie Pays de Craon - Triathlon Jeunes 1 (6-9ans)",
   "races": [
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-s&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-s",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-s&query=&category=&sex=&inter=",
       "name": "Triathlon S",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-s"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-s-relais&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-s-relais",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-s-relais&query=&category=&sex=&inter=",
       "name": "Triathlon S relais",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-s-relais"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-jeunes-1-6-9ans&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-jeunes-1-6-9ans",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-jeunes-1-6-9ans&query=&category=&sex=&inter=",
       "name": "Triathlon Jeunes 1 (6-9ans)",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-jeunes-1-6-9ans"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-jeunes-2-10-13-ans&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-jeunes-2-10-13-ans",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-jeunes-2-10-13-ans&query=&category=&sex=&inter=",
       "name": "Triathlon Jeunes 2 (10-13 ans)",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-jeunes-2-10-13-ans"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-m&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-m",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-m&query=&category=&sex=&inter=",
       "name": "Triathlon M",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-m"
     },
     {
-      "url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-m-relais&query=&category=&sex=&inter=",
+      "source_url": "/resultats-courses/triathlon-la-rincerie-pays-de-craon-2026-1727231492499-3/triathlon-m-relais",
+      "technical_url": "/bc/resultats/course-result.jsp?ref=1727231492499-3&heat=triathlon-m-relais&query=&category=&sex=&inter=",
       "name": "Triathlon M relais",
       "ref_computed": "1727231492499-3",
       "heat_computed": "triathlon-m-relais"

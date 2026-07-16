@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import httpx
 import structlog
@@ -102,17 +104,14 @@ class HttpxClientWithCache(HttpClientWithCache):
         """Download and cache a binary document from the given URL."""
         key = self.derive_cache_key(url)
         shard = key[:2]
-        parsed_url = urlparse(url)
-        original_name = Path(parsed_url.path).name or "document"
-        suffix = Path(original_name).suffix
-        stem = Path(original_name).stem
-        safe_stem = re.sub(r"[^A-Za-z0-9_]+", "_", stem) or "document"
-        filename = f"{safe_stem}_{key}{suffix}"
-        destination = self.document_root / self.plugin_name / shard / filename
-
-        if destination.exists():
-            self.logger.info("document_found_in_cache", url=url, path=destination)
-            return destination
+        destination = self.document_root / self.plugin_name / shard / key
+        metadata_path = destination / "metadata.json"
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            original_filename = destination / metadata.get("original_filename")
+            if original_filename.exists():
+                self.logger.info("document_found_in_cache", url=url, path=destination)
+                return original_filename
 
         self.logger.info("document_cache_miss", url=url, path=destination)
         try:
@@ -133,14 +132,50 @@ class HttpxClientWithCache(HttpClientWithCache):
             self.logger.error("Network error downloading URL", url=url, error=str(e))
             raise RuntimeError(f"Network error downloading URL: {url}") from e
 
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(response.content)
+        filename = self.extract_filename(response)
+        destination.mkdir(parents=True, exist_ok=True)
+        content_destination = destination / f"{filename}"
+        content_destination.write_bytes(response.content)
+
+        # Write metadata file
+        metadata_path = metadata_path = destination / "metadata.json"
+        metadata = {
+            "key": key,
+            "url": url,
+            "original_filename": self.extract_filename(response),
+            "content_type": response.headers.get("content-type", "application/octet-stream"),
+            "content_length": len(response.content),
+            "downloaded_at": datetime.now(timezone.utc).isoformat(),
+        }
+        metadata_path.write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
         self.logger.info(
             "document_downloaded", url=url, path=destination, size=len(response.content)
         )
-        return destination
+        return content_destination
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
         """Check if two URLs belong to the same domain."""
         return urlparse(url1).netloc == urlparse(url2).netloc
+
+    @staticmethod
+    def extract_filename(response: httpx.Response) -> str:
+        cd = response.headers.get("content-disposition", "")
+
+        match = re.search(r"filename\*\s*=\s*UTF-8''([^;]+)", cd, re.I)
+        if match:
+            return unquote(match.group(1))
+
+        match = re.search(r'filename\s*=\s*"([^"]+)"', cd, re.I)
+        if match:
+            return match.group(1)
+
+        match = re.search(r"filename\s*=\s*([^;]+)", cd, re.I)
+        if match:
+            return match.group(1).strip()
+
+        # fallback URL
+        return Path(urlparse(str(response.url)).path).name or "document"

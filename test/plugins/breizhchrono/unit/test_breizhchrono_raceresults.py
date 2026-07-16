@@ -3,6 +3,7 @@ import base64
 import pytest
 from bs4 import BeautifulSoup
 
+from ranking.plugins.breizhchrono.eventdetail import RaceItem
 from ranking.plugins.breizhchrono.raceresults import (
     EXPECTED,
     check_decode_order,
@@ -147,14 +148,41 @@ def test_extract_race_results_returns_parsed_results() -> None:
 def test_extract_race_results_adds_result_detail_url_when_race_information_exists() -> None:
     encoded = _encode(SAMPLE_ROW + "\n")
     html = _make_html(encoded)
+    race_item: RaceItem = {
+        "name": "Test Race",
+        "ref_computed": "1488071608761-916",
+        "heat_computed": "10h-relais-solidaire",
+        "technical_url": "",
+        "source_url": "",
+    }
 
     result = extract_race_results(
-        html, {"ref_computed": "1488071608761-916", "heat_computed": "10h-relais-solidaire"}
+        html,
+        race_item,
     )
 
     assert result["results"][0]["result_detail_url_computed"] == (
         "/bc/resultats/coureur.jsp?ref=1488071608761-916&heat=10h-relais-solidaire&dossard=42"
     )
+
+
+def test_extract_race_results_adds_document_url_when_race_information_exists() -> None:
+    encoded = _encode(SAMPLE_ROW + "\n")
+    html = _make_html(encoded)
+    race_item: RaceItem = {
+        "name": "Test Race",
+        "ref_computed": "1488071608761-916",
+        "heat_computed": "10h-relais-solidaire",
+        "technical_url": "my_url",
+        "source_url": "my_source_url",
+    }
+
+    result = extract_race_results(
+        html,
+        race_item,
+    )
+
+    assert result["document"] == "my_source_url/export"
 
 
 def test_extract_race_results_returns_all_expected_keys() -> None:

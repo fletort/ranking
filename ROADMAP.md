@@ -88,8 +88,8 @@ Goal: Manage document discovered in the previous large scale test
 
 - [x] Add a generic download behavior for document
       [#57](https://github.com/fletort/ranking/issues/57)
-- [ ] Manage Race document download
-- [ ] Manage optionals event documents download
+- [x] Manage Race document download [#59](https://github.com/fletort/ranking/issues/59)
+- [x] Manage optionals event documents download [#59](https://github.com/fletort/ranking/issues/59)
 
 ## 🚧 Phase 6 — Runtime & Storage
 

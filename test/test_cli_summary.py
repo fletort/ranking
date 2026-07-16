@@ -63,7 +63,8 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
             "event_race_raw": "Event 1",
             "races": [
                 {
-                    "url": "/race-1",
+                    "source_url": "source/race-1",
+                    "technical_url": "/race-1",
                     "name": "Race 1",
                     "ref_computed": "ref",
                     "heat_computed": "heat",
@@ -77,6 +78,7 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
         lambda html, race_information: {
             "results": [{"result_detail_url_computed": "/result-1"}],
             "next_url": None,
+            "document": None,
         },
     )
     monkeypatch.setattr(cli_module, "extract_result_detail", lambda html: {"runner": "Alice"})
@@ -98,9 +100,13 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
         "processing_duration_seconds": 3,
         "events_processed_count": 1,
         "events_failed_count": 0,
+        "events_document_downloaded_count": 0,
+        "events_document_failed_count": 0,
         "races_processed_count": 1,
         "races_external_count": 0,
         "races_failed_count": 0,
+        "races_document_downloaded_count": 0,
+        "races_document_failed_count": 0,
         "results_processed_count": 1,
         "results_failed_count": 0,
         "cache_hits_count": 4,
