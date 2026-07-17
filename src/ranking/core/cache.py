@@ -10,7 +10,8 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import structlog
 
-from ranking.core.storage import LocalStorageProvider, StorageProvider
+from ranking.core.storage import StorageProvider
+from ranking.portinglayer.storage import LocalStorageProvider
 
 
 class CachePolicy(Enum):
@@ -25,7 +26,7 @@ class HttpClientWithCache(ABC):
     """Deterministic HTTP cache with policy-driven reads and writes.
 
     Storage is delegated to a :class:`~ranking.core.storage.StorageProvider`.
-    The default provider is :class:`~ranking.core.storage.LocalStorageProvider`.
+    The default provider is :class:`~ranking.portinglayer.storage.LocalStorageProvider`.
     """
 
     def __init__(
@@ -46,7 +47,7 @@ class HttpClientWithCache(ABC):
             save_extracted: If True, extracted JSON data is persisted via the storage provider.
             logger: Structured logger instance.
             storage: Storage provider to use. Defaults to
-                :class:`~ranking.core.storage.LocalStorageProvider`.
+                :class:`~ranking.portinglayer.storage.LocalStorageProvider`.
         """
         self.plugin_name = plugin_name
         self.logger = logger

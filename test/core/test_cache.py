@@ -182,7 +182,7 @@ def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None
 
 
 def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:
-    from ranking.core.storage import LocalStorageProvider
+    from ranking.portinglayer.storage import LocalStorageProvider
 
     cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/detail"

@@ -12,7 +12,8 @@ import structlog
 
 from ranking.core.cache import HttpClientWithCache
 from ranking.core.errors import ExternalRedirectError
-from ranking.core.storage import LocalStorageProvider, StorageProvider
+from ranking.core.storage import StorageProvider
+from ranking.portinglayer.storage import LocalStorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -109,7 +110,7 @@ class HttpxClientWithCache(HttpClientWithCache):
         """Download and cache a binary document from the given URL.
 
         Returns the local path where the document is stored (only available for
-        :class:`~ranking.core.storage.LocalStorageProvider`).
+        :class:`~ranking.portinglayer.storage.LocalStorageProvider`).
         """
         if self.storage.document_exists(url):
             result = self.storage.get_document(url)
