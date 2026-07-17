@@ -93,10 +93,13 @@ Goal: Manage document discovered in the previous large scale test
 
 ## 🚧 Phase 6 — Runtime & Storage
 
+**Milestone:** [POC - Phase 6](https://github.com/fletort/ranking/milestone/7)
+
 Goal: prepare long-term unattended execution
 
-- [ ] define storage strategy
-- [ ] implement S3-backed storage
+- [x] define storage strategy
+- [ ] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
+      [#63](https://github.com/fletort/ranking/issues/63)
 - [ ] validate restart behavior using persistent storage
 - [ ] prepare VM deployment
 
