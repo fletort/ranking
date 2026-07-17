@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
@@ -83,14 +83,11 @@ class StorageProvider(ABC):
         """Return True if a downloaded document exists for the URL."""
 
 
-__all__ = ["StorageProvider", "LocalStorageProvider", "S3StorageProvider"]
-
-if TYPE_CHECKING:
-    from ranking.portinglayer.storage.local import LocalStorageProvider
-    from ranking.portinglayer.storage.s3 import S3StorageProvider
+__all__ = ["StorageProvider"]
 
 
-def __getattr__(name: str) -> type[LocalStorageProvider] | type[S3StorageProvider]:
+def __getattr__(name: str) -> Any:
+    """Lazily expose provider implementations for backward-compatible imports."""
     if name == "LocalStorageProvider":
         from ranking.portinglayer.storage import LocalStorageProvider
 
