@@ -156,7 +156,10 @@ class HttpxClientWithCache(HttpClientWithCache):
 
         if isinstance(self.storage, LocalStorageProvider):
             return self.storage._document_dir(url) / filename
-        raise RuntimeError("download() returns a local Path only when using LocalStorageProvider")
+        raise RuntimeError(
+            "download() returns a local Path only when using LocalStorageProvider. "
+            "Use storage.get_document(url) directly when using other providers."
+        )
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
