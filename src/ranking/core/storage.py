@@ -57,7 +57,10 @@ class StorageProvider(ABC):
 
     @abstractmethod
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
-        """Return all snapshots for a URL as a list of (timestamp, content) tuples."""
+        """Return all snapshots for a URL as a list of (timestamp, content) tuples.
+
+        The list is sorted by timestamp in ascending order.
+        """
 
     @abstractmethod
     def save_extracted(self, url: str, data: Any) -> None:
@@ -83,10 +86,11 @@ class StorageProvider(ABC):
 __all__ = ["StorageProvider", "LocalStorageProvider", "S3StorageProvider"]
 
 if TYPE_CHECKING:
-    from ranking.portinglayer.storage import LocalStorageProvider, S3StorageProvider
+    from ranking.portinglayer.storage.local import LocalStorageProvider
+    from ranking.portinglayer.storage.s3 import S3StorageProvider
 
 
-def __getattr__(name: str) -> type[object]:
+def __getattr__(name: str) -> type[LocalStorageProvider] | type[S3StorageProvider]:
     if name == "LocalStorageProvider":
         from ranking.portinglayer.storage import LocalStorageProvider
 
