@@ -103,7 +103,8 @@ class S3StorageProvider(StorageProvider):
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         """Fetch all snapshots for a URL.
 
-        This reads one S3 object per snapshot and is intended for small histories.
+        This performs one S3 listing plus one S3 object read per snapshot and is
+        intended for small histories.
         """
         prefix = self._snapshots_prefix(url)
         paginator = self._s3.get_paginator("list_objects_v2")
