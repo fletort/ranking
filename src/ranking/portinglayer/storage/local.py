@@ -119,8 +119,4 @@ class LocalStorageProvider(StorageProvider):
     def document_exists(self, url: str) -> bool:
         doc_dir = self._document_dir(url)
         metadata_path = doc_dir / "metadata.json"
-        if not metadata_path.exists():
-            return False
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        filename = metadata.get("original_filename", "document")
-        return (doc_dir / filename).exists()
+        return metadata_path.exists()
