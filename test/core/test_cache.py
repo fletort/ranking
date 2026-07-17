@@ -1,4 +1,3 @@
-import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -45,7 +44,7 @@ def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
 
     assert content == "fresh-content"
     assert calls == ["https://example.com/events"]
-    assert not (tmp_path / "demo" / "http").exists()
+    assert not cache.storage.exists_http_cache("https://example.com/events")
 
 
 def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
@@ -68,7 +67,7 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
     assert first == "cached-content"
     assert second == "cached-content"
     assert calls == [url]
-    assert cache.current_path(url).exists()
+    assert cache.storage.exists_http_cache(url)
     assert cache.cache_misses == 1
     assert cache.cache_hits == 1
 
@@ -89,48 +88,40 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     first = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
     # Check that the first fetch created the current cache
     assert first == "v1"
-    assert cache.current_path(url).read_text(encoding="utf-8") == "v1"
-    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
-    assert len(snapshot_files) == 0
-    first_current_stat = os.stat(cache.current_path(url))
+    assert cache.storage.get_http_cache(url) == "v1"
+    assert len(cache.storage.list_http_snapshots(url)) == 0
 
     same = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
     # Check that current cache is still the same and no snapshot was created
     assert same == "v1"
-    assert os.stat(cache.current_path(url)) == first_current_stat
-    assert cache.current_path(url).read_text(encoding="utf-8") == "v1"
-    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
-    assert len(snapshot_files) == 0
+    assert cache.storage.get_http_cache(url) == "v1"
+    assert len(cache.storage.list_http_snapshots(url)) == 0
 
     time.sleep(0.01)  # Ensure the timestamp changes for the next snapshot
     updated = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
     # Check that the current cache was updated and a snapshot was created
     assert updated == "v2"
-    assert cache.current_path(url).read_text(encoding="utf-8") == "v2"
-    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
-    assert len(snapshot_files) == 1
-    first_snapshot_file = snapshot_files[0]
-    first_snapshot_file_stat = os.stat(first_snapshot_file)
-    assert first_snapshot_file.read_text(encoding="utf-8") == "v1"
-    datetime.strptime(first_snapshot_file.stem, "%Y-%m-%dT%H-%M-%S-%f")
+    assert cache.storage.get_http_cache(url) == "v2"
+    snapshots = cache.storage.list_http_snapshots(url)
+    assert len(snapshots) == 1
+    ts1, content1 = snapshots[0]
+    assert content1 == "v1"
+    datetime.strptime(ts1, "%Y-%m-%dT%H-%M-%S-%f")
 
     time.sleep(0.01)  # Ensure the timestamp changes for the next snapshot
     updated = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
     # Check that the current cache was updated and a new snapshot was created
     assert updated == "v3"
-    assert cache.current_path(url).read_text(encoding="utf-8") == "v3"
-    snapshot_files = list(cache.snapshots_dir(url).glob("*.html"))
-    assert len(snapshot_files) == 2
-    assert first_snapshot_file in snapshot_files
-    for file in snapshot_files:
-        if file == first_snapshot_file:
-            assert os.path.samefile(file, first_snapshot_file)
-            assert os.stat(file) == first_snapshot_file_stat
-            assert file.read_text(encoding="utf-8") == "v1"
-        else:
-            datetime.strptime(file.stem, "%Y-%m-%dT%H-%M-%S-%f")
-            assert os.path.getmtime(file) > os.path.getmtime(first_snapshot_file)
-            assert file.read_text(encoding="utf-8") == "v2"
+    assert cache.storage.get_http_cache(url) == "v3"
+    snapshots = cache.storage.list_http_snapshots(url)
+    assert len(snapshots) == 2
+    ts2, content2 = snapshots[1]
+    assert content2 == "v2"
+    datetime.strptime(ts2, "%Y-%m-%dT%H-%M-%S-%f")
+    # Second snapshot must be later than the first
+    assert ts2 > ts1
+    # First snapshot is still present and unchanged
+    assert snapshots[0] == (ts1, content1)
 
 
 def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
@@ -154,7 +145,7 @@ def test_save_extracted_json_disabled_by_default(tmp_path: Path) -> None:
 
     cache.save_extracted_json(url, {"key": "value"})
 
-    assert not cache.extracted_json_path(url).exists()
+    assert cache.storage.get_extracted(url) is None
 
 
 def test_save_extracted_json_persists_when_enabled(tmp_path: Path) -> None:
@@ -164,11 +155,7 @@ def test_save_extracted_json_persists_when_enabled(tmp_path: Path) -> None:
 
     cache.save_extracted_json(url, data)
 
-    path = cache.extracted_json_path(url)
-    assert path.exists()
-    import json
-
-    saved = json.loads(path.read_text(encoding="utf-8"))
+    saved = cache.storage.get_extracted(url)
     assert saved == data
 
 
@@ -178,9 +165,8 @@ def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None
     url_reordered = "https://example.com/page?a=1&b=2"
 
     cache.save_extracted_json(url, {"x": 1})
-    path_reordered = cache.extracted_json_path(url_reordered)
 
-    assert path_reordered.exists()
+    assert cache.storage.get_extracted(url_reordered) is not None
 
 
 def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None:
@@ -196,12 +182,15 @@ def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None
 
 
 def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:
+    from ranking.core.storage import LocalStorageProvider
+
     cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/detail"
     data = {"name": "Alice", "time": "01:23:45"}
 
     cache.save_extracted_json(url, data)
 
-    raw = cache.extracted_json_path(url).read_text(encoding="utf-8")
+    assert isinstance(cache.storage, LocalStorageProvider)
+    raw = cache.storage._extracted_path(url).read_text(encoding="utf-8")
     assert "\n" in raw
     assert "  " in raw

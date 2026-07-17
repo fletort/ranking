@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
@@ -10,6 +9,8 @@ from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import structlog
+
+from ranking.core.storage import LocalStorageProvider, StorageProvider
 
 
 class CachePolicy(Enum):
@@ -21,7 +22,11 @@ class CachePolicy(Enum):
 
 
 class HttpClientWithCache(ABC):
-    """Deterministic, disk-backed HTTP cache with policy-driven reads and writes."""
+    """Deterministic HTTP cache with policy-driven reads and writes.
+
+    Storage is delegated to a :class:`~ranking.core.storage.StorageProvider`.
+    The default provider is :class:`~ranking.core.storage.LocalStorageProvider`.
+    """
 
     def __init__(
         self,
@@ -30,17 +35,31 @@ class HttpClientWithCache(ABC):
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         logger: Any = structlog.get_logger(),
+        storage: StorageProvider | None = None,
     ) -> None:
-        """Initialize a cache instance scoped to a plugin name and cache root path."""
+        """Initialize a cache instance scoped to a plugin name.
+
+        Args:
+            plugin_name: Logical name of the plugin owning this cache.
+            cache_root: Root directory for the local cache (used when *storage* is not provided).
+            normalize_for_comparison: Optional hook to normalize content before change detection.
+            save_extracted: If True, extracted JSON data is persisted via the storage provider.
+            logger: Structured logger instance.
+            storage: Storage provider to use. Defaults to
+                :class:`~ranking.core.storage.LocalStorageProvider`.
+        """
         self.plugin_name = plugin_name
         self.logger = logger
-        self.cache_root = Path(cache_root)
         self.save_extracted = save_extracted
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
         self.cache_hits = 0
         self.cache_misses = 0
+
+        if storage is None:
+            storage = LocalStorageProvider(plugin_name, cache_root=cache_root)
+        self.storage = storage
 
     @abstractmethod
     def fetcher(self, url: str) -> str:
@@ -56,98 +75,56 @@ class HttpClientWithCache(ABC):
     def _has_changed(self, url: str, old: str, new: str) -> bool:
         """Determine if content has changed, optionally using a normalization hook."""
         if self.normalize_for_comparison:
-            # Path("old.html").write_text(self.normalize_for_comparison(url, old))
-            # Path("new.html").write_text(self.normalize_for_comparison(url, new))
             return self.normalize_for_comparison(url, old) != self.normalize_for_comparison(
                 url, new
             )
         return old != new
 
     def fetch(self, url: str, cache_policy: CachePolicy) -> str:
-        """Fetch content according to policy and update on-disk cache when needed."""
+        """Fetch content according to policy and update storage when needed."""
         if cache_policy is CachePolicy.NO_CACHE:
             self.logger.info("No cache policy, fetching directly", url=url)
             return self.fetcher(url)
 
-        existing_content = None
-        current_path = self.current_path(url)
-        if current_path.exists():
-            existing_content = current_path.read_text(encoding="utf-8")
+        existing_content = self.storage.get_http_cache(url)
 
         if cache_policy is CachePolicy.CACHE_IF_PRESENT:
             if existing_content is not None:
                 self.cache_hits += 1
-                self.logger.info("Cache hit", url=url, path=current_path)
+                self.logger.info("Cache hit", url=url)
                 return existing_content
 
             self.cache_misses += 1
-            self.logger.info("Cache miss, fetching", url=url, path=current_path)
+            self.logger.info("Cache miss, fetching", url=url)
             content = self.fetcher(url)
-            self._write_current(current_path, content)
+            self.storage.save_http_cache(url, content)
             return content
 
         if cache_policy is CachePolicy.REFRESH_AND_CACHE:
-            self.logger.info("Cache refresh", url=url, path=current_path)
+            self.logger.info("Cache refresh", url=url)
             fetched_content = self.fetcher(url)
 
             if existing_content is None:
-                self.logger.info(
-                    "No existing content, writing current cache", url=url, path=current_path
-                )
-                self._write_current(current_path, fetched_content)
+                self.logger.info("No existing content, writing current cache", url=url)
+                self.storage.save_http_cache(url, fetched_content)
 
             if existing_content is not None and self._has_changed(
                 url, existing_content, fetched_content
             ):
-                self.logger.info("Content changed, updating cache", url=url, path=current_path)
-                self._write_snapshot(url, existing_content)
-                self._write_current(current_path, fetched_content)
+                self.logger.info("Content changed, updating cache", url=url)
+                self.storage.save_http_snapshot(url, existing_content, self._snapshot_timestamp())
+                self.storage.save_http_cache(url, fetched_content)
 
             return fetched_content
 
         return None
 
-    def current_path(self, url: str) -> Path:
-        """Return the path of the current cached content file for a URL."""
-        key = self.derive_cache_key(url)
-        shard = key[:2]
-        return self.cache_root / self.plugin_name / "http" / "current" / shard / f"{key}.html"
-
-    def snapshots_dir(self, url: str) -> Path:
-        """Return the directory where URL snapshots are stored."""
-        key = self.derive_cache_key(url)
-        shard = key[:2]
-        return self.cache_root / self.plugin_name / "http" / "snapshots" / shard / key
-
-    def extracted_json_path(self, url: str) -> Path:
-        """Return the path of the extracted JSON file for a URL."""
-        key = self.derive_cache_key(url)
-        shard = key[:2]
-        return self.cache_root / self.plugin_name / "extracted" / shard / f"{key}.json"
-
     def save_extracted_json(self, url: str, data: Any) -> None:
-        """Persist extracted JSON data to disk if save_extracted is enabled."""
+        """Persist extracted JSON data via the storage provider if save_extracted is enabled."""
         if not self.save_extracted:
             return
-        path = self.extracted_json_path(url)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.logger.info("save_extracted_json", url=url, path=path)
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
-        )
-
-    def _write_current(self, current_path: Path, content: str) -> None:
-        """Persist content as the current cache file."""
-        current_path.parent.mkdir(parents=True, exist_ok=True)
-        current_path.write_text(content, encoding="utf-8", newline="\n")
-
-    def _write_snapshot(self, url: str, content: str) -> None:
-        """Persist content as a timestamped snapshot for the URL."""
-        snapshots_dir = self.snapshots_dir(url)
-        snapshots_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_path = snapshots_dir / f"{self._snapshot_timestamp()}.html"
-        snapshot_path.write_text(content, encoding="utf-8", newline="\n")
-        self.logger.info("Snapshot created", url=url, path=snapshot_path)
+        self.logger.info("save_extracted_json", url=url)
+        self.storage.save_extracted(url, data)
 
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""

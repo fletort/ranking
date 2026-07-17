@@ -98,7 +98,7 @@ Goal: Manage document discovered in the previous large scale test
 Goal: prepare long-term unattended execution
 
 - [x] define storage strategy
-- [ ] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
+- [x] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
       [#63](https://github.com/fletort/ranking/issues/63)
 - [ ] validate restart behavior using persistent storage
 - [ ] prepare VM deployment

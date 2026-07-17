@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 from collections.abc import Callable
@@ -13,6 +12,7 @@ import structlog
 
 from ranking.core.cache import HttpClientWithCache
 from ranking.core.errors import ExternalRedirectError
+from ranking.core.storage import LocalStorageProvider, StorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -36,16 +36,21 @@ class HttpxClientWithCache(HttpClientWithCache):
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,
+        storage: StorageProvider | None = None,
     ) -> None:
         """Initialize the cache with httpx as the fetcher."""
+        if storage is None:
+            storage = LocalStorageProvider(
+                plugin_name, cache_root=cache_root, document_root=document_root
+            )
         super().__init__(
             plugin_name,
             cache_root=cache_root,
             normalize_for_comparison=normalize_for_comparison,
             save_extracted=save_extracted,
+            storage=storage,
         )
         self.base_url = base_url
-        self.document_root = Path(document_root)
 
     def fetcher(self, url: str) -> str:
         """Fetch the HTML content of a page at the given URL using httpx.
@@ -101,19 +106,22 @@ class HttpxClientWithCache(HttpClientWithCache):
             raise RuntimeError(f"Network error fetching URL: {url}") from e
 
     def download(self, url: str) -> Path:
-        """Download and cache a binary document from the given URL."""
-        key = self.derive_cache_key(url)
-        shard = key[:2]
-        destination = self.document_root / self.plugin_name / shard / key
-        metadata_path = destination / "metadata.json"
-        if metadata_path.exists():
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            original_filename = destination / metadata.get("original_filename")
-            if original_filename.exists():
-                self.logger.info("document_found_in_cache", url=url, path=destination)
-                return original_filename
+        """Download and cache a binary document from the given URL.
 
-        self.logger.info("document_cache_miss", url=url, path=destination)
+        Returns the local path where the document is stored (only available for
+        :class:`~ranking.core.storage.LocalStorageProvider`).
+        """
+        if self.storage.document_exists(url):
+            result = self.storage.get_document(url)
+            if result is not None:
+                _, metadata = result
+                if isinstance(self.storage, LocalStorageProvider):
+                    doc_dir = self.storage._document_dir(url)
+                    local_path = doc_dir / metadata.get("original_filename", "document")
+                    self.logger.info("document_found_in_cache", url=url, path=doc_dir)
+                    return local_path
+
+        self.logger.info("document_cache_miss", url=url)
         try:
             response = httpx.get(
                 url,
@@ -133,28 +141,22 @@ class HttpxClientWithCache(HttpClientWithCache):
             raise RuntimeError(f"Network error downloading URL: {url}") from e
 
         filename = self.extract_filename(response)
-        destination.mkdir(parents=True, exist_ok=True)
-        content_destination = destination / f"{filename}"
-        content_destination.write_bytes(response.content)
-
-        # Write metadata file
-        metadata_path = metadata_path = destination / "metadata.json"
+        key = self.derive_cache_key(url)
         metadata = {
             "key": key,
             "url": url,
-            "original_filename": self.extract_filename(response),
+            "original_filename": filename,
             "content_type": response.headers.get("content-type", "application/octet-stream"),
             "content_length": len(response.content),
             "downloaded_at": datetime.now(timezone.utc).isoformat(),
         }
-        metadata_path.write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        self.storage.save_document(url, response.content, metadata)
 
-        self.logger.info(
-            "document_downloaded", url=url, path=destination, size=len(response.content)
-        )
-        return content_destination
+        self.logger.info("document_downloaded", url=url, size=len(response.content))
+
+        if isinstance(self.storage, LocalStorageProvider):
+            return self.storage._document_dir(url) / filename
+        raise RuntimeError("download() returns a local Path only when using LocalStorageProvider")
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
