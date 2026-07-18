@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import boto3
 import pytest
 from moto import mock_aws
 
+from ranking.core.storage import DownloadedDocument
 from ranking.portinglayer.storage import LocalStorageProvider, S3StorageProvider
 
 # ---------------------------------------------------------------------------
@@ -34,6 +36,14 @@ def s3_provider():
             CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
         )
         yield S3StorageProvider("myplugin", bucket="ranking", region="eu-west-1")
+
+
+@pytest.fixture(params=["local", "s3"])
+def storage_provider(request, local, s3_provider):
+    """Parametrized fixture that provides both LocalStorage and S3Storage."""
+    if request.param == "local":
+        return local
+    return s3_provider
 
 
 # ---------------------------------------------------------------------------
@@ -75,28 +85,33 @@ def test_resource_id_is_sha1_hex(local: LocalStorageProvider) -> None:
 
 
 # ---------------------------------------------------------------------------
-# LocalStorageProvider — HTTP cache
+# Shared tests — HTTP cache (parametrized across LocalStorage and S3Storage)
 # ---------------------------------------------------------------------------
 
 
-def test_local_save_and_get_http_cache(local: LocalStorageProvider) -> None:
-    local.save_http_cache(TEST_URL, "<html>hello</html>")
-    assert local.get_http_cache(TEST_URL) == "<html>hello</html>"
+def test_save_and_get_http_cache(storage_provider) -> None:
+    storage_provider.save_http_cache(TEST_URL, "<html>hello</html>")
+    assert storage_provider.get_http_cache(TEST_URL) == "<html>hello</html>"
 
 
-def test_local_get_http_cache_returns_none_when_missing(local: LocalStorageProvider) -> None:
-    assert local.get_http_cache(TEST_URL) is None
+def test_get_http_cache_returns_none_when_missing(storage_provider) -> None:
+    assert storage_provider.get_http_cache(TEST_URL) is None
 
 
-def test_local_exists_http_cache(local: LocalStorageProvider) -> None:
-    assert not local.exists_http_cache(TEST_URL)
-    local.save_http_cache(TEST_URL, "content")
-    assert local.exists_http_cache(TEST_URL)
+def test_exists_http_cache(storage_provider) -> None:
+    assert not storage_provider.exists_http_cache(TEST_URL)
+    storage_provider.save_http_cache(TEST_URL, "content")
+    assert storage_provider.exists_http_cache(TEST_URL)
 
 
-def test_local_http_cache_url_canonicalization(local: LocalStorageProvider) -> None:
-    local.save_http_cache(TEST_URL, "v1")
-    assert local.get_http_cache(TEST_URL_REORDERED) == "v1"
+def test_http_cache_url_canonicalization(storage_provider) -> None:
+    storage_provider.save_http_cache(TEST_URL, "v1")
+    assert storage_provider.get_http_cache(TEST_URL_REORDERED) == "v1"
+
+
+# ---------------------------------------------------------------------------
+# LocalStorageProvider — HTTP cache (implementation-specific tests)
+# ---------------------------------------------------------------------------
 
 
 def test_local_http_cache_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
@@ -108,21 +123,26 @@ def test_local_http_cache_path_sharding(local: LocalStorageProvider, tmp_path: P
 
 
 # ---------------------------------------------------------------------------
-# LocalStorageProvider — Snapshots
+# Shared tests — Snapshots (parametrized across LocalStorage and S3Storage)
 # ---------------------------------------------------------------------------
 
 
-def test_local_save_and_list_snapshots(local: LocalStorageProvider) -> None:
-    local.save_http_snapshot(TEST_URL, "v1", "2026-01-01T00-00-00-000000")
-    local.save_http_snapshot(TEST_URL, "v2", "2026-01-02T00-00-00-000000")
-    snapshots = local.list_http_snapshots(TEST_URL)
+def test_save_and_list_snapshots(storage_provider) -> None:
+    storage_provider.save_http_snapshot(TEST_URL, "v1", "2026-01-01T00-00-00-000000")
+    storage_provider.save_http_snapshot(TEST_URL, "v2", "2026-01-02T00-00-00-000000")
+    snapshots = storage_provider.list_http_snapshots(TEST_URL)
     assert len(snapshots) == 2
     assert snapshots[0] == ("2026-01-01T00-00-00-000000", "v1")
     assert snapshots[1] == ("2026-01-02T00-00-00-000000", "v2")
 
 
-def test_local_list_snapshots_returns_empty_when_none(local: LocalStorageProvider) -> None:
-    assert local.list_http_snapshots(TEST_URL) == []
+def test_list_snapshots_returns_empty_when_none(storage_provider) -> None:
+    assert storage_provider.list_http_snapshots(TEST_URL) == []
+
+
+# ---------------------------------------------------------------------------
+# LocalStorageProvider — Snapshots (implementation-specific tests)
+# ---------------------------------------------------------------------------
 
 
 def test_local_snapshots_are_sorted_by_timestamp(local: LocalStorageProvider) -> None:
@@ -136,18 +156,28 @@ def test_local_snapshots_are_sorted_by_timestamp(local: LocalStorageProvider) ->
 
 
 # ---------------------------------------------------------------------------
-# LocalStorageProvider — Extracted data
+# Shared tests — Extracted data (parametrized across LocalStorage and S3Storage)
 # ---------------------------------------------------------------------------
 
 
-def test_local_save_and_get_extracted(local: LocalStorageProvider) -> None:
+def test_save_and_get_extracted(storage_provider) -> None:
     data = {"races": [1, 2, 3]}
-    local.save_extracted(TEST_URL, data)
-    assert local.get_extracted(TEST_URL) == data
+    storage_provider.save_extracted(TEST_URL, data)
+    assert storage_provider.get_extracted(TEST_URL) == data
 
 
-def test_local_get_extracted_returns_none_when_missing(local: LocalStorageProvider) -> None:
-    assert local.get_extracted(TEST_URL) is None
+def test_get_extracted_returns_none_when_missing(storage_provider) -> None:
+    assert storage_provider.get_extracted(TEST_URL) is None
+
+
+def test_extracted_url_canonicalization(storage_provider) -> None:
+    storage_provider.save_extracted(TEST_URL, {"x": 1})
+    assert storage_provider.get_extracted(TEST_URL_REORDERED) == {"x": 1}
+
+
+# ---------------------------------------------------------------------------
+# LocalStorageProvider — Extracted data (implementation-specific tests)
+# ---------------------------------------------------------------------------
 
 
 def test_local_extracted_is_indented_json(local: LocalStorageProvider) -> None:
@@ -155,11 +185,6 @@ def test_local_extracted_is_indented_json(local: LocalStorageProvider) -> None:
     raw = local._extracted_path(TEST_URL).read_text(encoding="utf-8")
     assert "\n" in raw
     assert "  " in raw
-
-
-def test_local_extracted_url_canonicalization(local: LocalStorageProvider) -> None:
-    local.save_extracted(TEST_URL, {"x": 1})
-    assert local.get_extracted(TEST_URL_REORDERED) == {"x": 1}
 
 
 def test_local_extracted_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
@@ -171,40 +196,62 @@ def test_local_extracted_path_sharding(local: LocalStorageProvider, tmp_path: Pa
 
 
 # ---------------------------------------------------------------------------
-# LocalStorageProvider — Documents
+# Shared tests — Documents (parametrized across LocalStorage and S3Storage)
 # ---------------------------------------------------------------------------
 
 
-def test_local_save_and_get_document(local: LocalStorageProvider) -> None:
+def test_save_and_get_document(storage_provider) -> None:
     content = b"%PDF-1.7"
-    metadata = {
-        "key": "abc",
-        "url": TEST_URL,
-        "original_filename": "race.pdf",
-        "content_type": "application/pdf",
-        "content_length": len(content),
-        "downloaded_at": "2026-01-01T00:00:00+00:00",
-    }
-    local.save_document(TEST_URL, content, metadata)
-    result = local.get_document(TEST_URL)
+    document = DownloadedDocument(
+        url=TEST_URL,
+        content=content,
+        original_filename="race.pdf",
+        content_length=len(content),
+        content_type="application/pdf",
+        downloaded_at=datetime.now(),
+    )
+    storage_provider.save_document(document)
+    result = storage_provider.get_document(TEST_URL)
     assert result is not None
-    returned_content, returned_meta = result
-    assert returned_content == content
-    assert returned_meta["original_filename"] == "race.pdf"
+    assert result.content == content
+    assert result.original_filename == "race.pdf"
 
 
-def test_local_document_exists(local: LocalStorageProvider) -> None:
-    assert not local.document_exists(TEST_URL)
-    local.save_document(TEST_URL, b"data", {"original_filename": "f.pdf"})
-    assert local.document_exists(TEST_URL)
+def test_document_exists(storage_provider) -> None:
+    assert not storage_provider.document_exists(TEST_URL)
+    content = b"%PDF-1.7"
+    document = DownloadedDocument(
+        url=TEST_URL,
+        content=content,
+        original_filename="race.pdf",
+        content_length=len(content),
+        content_type="application/pdf",
+        downloaded_at=datetime.now(),
+    )
+    storage_provider.save_document(document)
+    assert storage_provider.document_exists(TEST_URL)
 
 
-def test_local_get_document_returns_none_when_missing(local: LocalStorageProvider) -> None:
-    assert local.get_document(TEST_URL) is None
+def test_get_document_returns_none_when_missing(storage_provider) -> None:
+    assert storage_provider.get_document(TEST_URL) is None
+
+
+# ---------------------------------------------------------------------------
+# LocalStorageProvider — Documents (implementation-specific tests)
+# ---------------------------------------------------------------------------
 
 
 def test_local_document_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
-    local.save_document(TEST_URL, b"data", {"original_filename": "f.pdf"})
+    content = b"data"
+    document = DownloadedDocument(
+        url=TEST_URL,
+        content=content,
+        original_filename="f.pdf",
+        content_length=len(content),
+        content_type="application/pdf",
+        downloaded_at=datetime.now(),
+    )
+    local.save_document(document)
     rid = local._compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected_dir = tmp_path / ".documents" / "myplugin" / shard / rid
@@ -227,28 +274,8 @@ def test_local_plugin_name_isolation(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# S3StorageProvider — HTTP cache
+# S3StorageProvider — HTTP cache (implementation-specific tests)
 # ---------------------------------------------------------------------------
-
-
-def test_s3_save_and_get_http_cache(s3_provider: S3StorageProvider) -> None:
-    s3_provider.save_http_cache(TEST_URL, "<html>s3</html>")
-    assert s3_provider.get_http_cache(TEST_URL) == "<html>s3</html>"
-
-
-def test_s3_get_http_cache_returns_none_when_missing(s3_provider: S3StorageProvider) -> None:
-    assert s3_provider.get_http_cache(TEST_URL) is None
-
-
-def test_s3_exists_http_cache(s3_provider: S3StorageProvider) -> None:
-    assert not s3_provider.exists_http_cache(TEST_URL)
-    s3_provider.save_http_cache(TEST_URL, "content")
-    assert s3_provider.exists_http_cache(TEST_URL)
-
-
-def test_s3_http_cache_url_canonicalization(s3_provider: S3StorageProvider) -> None:
-    s3_provider.save_http_cache(TEST_URL, "canonical")
-    assert s3_provider.get_http_cache(TEST_URL_REORDERED) == "canonical"
 
 
 def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
@@ -260,36 +287,8 @@ def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
 
 
 # ---------------------------------------------------------------------------
-# S3StorageProvider — Snapshots
+# S3StorageProvider — Extracted data (implementation-specific tests)
 # ---------------------------------------------------------------------------
-
-
-def test_s3_save_and_list_snapshots(s3_provider: S3StorageProvider) -> None:
-    s3_provider.save_http_snapshot(TEST_URL, "v1", "2026-01-01T00-00-00-000000")
-    s3_provider.save_http_snapshot(TEST_URL, "v2", "2026-01-02T00-00-00-000000")
-    snapshots = s3_provider.list_http_snapshots(TEST_URL)
-    assert len(snapshots) == 2
-    assert snapshots[0] == ("2026-01-01T00-00-00-000000", "v1")
-    assert snapshots[1] == ("2026-01-02T00-00-00-000000", "v2")
-
-
-def test_s3_list_snapshots_returns_empty_when_none(s3_provider: S3StorageProvider) -> None:
-    assert s3_provider.list_http_snapshots(TEST_URL) == []
-
-
-# ---------------------------------------------------------------------------
-# S3StorageProvider — Extracted data
-# ---------------------------------------------------------------------------
-
-
-def test_s3_save_and_get_extracted(s3_provider: S3StorageProvider) -> None:
-    data = {"results": [1, 2]}
-    s3_provider.save_extracted(TEST_URL, data)
-    assert s3_provider.get_extracted(TEST_URL) == data
-
-
-def test_s3_get_extracted_returns_none_when_missing(s3_provider: S3StorageProvider) -> None:
-    assert s3_provider.get_extracted(TEST_URL) is None
 
 
 def test_s3_extracted_key_sharding(s3_provider: S3StorageProvider) -> None:
@@ -300,36 +299,8 @@ def test_s3_extracted_key_sharding(s3_provider: S3StorageProvider) -> None:
 
 
 # ---------------------------------------------------------------------------
-# S3StorageProvider — Documents
+# S3StorageProvider — Documents (implementation-specific tests)
 # ---------------------------------------------------------------------------
-
-
-def test_s3_save_and_get_document(s3_provider: S3StorageProvider) -> None:
-    content = b"%PDF-1.7"
-    metadata = {
-        "key": "abc",
-        "url": TEST_URL,
-        "original_filename": "race.pdf",
-        "content_type": "application/pdf",
-        "content_length": len(content),
-        "downloaded_at": "2026-01-01T00:00:00+00:00",
-    }
-    s3_provider.save_document(TEST_URL, content, metadata)
-    result = s3_provider.get_document(TEST_URL)
-    assert result is not None
-    returned_content, returned_meta = result
-    assert returned_content == content
-    assert returned_meta["original_filename"] == "race.pdf"
-
-
-def test_s3_document_exists(s3_provider: S3StorageProvider) -> None:
-    assert not s3_provider.document_exists(TEST_URL)
-    s3_provider.save_document(TEST_URL, b"data", {"original_filename": "f.pdf"})
-    assert s3_provider.document_exists(TEST_URL)
-
-
-def test_s3_get_document_returns_none_when_missing(s3_provider: S3StorageProvider) -> None:
-    assert s3_provider.get_document(TEST_URL) is None
 
 
 def test_s3_document_key_sharding(s3_provider: S3StorageProvider) -> None:
@@ -340,13 +311,15 @@ def test_s3_document_key_sharding(s3_provider: S3StorageProvider) -> None:
 
 
 def test_s3_document_metadata_stored_as_dedicated_object(s3_provider: S3StorageProvider) -> None:
-    metadata = {
-        "original_filename": "race.pdf",
-        "content_type": "application/pdf",
-        "content_length": 100,
-        "downloaded_at": "2026-01-01T00:00:00+00:00",
-    }
-    s3_provider.save_document(TEST_URL, b"content", metadata)
+    document = DownloadedDocument(
+        url=TEST_URL,
+        content=b"content",
+        original_filename="race.pdf",
+        content_length=100,
+        content_type="application/pdf",
+        downloaded_at=datetime.now(),
+    )
+    s3_provider.save_document(document)
     meta_key = s3_provider._document_metadata_key(TEST_URL)
     response = boto3.client("s3", region_name="eu-west-1").get_object(
         Bucket="ranking", Key=meta_key
@@ -373,46 +346,3 @@ def test_s3_plugin_name_isolation() -> None:
         provider_a.save_http_cache(TEST_URL, "from-a")
         assert provider_a.get_http_cache(TEST_URL) == "from-a"
         assert provider_b.get_http_cache(TEST_URL) is None
-
-
-# ---------------------------------------------------------------------------
-# Integration: HttpxClientWithCache with S3StorageProvider
-# ---------------------------------------------------------------------------
-
-
-def test_httpx_cache_with_s3_storage() -> None:
-    """Verify HttpxClientWithCache works end-to-end with S3StorageProvider."""
-    from unittest.mock import patch
-
-    import httpx as _httpx
-
-    from ranking.core.cache import CachePolicy
-    from ranking.core.cache_httpx import HttpxClientWithCache
-
-    with mock_aws():
-        client = boto3.client("s3", region_name="eu-west-1")
-        client.create_bucket(
-            Bucket="ranking",
-            CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
-        )
-        storage = S3StorageProvider("myplugin", bucket="ranking", region="eu-west-1")
-        cache = HttpxClientWithCache(plugin_name="myplugin", storage=storage)
-
-        calls: list[str] = []
-
-        def fake_get(*args, **kwargs):
-            url = str(args[0]) if args else str(kwargs["url"])
-            calls.append(url)
-            return _httpx.Response(
-                200, text="<html>s3 content</html>", request=_httpx.Request("GET", url)
-            )
-
-        url = "https://example.com/events"
-        with patch("ranking.core.cache_httpx.httpx.get", fake_get):
-            first = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
-            second = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
-
-        assert first == "<html>s3 content</html>"
-        assert second == "<html>s3 content</html>"
-        assert calls == [url]
-        assert storage.exists_http_cache(url)

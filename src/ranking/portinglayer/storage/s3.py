@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 
-from ranking.core.storage import StorageProvider
+from ranking.core.storage import DownloadedDocument, StorageProvider
 
 
 class S3StorageProvider(StorageProvider):
@@ -131,14 +132,26 @@ class S3StorageProvider(StorageProvider):
         data = self._get(self._extracted_key(url))
         return json.loads(data.decode("utf-8")) if data is not None else None
 
-    def save_document(self, url: str, content: bytes, metadata: dict[str, Any]) -> None:
-        filename = metadata.get("original_filename", "document")
-        content_type = metadata.get("content_type", "application/octet-stream")
-        self._put(self._document_content_key(url, filename), content, content_type)
+    def save_document(self, document: DownloadedDocument) -> None:
+        filename = document.original_filename if document.original_filename else "document"
+        content_type = document.content_type if document.content_type else ""
+        self._put(
+            self._document_content_key(document.url, filename),
+            document.content,
+            content_type,
+        )
+        metadata = {
+            "key": self._compute_resource_id(document.url),
+            "url": document.url,
+            "original_filename": filename,
+            "content_type": content_type,
+            "content_length": document.content_length,
+            "downloaded_at": document.downloaded_at.isoformat(),
+        }
         metadata_body = json.dumps(metadata, indent=2, ensure_ascii=False).encode("utf-8")
-        self._put(self._document_metadata_key(url), metadata_body, "application/json")
+        self._put(self._document_metadata_key(document.url), metadata_body, "application/json")
 
-    def get_document(self, url: str) -> tuple[bytes, dict[str, Any]] | None:
+    def get_document(self, url: str) -> DownloadedDocument | None:
         metadata_data = self._get(self._document_metadata_key(url))
         if metadata_data is None:
             return None
@@ -147,7 +160,14 @@ class S3StorageProvider(StorageProvider):
         content = self._get(self._document_content_key(url, filename))
         if content is None:
             return None
-        return content, metadata
+        return DownloadedDocument(
+            url=url,
+            content=content,
+            original_filename=metadata.get("original_filename"),
+            content_type=metadata.get("content_type"),
+            content_length=metadata.get("content_length"),
+            downloaded_at=datetime.fromisoformat(metadata.get("downloaded_at")),
+        )
 
     def document_exists(self, url: str) -> bool:
         return self._exists(self._document_metadata_key(url))

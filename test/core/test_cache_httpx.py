@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import httpx
 import pytest
 
-from ranking.core.cache import HttpClientWithCache
 from ranking.core.cache_httpx import HttpxClientWithCache
+from ranking.core.storage import DownloadedDocument, StorageProvider
 
 
 def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:
@@ -29,12 +31,8 @@ def test_download_cache_miss_then_hit(tmp_path: Path, monkeypatch: pytest.Monkey
     cache = HttpxClientWithCache("demo", document_root=tmp_path)
     url = "https://example.com/race_info.pdf"
 
-    first = cache.download(url)
-    second = cache.download(url)
-
-    assert first == second
-    assert first.exists()
-    assert first.read_bytes() == b"%PDF-1.7"
+    cache.download(url)
+    cache.download(url)
     assert calls == [url]
 
 
@@ -62,32 +60,11 @@ def test_download_preserves_file_extension(
     monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
     cache = HttpxClientWithCache("demo", document_root=tmp_path)
 
-    path = cache.download(url)
+    cache.download(url)
+    document = cache.storage.get_document(url)
 
-    assert path.suffix == expected_suffix
-
-
-def test_download_uses_document_sharding_and_cache_key(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def fake_get(*args, **kwargs):
-        url = _extract_url(args, kwargs)
-        return httpx.Response(
-            200,
-            content=b"binary",
-            request=httpx.Request("GET", url),
-        )
-
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("breizhchrono", document_root=tmp_path)
-    url = "https://example.com/files/race_info.pdf"
-    key = HttpClientWithCache.derive_cache_key(url)
-    shard = key[:2]
-
-    path = cache.download(url)
-
-    assert path.parent == tmp_path / "breizhchrono" / shard / key
-    assert path.exists()
+    assert document is not None and document.original_filename is not None
+    assert document.original_filename.endswith(expected_suffix)
 
 
 def test_download_raises_runtime_error_on_network_error(
@@ -101,3 +78,76 @@ def test_download_raises_runtime_error_on_network_error(
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.download("https://example.com/missing.pdf")
+
+
+# ---------------------------------------------------------------------------
+# Integration test with custom storage provider
+# ---------------------------------------------------------------------------
+
+
+class StubStorageProvider(StorageProvider):
+    """Minimal in-memory storage provider for testing HttpxClientWithCache."""
+
+    def __init__(self, plugin_name: str) -> None:
+        super().__init__(plugin_name)
+        self._http_cache: dict[str, str] = {}
+        self._extracted: dict[str, dict] = {}
+        self._documents: dict[str, DownloadedDocument] = {}
+
+    def save_http_cache(self, url: str, content: str) -> None:
+        self._http_cache[url] = content
+
+    def get_http_cache(self, url: str) -> str | None:
+        return self._http_cache.get(url)
+
+    def exists_http_cache(self, url: str) -> bool:
+        return url in self._http_cache
+
+    def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
+        pass  # Not needed for this test
+
+    def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
+        return []  # Not needed for this test
+
+    def save_extracted(self, url: str, data: dict) -> None:
+        self._extracted[url] = data
+
+    def get_extracted(self, url: str) -> dict | None:
+        return self._extracted.get(url)
+
+    def save_document(self, document: DownloadedDocument) -> None:
+        self._documents[document.url] = document
+
+    def get_document(self, url: str) -> DownloadedDocument | None:
+        return self._documents.get(url)
+
+    def document_exists(self, url: str) -> bool:
+        return url in self._documents
+
+
+def test_httpx_cache_integration_with_storage_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify HttpxClientWithCache works end-to-end with any storage provider."""
+    calls: list[str] = []
+
+    def fake_get(*args, **kwargs):
+        url = _extract_url(args, kwargs)
+        calls.append(url)
+        return httpx.Response(
+            200, text="<html>cached content</html>", request=httpx.Request("GET", url)
+        )
+
+    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
+
+    storage = StubStorageProvider("myplugin")
+    cache = HttpxClientWithCache(plugin_name="myplugin", storage=storage)
+
+    from ranking.core.cache import CachePolicy
+
+    url = "https://example.com/events"
+    first = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+    second = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert first == "<html>cached content</html>"
+    assert second == "<html>cached content</html>"
+    assert calls == [url]  # Only one network call
+    assert storage.exists_http_cache(url)

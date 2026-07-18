@@ -2,8 +2,22 @@ from __future__ import annotations
 
 import hashlib
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+
+@dataclass
+class DownloadedDocument:
+    url: str
+    content: bytes
+
+    original_filename: str | None
+    content_type: str | None
+    content_length: int
+
+    downloaded_at: datetime
 
 
 class StorageProvider(ABC):
@@ -71,12 +85,12 @@ class StorageProvider(ABC):
         """Return the extracted JSON data for a URL, or None if absent."""
 
     @abstractmethod
-    def save_document(self, url: str, content: bytes, metadata: dict[str, Any]) -> None:
+    def save_document(self, document: DownloadedDocument) -> None:
         """Persist a downloaded document and its metadata for a URL."""
 
     @abstractmethod
-    def get_document(self, url: str) -> tuple[bytes, dict[str, Any]] | None:
-        """Return the (content, metadata) for a downloaded document, or None if absent."""
+    def get_document(self, url: str) -> DownloadedDocument | None:
+        """Return the downloaded document for a URL, or None if absent."""
 
     @abstractmethod
     def document_exists(self, url: str) -> bool:

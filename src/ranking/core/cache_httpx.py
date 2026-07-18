@@ -12,7 +12,7 @@ import structlog
 
 from ranking.core.cache import HttpClientWithCache
 from ranking.core.errors import ExternalRedirectError
-from ranking.core.storage import StorageProvider
+from ranking.core.storage import DownloadedDocument, StorageProvider
 from ranking.portinglayer.storage import LocalStorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
@@ -106,21 +106,13 @@ class HttpxClientWithCache(HttpClientWithCache):
             log.error("Network error fetching URL", url=url, error=str(e))
             raise RuntimeError(f"Network error fetching URL: {url}") from e
 
-    def download(self, url: str) -> Path:
+    def download(self, url: str) -> None:
         """Download and cache a binary document from the given URL.
 
-        Returns the local path where the document is stored (only available for
-        :class:`~ranking.portinglayer.storage.LocalStorageProvider`).
+        Caches the document locally if it doesn't exist already.
         """
         if self.storage.document_exists(url):
-            result = self.storage.get_document(url)
-            if result is not None:
-                _, metadata = result
-                if isinstance(self.storage, LocalStorageProvider):
-                    doc_dir = self.storage._document_dir(url)
-                    local_path = doc_dir / metadata.get("original_filename", "document")
-                    self.logger.info("document_found_in_cache", url=url, path=doc_dir)
-                    return local_path
+            return
 
         self.logger.info("document_cache_miss", url=url)
         try:
@@ -142,25 +134,16 @@ class HttpxClientWithCache(HttpClientWithCache):
             raise RuntimeError(f"Network error downloading URL: {url}") from e
 
         filename = self.extract_filename(response)
-        key = self.derive_cache_key(url)
-        metadata = {
-            "key": key,
-            "url": url,
-            "original_filename": filename,
-            "content_type": response.headers.get("content-type", "application/octet-stream"),
-            "content_length": len(response.content),
-            "downloaded_at": datetime.now(timezone.utc).isoformat(),
-        }
-        self.storage.save_document(url, response.content, metadata)
-
-        self.logger.info("document_downloaded", url=url, size=len(response.content))
-
-        if isinstance(self.storage, LocalStorageProvider):
-            return self.storage._document_dir(url) / filename
-        raise RuntimeError(
-            "download() returns a local Path only when using LocalStorageProvider. "
-            "Use storage.get_document(url) directly when using other providers."
+        document = DownloadedDocument(
+            url=url,
+            content=response.content,
+            original_filename=filename,
+            content_length=len(response.content),
+            content_type=response.headers.get("content-type", "application/octet-stream"),
+            downloaded_at=datetime.now(timezone.utc),
         )
+        self.storage.save_document(document)
+        self.logger.info("document_downloaded", url=url, size=len(response.content))
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:

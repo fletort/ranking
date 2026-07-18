@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ranking.core.storage import StorageProvider
+from ranking.core.storage import DownloadedDocument, StorageProvider
 
 
 class LocalStorageProvider(StorageProvider):
@@ -95,16 +96,24 @@ class LocalStorageProvider(StorageProvider):
             return None
         return json.loads(path.read_text(encoding="utf-8"))
 
-    def save_document(self, url: str, content: bytes, metadata: dict[str, Any]) -> None:
-        doc_dir = self._document_dir(url)
+    def save_document(self, document: DownloadedDocument) -> None:
+        doc_dir = self._document_dir(document.url)
         doc_dir.mkdir(parents=True, exist_ok=True)
-        filename = metadata.get("original_filename", "document")
-        (doc_dir / filename).write_bytes(content)
+        filename = document.original_filename if document.original_filename else "document"
+        (doc_dir / filename).write_bytes(document.content)
+        metadata = {
+            "key": self._compute_resource_id(document.url),
+            "url": document.url,
+            "original_filename": filename,
+            "content_type": document.content_type,
+            "content_length": document.content_length,
+            "downloaded_at": document.downloaded_at.isoformat(),
+        }
         (doc_dir / "metadata.json").write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
-    def get_document(self, url: str) -> tuple[bytes, dict[str, Any]] | None:
+    def get_document(self, url: str) -> DownloadedDocument | None:
         doc_dir = self._document_dir(url)
         metadata_path = doc_dir / "metadata.json"
         if not metadata_path.exists():
@@ -114,7 +123,14 @@ class LocalStorageProvider(StorageProvider):
         content_path = doc_dir / filename
         if not content_path.exists():
             return None
-        return content_path.read_bytes(), metadata
+        return DownloadedDocument(
+            url=url,
+            content=content_path.read_bytes(),
+            original_filename=metadata.get("original_filename"),
+            content_type=metadata.get("content_type"),
+            content_length=metadata.get("content_length"),
+            downloaded_at=datetime.fromisoformat(metadata.get("downloaded_at")),
+        )
 
     def document_exists(self, url: str) -> bool:
         doc_dir = self._document_dir(url)
