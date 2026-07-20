@@ -15,19 +15,6 @@ class EmptyFetcher(HttpClientWithCache):
         return ""
 
 
-def test_derive_cache_key_ignores_query_parameter_order() -> None:
-    url = "https://example.com/page?a=1&b=2"
-    same_without_query_order = "https://example.com/page?b=2&a=1"
-    with_different_query_value = "https://example.com/page?a=1&b=3"
-
-    assert HttpClientWithCache.derive_cache_key(url) == HttpClientWithCache.derive_cache_key(
-        same_without_query_order
-    )
-    assert HttpClientWithCache.derive_cache_key(url) != HttpClientWithCache.derive_cache_key(
-        with_different_query_value
-    )
-
-
 def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
     calls: list[str] = []
 
@@ -167,18 +154,6 @@ def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None
     cache.save_extracted_json(url, {"x": 1})
 
     assert cache.storage.get_extracted(url_reordered) is not None
-
-
-def test_save_extracted_json_sharding_matches_http_cache(tmp_path: Path) -> None:
-    cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
-    url = "https://example.com/results"
-
-    cache.save_extracted_json(url, {"results": []})
-
-    key = HttpClientWithCache.derive_cache_key(url)
-    shard = key[:2]
-    expected_path = tmp_path / "demo" / "extracted" / shard / f"{key}.json"
-    assert expected_path.exists()
 
 
 def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:

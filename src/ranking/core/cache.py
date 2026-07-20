@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import structlog
 
@@ -67,12 +65,6 @@ class HttpClientWithCache(ABC):
         """Fetch a resource, without using the cache. This is the network-level fetcher."""
         pass
 
-    @staticmethod
-    def derive_cache_key(url: str) -> str:
-        """Derive a deterministic SHA-1 key from a canonicalized full URL string."""
-        canonical_url = HttpClientWithCache._canonicalize_url(url)
-        return hashlib.sha1(canonical_url.encode("utf-8")).hexdigest()  # noqa: S324
-
     def _has_changed(self, url: str, old: str, new: str) -> bool:
         """Determine if content has changed, optionally using a normalization hook."""
         if self.normalize_for_comparison:
@@ -130,20 +122,3 @@ class HttpClientWithCache(ABC):
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""
         return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H-%M-%S-%f")
-
-    @staticmethod
-    def _canonicalize_url(url: str) -> str:
-        """Canonicalize URL by sorting query parameters to stabilize cache keys."""
-        parsed = urlparse(url)
-        sorted_query = sorted(parse_qsl(parsed.query, keep_blank_values=True))
-        canonical_query = urlencode(sorted_query, doseq=True)
-        return urlunparse(
-            (
-                parsed.scheme,
-                parsed.netloc,
-                parsed.path,
-                parsed.params,
-                canonical_query,
-                parsed.fragment,
-            )
-        )
