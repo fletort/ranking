@@ -1,10 +1,11 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from ranking.core.cache import CachePolicy, HttpClientWithCache
+from ranking.core.storage import DownloadedDocument
 
 
 class EmptyFetcher(HttpClientWithCache):
@@ -169,3 +170,37 @@ def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None
     raw = cache.storage._extracted_path(url).read_text(encoding="utf-8")
     assert "\n" in raw
     assert "  " in raw
+
+
+def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -> None:
+    calls: list[str] = []
+
+    class DummyDownloader(HttpClientWithCache):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path)
+
+        def fetcher(self, url: str) -> str:
+            return ""
+
+        def downloader(self, url: str) -> DownloadedDocument:
+            calls.append(url)
+            return DownloadedDocument(
+                url=url,
+                content=b"pdf-content",
+                original_filename="race.pdf",
+                content_type="application/pdf",
+                content_length=11,
+                downloaded_at=datetime.now(timezone.utc),
+            )
+
+    cache = DummyDownloader()
+    url = "https://example.com/race.pdf"
+
+    cache.download(url)
+    cache.download(url)
+
+    saved = cache.storage.get_document(url)
+    assert calls == [url]
+    assert saved is not None
+    assert saved.content == b"pdf-content"
+    assert saved.original_filename == "race.pdf"

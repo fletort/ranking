@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 import structlog
 
-from ranking.core.storage import StorageProvider
+from ranking.core.storage import DownloadedDocument, StorageProvider
 from ranking.portinglayer.storage import LocalStorageProvider
 
 
@@ -65,6 +65,10 @@ class HttpClientWithCache(ABC):
         """Fetch a resource, without using the cache. This is the network-level fetcher."""
         pass
 
+    def downloader(self, url: str) -> DownloadedDocument:
+        """Download a document, without using the document cache."""
+        raise NotImplementedError
+
     def _has_changed(self, url: str, old: str, new: str) -> bool:
         """Determine if content has changed, optionally using a normalization hook."""
         if self.normalize_for_comparison:
@@ -118,6 +122,16 @@ class HttpClientWithCache(ABC):
             return
         self.logger.info("save_extracted_json", url=url)
         self.storage.save_extracted(url, data)
+
+    def download(self, url: str) -> None:
+        """Download and cache a binary document from the given URL."""
+        if self.storage.document_exists(url):
+            return
+
+        self.logger.info("document_cache_miss", url=url)
+        document = self.downloader(url)
+        self.storage.save_document(document)
+        self.logger.info("document_downloaded", url=url, size=len(document.content))
 
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""

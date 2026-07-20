@@ -106,15 +106,8 @@ class HttpxClientWithCache(HttpClientWithCache):
             log.error("Network error fetching URL", url=url, error=str(e))
             raise RuntimeError(f"Network error fetching URL: {url}") from e
 
-    def download(self, url: str) -> None:
-        """Download and cache a binary document from the given URL.
-
-        Caches the document locally if it doesn't exist already.
-        """
-        if self.storage.document_exists(url):
-            return
-
-        self.logger.info("document_cache_miss", url=url)
+    def downloader(self, url: str) -> DownloadedDocument:
+        """Download a document from the given URL without touching the cache."""
         try:
             response = httpx.get(
                 url,
@@ -134,7 +127,7 @@ class HttpxClientWithCache(HttpClientWithCache):
             raise RuntimeError(f"Network error downloading URL: {url}") from e
 
         filename = self.extract_filename(response)
-        document = DownloadedDocument(
+        return DownloadedDocument(
             url=url,
             content=response.content,
             original_filename=filename,
@@ -142,8 +135,6 @@ class HttpxClientWithCache(HttpClientWithCache):
             content_type=response.headers.get("content-type", "application/octet-stream"),
             downloaded_at=datetime.now(timezone.utc),
         )
-        self.storage.save_document(document)
-        self.logger.info("document_downloaded", url=url, size=len(response.content))
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
