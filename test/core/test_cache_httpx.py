@@ -36,6 +36,32 @@ def test_download_cache_miss_then_hit(tmp_path: Path, monkeypatch: pytest.Monkey
     assert calls == [url]
 
 
+def test_downloader_returns_downloaded_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_get(*args, **kwargs):
+        url = _extract_url(args, kwargs)
+        calls.append(url)
+        return httpx.Response(
+            200,
+            content=b"%PDF-1.7",
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
+    cache = HttpxClientWithCache("demo")
+    url = "https://example.com/race_info.pdf"
+
+    document = cache.downloader(url)
+
+    assert calls == [url]
+    assert document.url == url
+    assert document.content == b"%PDF-1.7"
+    assert document.content_length == len(b"%PDF-1.7")
+    assert document.original_filename == "race_info.pdf"
+    assert document.content_type == "application/octet-stream"
+
+
 @pytest.mark.parametrize(
     ("url", "expected_suffix"),
     [
@@ -67,6 +93,35 @@ def test_download_preserves_file_extension(
     assert document.original_filename.endswith(expected_suffix)
 
 
+@pytest.mark.parametrize(
+    ("url", "expected_suffix"),
+    [
+        ("https://example.com/race_info.pdf", ".pdf"),
+        ("https://example.com/event_map.jpg?size=large", ".jpg"),
+    ],
+)
+def test_downloader_preserves_file_extension(
+    monkeypatch: pytest.MonkeyPatch,
+    url: str,
+    expected_suffix: str,
+) -> None:
+    def fake_get(*args, **kwargs):
+        url = _extract_url(args, kwargs)
+        return httpx.Response(
+            200,
+            content=b"content",
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
+    cache = HttpxClientWithCache("demo")
+
+    document = cache.downloader(url)
+
+    assert document.original_filename is not None
+    assert document.original_filename.endswith(expected_suffix)
+
+
 def test_download_raises_runtime_error_on_network_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -78,6 +133,17 @@ def test_download_raises_runtime_error_on_network_error(
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.download("https://example.com/missing.pdf")
+
+
+def test_downloader_raises_runtime_error_on_network_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get(*args, **kwargs):
+        raise httpx.RequestError("boom", request=httpx.Request("GET", _extract_url(args, kwargs)))
+
+    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
+    cache = HttpxClientWithCache("demo")
+
+    with pytest.raises(RuntimeError, match="Network error downloading URL"):
+        cache.downloader("https://example.com/missing.pdf")
 
 
 # ---------------------------------------------------------------------------
