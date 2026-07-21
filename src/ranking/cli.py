@@ -49,15 +49,10 @@ class CrawlSummary:
     results_failed_count: int = 0
 
 
-def sleep(seconds: int | float, summary: CrawlSummary | None = None) -> None:
-    time.sleep(seconds)
-    if summary is not None:
-        summary.sleep_duration_seconds += seconds
-
-
 def log_crawl_summary(
     log: structlog.BoundLogger, summary: CrawlSummary, cache: HttpxCrawlerRuntime
 ) -> None:
+    summary.sleep_duration_seconds = cache.sleep_duration_seconds
     wall_duration_seconds = int(time.monotonic() - summary.started_at)
     sleep_duration_seconds = int(summary.sleep_duration_seconds)
     processing_duration_seconds = max(0, wall_duration_seconds - sleep_duration_seconds)
@@ -151,6 +146,7 @@ def cli(ctx, debug) -> None:
         "log": structlog.get_logger().bind(component="cli"),
         "cache": HttpxCrawlerRuntime(
             PLUGIN_NAME,
+            network_sleep_seconds=1,
             normalize_for_comparison=normalize_breizhchrono,
             save_extracted=True,
             base_url=EVENTS_LIST_URL,
@@ -250,7 +246,6 @@ def process_event(
     event_url = EVENTS_LIST_URL + event["url"]
     log.info("event_processing", url=event_url, name=event["name"])
     try:
-        sleep(1, summary)  # be nice to the server
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
     except RuntimeError as exc:
         if summary is not None:
@@ -288,7 +283,6 @@ def process_event(
         for document in event_detail["documents"]:
             document_url = document["url"]
             try:
-                sleep(1, summary)  # be nice to the server
                 cache.download(document_url)
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
@@ -315,7 +309,6 @@ def process_race(
 
     while True:
         try:
-            sleep(1, summary)  # be nice to the server
             race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
         except RuntimeError as exc:
             if summary is not None:
@@ -341,7 +334,6 @@ def process_race(
             if race_document_url:
                 full_document_url = EVENTS_LIST_URL + race_document_url
                 try:
-                    sleep(1, summary)  # be nice to the server
                     cache.download(full_document_url)
                     log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
@@ -376,7 +368,6 @@ def process_race(
             else:
                 full_result_detail_url = EVENTS_LIST_URL + result_detail_url
                 try:
-                    sleep(1, summary)  # be nice to the server
                     detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
                     detail = extract_result_detail(detail_html)
                     cache.save_extracted_json(full_result_detail_url, detail)

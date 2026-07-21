@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
@@ -31,6 +32,7 @@ class CrawlerRuntime(ABC):
         plugin_name: str,
         cache_root: Path | str = ".cache",
         document_root: Path | str = ".document",
+        network_sleep_seconds: int | float = 0,
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         logger: Any = structlog.get_logger(),
@@ -52,6 +54,8 @@ class CrawlerRuntime(ABC):
         self.plugin_name = plugin_name
         self.logger = logger
         self.save_extracted = save_extracted
+        self.network_sleep_seconds = network_sleep_seconds
+        self.sleep_duration_seconds = 0.0
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
@@ -85,6 +89,7 @@ class CrawlerRuntime(ABC):
         """Fetch content according to policy and update storage when needed."""
         if cache_policy is CachePolicy.NO_CACHE:
             self.logger.info("No cache policy, fetching directly", url=url)
+            self._sleep_before_network()
             return self.fetcher(url)
 
         existing_content = self.storage.get_http_cache(url)
@@ -97,12 +102,14 @@ class CrawlerRuntime(ABC):
 
             self.cache_misses += 1
             self.logger.info("Cache miss, fetching", url=url)
+            self._sleep_before_network()
             content = self.fetcher(url)
             self.storage.save_http_cache(url, content)
             return content
 
         if cache_policy is CachePolicy.REFRESH_AND_CACHE:
             self.logger.info("Cache refresh", url=url)
+            self._sleep_before_network()
             fetched_content = self.fetcher(url)
 
             if existing_content is None:
@@ -133,6 +140,7 @@ class CrawlerRuntime(ABC):
             return
 
         self.logger.info("document_cache_miss", url=url)
+        self._sleep_before_network()
         document = self.downloader(url)
         self.storage.save_document(document)
         self.logger.info("document_downloaded", url=url, size=len(document.content))
@@ -140,3 +148,9 @@ class CrawlerRuntime(ABC):
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""
         return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H-%M-%S-%f")
+
+    def _sleep_before_network(self) -> None:
+        if self.network_sleep_seconds <= 0:
+            return
+        time.sleep(self.network_sleep_seconds)
+        self.sleep_duration_seconds += self.network_sleep_seconds

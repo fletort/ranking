@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+import ranking.core.crawler.runtime as runtime_module
 from ranking.core.crawler.runtime import CachePolicy, CrawlerRuntime
 from ranking.core.storage.provider import DownloadedDocument
 
@@ -58,6 +59,49 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
     assert cache.storage.exists_http_cache(url)
     assert cache.cache_misses == 1
     assert cache.cache_hits == 1
+
+
+def test_cache_if_present_cache_hit_does_not_sleep_or_fetch(tmp_path: Path, monkeypatch) -> None:
+    sleep_calls: list[int | float] = []
+    monkeypatch.setattr(runtime_module.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path, network_sleep_seconds=1)
+
+        def fetcher(self, url: str) -> str:
+            raise AssertionError("fetcher should not be called on cache hit")
+
+    cache = DummyFetcher()
+    url = "https://example.com/cached"
+    cache.storage.save_http_cache(url, "cached-content")
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == "cached-content"
+    assert sleep_calls == []
+    assert cache.sleep_duration_seconds == 0
+
+
+def test_cache_if_present_cache_miss_sleeps_before_fetch(tmp_path: Path, monkeypatch) -> None:
+    sleep_calls: list[int | float] = []
+    monkeypatch.setattr(runtime_module.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__("demo", cache_root=tmp_path, network_sleep_seconds=1)
+
+        def fetcher(self, url: str) -> str:
+            return "fresh-content"
+
+    cache = DummyFetcher()
+    url = "https://example.com/miss"
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == "fresh-content"
+    assert sleep_calls == [1]
+    assert cache.sleep_duration_seconds == 1
 
 
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:
