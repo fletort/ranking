@@ -60,3 +60,4 @@ tmp/
 .log/
 # Local ranking document storage
 .document/
+.documents/
