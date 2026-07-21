@@ -10,9 +10,9 @@ from urllib.parse import unquote, urlparse
 import httpx
 import structlog
 
-from ranking.core.crawler import CrawlerRuntime
+from ranking.core.crawler.runtime import CrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
-from ranking.core.storage import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 

@@ -12,8 +12,7 @@ from urllib.parse import urljoin
 import click
 import structlog
 
-from ranking.core.crawler import CachePolicy
-from ranking.core.crawler_httpx import HttpxCrawlerRuntime
+from ranking.core.crawler import CachePolicy, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,

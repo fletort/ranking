@@ -8,8 +8,7 @@ from typing import Any, Callable
 
 import structlog
 
-from ranking.core.storage import DownloadedDocument, StorageProvider
-from ranking.portinglayer.storage import LocalStorageProvider
+from ranking.core.storage import DownloadedDocument, LocalStorageProvider, StorageProvider
 
 
 class CachePolicy(Enum):

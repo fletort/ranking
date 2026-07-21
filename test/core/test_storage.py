@@ -8,8 +8,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from ranking.core.storage import DownloadedDocument
-from ranking.portinglayer.storage import LocalStorageProvider, S3StorageProvider
+from ranking.core.storage import DownloadedDocument, LocalStorageProvider, S3StorageProvider
 
 # ---------------------------------------------------------------------------
 # Helpers

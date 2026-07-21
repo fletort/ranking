@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ranking.core.crawler import CachePolicy, CrawlerRuntime
-from ranking.core.storage import DownloadedDocument
+from ranking.core.crawler.runtime import CachePolicy, CrawlerRuntime
+from ranking.core.storage.provider import DownloadedDocument
 
 
 class EmptyFetcher(CrawlerRuntime):
@@ -158,7 +158,7 @@ def test_save_extracted_json_uses_same_key_as_http_cache(tmp_path: Path) -> None
 
 
 def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None:
-    from ranking.portinglayer.storage import LocalStorageProvider
+    from ranking.core.storage import LocalStorageProvider
 
     cache = EmptyFetcher(cache_root=tmp_path, save_extracted=True)
     url = "https://example.com/detail"
@@ -177,7 +177,7 @@ def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -
 
     class DummyDownloader(CrawlerRuntime):
         def __init__(self) -> None:
-            super().__init__("demo", cache_root=tmp_path)
+            super().__init__("demo", cache_root=tmp_path, document_root=tmp_path)
 
         def fetcher(self, url: str) -> str:
             return ""

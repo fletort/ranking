@@ -103,11 +103,11 @@ __all__ = ["StorageProvider"]
 def __getattr__(name: str) -> Any:
     """Lazily expose provider implementations for backward-compatible imports."""
     if name == "LocalStorageProvider":
-        from ranking.portinglayer.storage import LocalStorageProvider
+        from ranking.core.storage import LocalStorageProvider
 
         return LocalStorageProvider
     if name == "S3StorageProvider":
-        from ranking.portinglayer.storage import S3StorageProvider
+        from ranking.core.storage import S3StorageProvider
 
         return S3StorageProvider
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

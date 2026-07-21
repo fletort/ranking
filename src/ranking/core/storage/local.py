@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ranking.core.storage import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
 
 class LocalStorageProvider(StorageProvider):

@@ -7,7 +7,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 
-from ranking.core.storage import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
 
 class S3StorageProvider(StorageProvider):
