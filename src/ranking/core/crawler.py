@@ -20,27 +20,29 @@ class CachePolicy(Enum):
     REFRESH_AND_CACHE = "REFRESH_AND_CACHE"
 
 
-class HttpClientWithCache(ABC):
-    """Deterministic HTTP cache with policy-driven reads and writes.
+class CrawlerRuntime(ABC):
+    """Orchestrates resource retrieval, cache policies, and artifact persistence.
 
-    Storage is delegated to a :class:`~ranking.core.storage.StorageProvider`.
-    The default provider is :class:`~ranking.portinglayer.storage.LocalStorageProvider`.
+    Network access is implemented by subclasses.
+    Storage is delegated to a StorageProvider.
     """
 
     def __init__(
         self,
         plugin_name: str,
         cache_root: Path | str = ".cache",
+        document_root: Path | str = ".document",
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         logger: Any = structlog.get_logger(),
         storage: StorageProvider | None = None,
     ) -> None:
-        """Initialize a cache instance scoped to a plugin name.
+        """Initialize a crawler instance scoped to a plugin name.
 
         Args:
-            plugin_name: Logical name of the plugin owning this cache.
+            plugin_name: Logical name of the plugin owning this crawler instance.
             cache_root: Root directory for the local cache (used when *storage* is not provided).
+            document_root: Root directory for downloaded documents (used when *storage* is not provided).
             normalize_for_comparison: Optional hook to normalize content before change detection.
             save_extracted: If True, extracted JSON data is persisted via the storage provider.
             logger: Structured logger instance.
@@ -57,7 +59,9 @@ class HttpClientWithCache(ABC):
         self.cache_misses = 0
 
         if storage is None:
-            storage = LocalStorageProvider(plugin_name, cache_root=cache_root)
+            storage = LocalStorageProvider(
+                plugin_name, cache_root=cache_root, document_root=document_root
+            )
         self.storage = storage
 
     @abstractmethod

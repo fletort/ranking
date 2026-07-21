@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from ranking.core.cache import CachePolicy, HttpClientWithCache
+from ranking.core.crawler import CachePolicy, CrawlerRuntime
 from ranking.core.storage import DownloadedDocument
 
 
-class EmptyFetcher(HttpClientWithCache):
+class EmptyFetcher(CrawlerRuntime):
     def __init__(self, cache_root, save_extracted=False) -> None:
         super().__init__("demo", cache_root, save_extracted=save_extracted)
 
@@ -19,7 +19,7 @@ class EmptyFetcher(HttpClientWithCache):
 def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
     calls: list[str] = []
 
-    class DummyFetcher(HttpClientWithCache):
+    class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
 
@@ -38,7 +38,7 @@ def test_no_cache_policy_never_reads_or_writes_cache(tmp_path: Path) -> None:
 def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
     calls: list[str] = []
 
-    class DummyFetcher(HttpClientWithCache):
+    class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
 
@@ -63,7 +63,7 @@ def test_cache_if_present_fetches_once_then_uses_cache(tmp_path: Path) -> None:
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:
     response_values = ["v1", "v1", "v2", "v3"]
 
-    class DummyFetcher(HttpClientWithCache):
+    class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
 
@@ -114,7 +114,7 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
 
 def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
 
-    class DummyFetcher(HttpClientWithCache):
+    class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
 
@@ -175,7 +175,7 @@ def test_save_extracted_json_is_indented_for_readability(tmp_path: Path) -> None
 def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -> None:
     calls: list[str] = []
 
-    class DummyDownloader(HttpClientWithCache):
+    class DummyDownloader(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
 

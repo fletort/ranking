@@ -4,9 +4,66 @@ from pathlib import Path
 
 import httpx
 import pytest
+from pytest_httpx import HTTPXMock
 
-from ranking.core.cache_httpx import HttpxClientWithCache
+from ranking.core.crawler_httpx import HEADERS, HttpxCrawlerRuntime
+from ranking.core.errors import ExternalRedirectError
 from ranking.core.storage import DownloadedDocument, StorageProvider
+
+
+def test_httpx_fetcher_returns_html(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    url = "https://example.com/page"
+    httpx_mock.add_response(url=url, text="<html>Hello</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    result = client.fetcher(url)
+
+    assert result == "<html>Hello</html>"
+
+
+def test_httpx_fetcher_sends_custom_headers(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    url = "https://example.com/page"
+    httpx_mock.add_response(url=url, text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    client.fetcher(url)
+
+    requests = httpx_mock.get_requests()
+    assert len(requests) == 1
+    for header, value in HEADERS.items():
+        assert requests[0].headers.get(header) == value
+
+
+def test_httpx_fetcher_raises_on_http_error(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    url = "https://example.com/not-found"
+    httpx_mock.add_response(url=url, status_code=404)
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    with pytest.raises(RuntimeError, match="HTTP error 404"):
+        client.fetcher(url)
+
+
+def test_httpx_fetcher_raises_on_network_error(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    url = "https://example.com/fail"
+    httpx_mock.add_exception(httpx.ConnectError("connection refused"), url=url)
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    with pytest.raises(RuntimeError, match="Network error fetching URL"):
+        client.fetcher(url)
+
+
+def test_httpx_fetcher_raises_on_external_redirect(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    url = "https://example.com/redirect"
+    redirected_url = "https://external.com/page"
+    httpx_mock.add_response(url=url, status_code=302, headers={"Location": redirected_url})
+    httpx_mock.add_response(url=redirected_url, text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+    with pytest.raises(
+        ExternalRedirectError,
+        check=lambda e: e.requested_url == url and e.final_url == redirected_url,
+    ):
+        client.fetcher(url)
 
 
 def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:
@@ -27,8 +84,8 @@ def test_download_cache_miss_then_hit(tmp_path: Path, monkeypatch: pytest.Monkey
             request=httpx.Request("GET", url),
         )
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", document_root=tmp_path)
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo", document_root=tmp_path)
     url = "https://example.com/race_info.pdf"
 
     cache.download(url)
@@ -48,8 +105,8 @@ def test_downloader_returns_downloaded_document(monkeypatch: pytest.MonkeyPatch)
             request=httpx.Request("GET", url),
         )
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo")
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo")
     url = "https://example.com/race_info.pdf"
 
     document = cache.downloader(url)
@@ -83,8 +140,8 @@ def test_download_preserves_file_extension(
             request=httpx.Request("GET", url),
         )
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", document_root=tmp_path)
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo", document_root=tmp_path)
 
     cache.download(url)
     document = cache.storage.get_document(url)
@@ -113,8 +170,8 @@ def test_downloader_preserves_file_extension(
             request=httpx.Request("GET", url),
         )
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo")
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo")
 
     document = cache.downloader(url)
 
@@ -128,8 +185,8 @@ def test_download_raises_runtime_error_on_network_error(
     def fake_get(*args, **kwargs):
         raise httpx.RequestError("boom", request=httpx.Request("GET", _extract_url(args, kwargs)))
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo", document_root=tmp_path)
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo", document_root=tmp_path)
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.download("https://example.com/missing.pdf")
@@ -139,8 +196,8 @@ def test_downloader_raises_runtime_error_on_network_error(monkeypatch: pytest.Mo
     def fake_get(*args, **kwargs):
         raise httpx.RequestError("boom", request=httpx.Request("GET", _extract_url(args, kwargs)))
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
-    cache = HttpxClientWithCache("demo")
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
+    cache = HttpxCrawlerRuntime("demo")
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.downloader("https://example.com/missing.pdf")
@@ -202,12 +259,12 @@ def test_httpx_cache_integration_with_storage_provider(monkeypatch: pytest.Monke
             200, text="<html>cached content</html>", request=httpx.Request("GET", url)
         )
 
-    monkeypatch.setattr("ranking.core.cache_httpx.httpx.get", fake_get)
+    monkeypatch.setattr("ranking.core.crawler_httpx.httpx.get", fake_get)
 
     storage = StubStorageProvider("myplugin")
-    cache = HttpxClientWithCache(plugin_name="myplugin", storage=storage)
+    cache = HttpxCrawlerRuntime(plugin_name="myplugin", storage=storage)
 
-    from ranking.core.cache import CachePolicy
+    from ranking.core.crawler import CachePolicy
 
     url = "https://example.com/events"
     first = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)

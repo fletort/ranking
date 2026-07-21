@@ -84,7 +84,7 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
     monkeypatch.setattr(cli_module, "extract_result_detail", lambda html: {"runner": "Alice"})
     monkeypatch.setattr(cli_module, "setup_logging", lambda debug=False: None)
     monkeypatch.setattr(cli_module.structlog, "get_logger", lambda: log)
-    monkeypatch.setattr(cli_module, "HttpxClientWithCache", lambda *args, **kwargs: cache)
+    monkeypatch.setattr(cli_module, "HttpxCrawlerRuntime", lambda *args, **kwargs: cache)
     monkeypatch.setattr(cli_module.time, "sleep", lambda seconds: None)
     monotonic_values = iter([100.0, 106.0])
     monkeypatch.setattr(cli_module.time, "monotonic", lambda: next(monotonic_values))

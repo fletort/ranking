@@ -10,10 +10,9 @@ from urllib.parse import unquote, urlparse
 import httpx
 import structlog
 
-from ranking.core.cache import HttpClientWithCache
+from ranking.core.crawler import CrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
 from ranking.core.storage import DownloadedDocument, StorageProvider
-from ranking.portinglayer.storage import LocalStorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -26,8 +25,8 @@ HEADERS = {
 DOCUMENT_DOWNLOAD_TIMEOUT = 10.0
 
 
-class HttpxClientWithCache(HttpClientWithCache):
-    """HTTP cache backed by httpx for network fetching."""
+class HttpxCrawlerRuntime(CrawlerRuntime):
+    """Crawler runtime implementation using httpx for network operations."""
 
     def __init__(
         self,
@@ -40,13 +39,10 @@ class HttpxClientWithCache(HttpClientWithCache):
         storage: StorageProvider | None = None,
     ) -> None:
         """Initialize the cache with httpx as the fetcher."""
-        if storage is None:
-            storage = LocalStorageProvider(
-                plugin_name, cache_root=cache_root, document_root=document_root
-            )
         super().__init__(
             plugin_name,
             cache_root=cache_root,
+            document_root=document_root,
             normalize_for_comparison=normalize_for_comparison,
             save_extracted=save_extracted,
             storage=storage,
