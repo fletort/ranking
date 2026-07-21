@@ -41,7 +41,8 @@ class CrawlerRuntime(ABC):
         Args:
             plugin_name: Logical name of the plugin owning this crawler instance.
             cache_root: Root directory for the local cache (used when *storage* is not provided).
-            document_root: Root directory for downloaded documents (used when *storage* is not provided).
+            document_root: Root directory for downloaded documents
+                           (used when *storage* is not provided).
             normalize_for_comparison: Optional hook to normalize content before change detection.
             save_extracted: If True, extracted JSON data is persisted via the storage provider.
             logger: Structured logger instance.
