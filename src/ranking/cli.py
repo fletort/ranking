@@ -12,8 +12,7 @@ from urllib.parse import urljoin
 import click
 import structlog
 
-from ranking.core.cache import CachePolicy
-from ranking.core.cache_httpx import HttpxClientWithCache
+from ranking.core.crawler import CachePolicy, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
@@ -57,7 +56,7 @@ def sleep(seconds: int | float, summary: CrawlSummary | None = None) -> None:
 
 
 def log_crawl_summary(
-    log: structlog.BoundLogger, summary: CrawlSummary, cache: HttpxClientWithCache
+    log: structlog.BoundLogger, summary: CrawlSummary, cache: HttpxCrawlerRuntime
 ) -> None:
     wall_duration_seconds = int(time.monotonic() - summary.started_at)
     sleep_duration_seconds = int(summary.sleep_duration_seconds)
@@ -150,7 +149,7 @@ def cli(ctx, debug) -> None:
     setup_logging(debug)
     ctx.obj = {
         "log": structlog.get_logger().bind(component="cli"),
-        "cache": HttpxClientWithCache(
+        "cache": HttpxCrawlerRuntime(
             PLUGIN_NAME,
             normalize_for_comparison=normalize_breizhchrono,
             save_extracted=True,
@@ -243,7 +242,7 @@ def event(ctx, url, page_race_max) -> None:
 
 def process_event(
     event: EventListItem,
-    cache: HttpxClientWithCache,
+    cache: HttpxCrawlerRuntime,
     log: structlog.BoundLogger,
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
@@ -305,7 +304,7 @@ def process_event(
 
 def process_race(
     race: RaceItem,
-    cache: HttpxClientWithCache,
+    cache: HttpxCrawlerRuntime,
     log: structlog.BoundLogger,
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,

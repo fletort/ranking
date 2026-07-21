@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 from collections.abc import Callable
@@ -11,8 +10,9 @@ from urllib.parse import unquote, urlparse
 import httpx
 import structlog
 
-from ranking.core.cache import HttpClientWithCache
+from ranking.core.crawler.runtime import CrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
+from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -25,8 +25,8 @@ HEADERS = {
 DOCUMENT_DOWNLOAD_TIMEOUT = 10.0
 
 
-class HttpxClientWithCache(HttpClientWithCache):
-    """HTTP cache backed by httpx for network fetching."""
+class HttpxCrawlerRuntime(CrawlerRuntime):
+    """Crawler runtime implementation using httpx for network operations."""
 
     def __init__(
         self,
@@ -36,16 +36,18 @@ class HttpxClientWithCache(HttpClientWithCache):
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,
+        storage: StorageProvider | None = None,
     ) -> None:
         """Initialize the cache with httpx as the fetcher."""
         super().__init__(
             plugin_name,
             cache_root=cache_root,
+            document_root=document_root,
             normalize_for_comparison=normalize_for_comparison,
             save_extracted=save_extracted,
+            storage=storage,
         )
         self.base_url = base_url
-        self.document_root = Path(document_root)
 
     def fetcher(self, url: str) -> str:
         """Fetch the HTML content of a page at the given URL using httpx.
@@ -100,20 +102,8 @@ class HttpxClientWithCache(HttpClientWithCache):
             log.error("Network error fetching URL", url=url, error=str(e))
             raise RuntimeError(f"Network error fetching URL: {url}") from e
 
-    def download(self, url: str) -> Path:
-        """Download and cache a binary document from the given URL."""
-        key = self.derive_cache_key(url)
-        shard = key[:2]
-        destination = self.document_root / self.plugin_name / shard / key
-        metadata_path = destination / "metadata.json"
-        if metadata_path.exists():
-            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-            original_filename = destination / metadata.get("original_filename")
-            if original_filename.exists():
-                self.logger.info("document_found_in_cache", url=url, path=destination)
-                return original_filename
-
-        self.logger.info("document_cache_miss", url=url, path=destination)
+    def downloader(self, url: str) -> DownloadedDocument:
+        """Download a document from the given URL without touching the cache."""
         try:
             response = httpx.get(
                 url,
@@ -133,28 +123,14 @@ class HttpxClientWithCache(HttpClientWithCache):
             raise RuntimeError(f"Network error downloading URL: {url}") from e
 
         filename = self.extract_filename(response)
-        destination.mkdir(parents=True, exist_ok=True)
-        content_destination = destination / f"{filename}"
-        content_destination.write_bytes(response.content)
-
-        # Write metadata file
-        metadata_path = metadata_path = destination / "metadata.json"
-        metadata = {
-            "key": key,
-            "url": url,
-            "original_filename": self.extract_filename(response),
-            "content_type": response.headers.get("content-type", "application/octet-stream"),
-            "content_length": len(response.content),
-            "downloaded_at": datetime.now(timezone.utc).isoformat(),
-        }
-        metadata_path.write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+        return DownloadedDocument(
+            url=url,
+            content=response.content,
+            original_filename=filename,
+            content_length=len(response.content),
+            content_type=response.headers.get("content-type", "application/octet-stream"),
+            downloaded_at=datetime.now(timezone.utc),
         )
-
-        self.logger.info(
-            "document_downloaded", url=url, path=destination, size=len(response.content)
-        )
-        return content_destination
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
