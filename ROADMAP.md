@@ -100,8 +100,14 @@ Goal: prepare long-term unattended execution
 - [x] define storage strategy
 - [x] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
       [#63](https://github.com/fletort/ranking/issues/63)
-- [ ] validate restart behavior using persistent storage
-- [ ] prepare VM deployment
+- [ ] Valid: restart behavior using persistent storage
+  - [ ] dev: move lazy pause on real crawl only (faster cache)
+        [#66](https://github.com/fletort/ranking/issues/66)
+  - [ ] validate cache reuse across crawler restarts (on S3)
+- [ ] CI/CD: prepare VM deployment [#67](https://github.com/fletort/ranking/issues/67)
+  - [ ] create VM installation script and/or document VM prerequesite
+  - [ ] create deployment GitHub Action (manual action)
+  - [ ] validate full crawl execution on VM
 
 ## 🚧 Phase 7 — Incremental Crawling
 
