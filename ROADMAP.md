@@ -100,8 +100,9 @@ Goal: prepare long-term unattended execution
 - [x] define storage strategy
 - [x] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
       [#63](https://github.com/fletort/ranking/issues/63)
+- [ ] support storage backend selection (local / s3) from CLI
 - [ ] Valid: restart behavior using persistent storage
-  - [ ] dev: move lazy pause on real crawl only (faster cache)
+  - [x] dev: move lazy pause on real crawl only (faster cache)
         [#66](https://github.com/fletort/ranking/issues/66)
   - [ ] validate cache reuse across crawler restarts (on S3)
 - [ ] CI/CD: prepare VM deployment [#67](https://github.com/fletort/ranking/issues/67)
