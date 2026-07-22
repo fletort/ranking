@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime
 from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 
-from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
 
 
 class S3StorageProvider(StorageProvider):
@@ -32,11 +33,28 @@ class S3StorageProvider(StorageProvider):
         plugin_name: str,
         bucket: str,
         region: str | None = None,
+        endpoint_url: str | None = None,
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
     ) -> None:
         """Initialize the S3 storage provider."""
         super().__init__(plugin_name)
         self.bucket = bucket
-        self._s3 = boto3.client("s3", region_name=region)
+        kwargs = {"service_name": "s3"}
+        if region:
+            kwargs["region_name"] = region
+        self.region = region if region else None
+        if endpoint_url:
+            kwargs["endpoint_url"] = endpoint_url
+        self.endpoint_url = endpoint_url if endpoint_url else None
+        if access_key_id:
+            kwargs["aws_access_key_id"] = access_key_id
+            # We are not using the default AWS_ACCESS_KEY_ID used by boto3
+        if secret_access_key:
+            kwargs["aws_secret_access_key"] = secret_access_key
+            # We are not using the default AWS_SECRET_ACCESS_KEY used by boto3
+
+        self._s3 = boto3.client(**kwargs)
 
     def _http_cache_key(self, url: str) -> str:
         rid = self._compute_resource_id(url)
@@ -171,3 +189,65 @@ class S3StorageProvider(StorageProvider):
 
     def document_exists(self, url: str) -> bool:
         return self._exists(self._document_metadata_key(url))
+
+    def healthcheck(self) -> HealthCheckResult:
+        checks: dict[str, bool] = {}
+        details: dict[str, str] = {}
+
+        details["bucket"] = self.bucket
+        if self.region:
+            details["region"] = self.region
+        if self.endpoint_url:
+            details["endpoint_url"] = self.endpoint_url
+
+        # bucket existence
+        try:
+            self._s3.head_bucket(Bucket=self.bucket)
+            checks["bucket_access"] = True
+
+        except ClientError:
+            checks["bucket_access"] = False
+
+        # write/read/delete
+        object_key = f"{self.plugin_name}/healthcheck/{uuid.uuid4()}.txt"
+
+        try:
+            self._s3.put_object(
+                Bucket=self.bucket,
+                Key=object_key,
+                Body=b"healthcheck",
+            )
+            checks["write"] = True
+        except Exception:
+            checks["write"] = False
+
+        try:
+            response = self._s3.get_object(
+                Bucket=self.bucket,
+                Key=object_key,
+            )
+
+            content = response["Body"].read()
+            checks["read"] = content == b"healthcheck"
+
+        except Exception:
+            checks["read"] = False
+
+        try:
+            self._s3.delete_object(
+                Bucket=self.bucket,
+                Key=object_key,
+            )
+            checks["delete"] = True
+
+        except Exception:
+            checks["delete"] = False
+
+        success = all(checks.values())
+
+        return HealthCheckResult(
+            backend="s3",
+            success=success,
+            checks=checks,
+            details=details,
+        )

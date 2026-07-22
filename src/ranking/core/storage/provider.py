@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -18,6 +18,16 @@ class DownloadedDocument:
     content_length: int
 
     downloaded_at: datetime
+
+
+@dataclass
+class HealthCheckResult:
+    """Result of a health check for a storage provider."""
+
+    success: bool
+    backend: str
+    details: dict[str, str] = field(default_factory=dict)
+    checks: dict[str, bool] = field(default_factory=dict)
 
 
 class StorageProvider(ABC):
@@ -95,6 +105,14 @@ class StorageProvider(ABC):
     @abstractmethod
     def document_exists(self, url: str) -> bool:
         """Return True if a downloaded document exists for the URL."""
+
+    @abstractmethod
+    def healthcheck(self) -> HealthCheckResult:
+        """Perform a health check on the storage provider.
+
+        Returns:
+            HealthCheckResult: The result of the health check.
+        """
 
 
 __all__ = ["StorageProvider"]

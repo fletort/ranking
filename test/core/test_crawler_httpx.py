@@ -8,7 +8,7 @@ from pytest_httpx import HTTPXMock
 
 from ranking.core.crawler.httpx import HEADERS, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
-from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
 
 
 def test_httpx_fetcher_returns_html(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
@@ -246,6 +246,9 @@ class StubStorageProvider(StorageProvider):
 
     def document_exists(self, url: str) -> bool:
         return url in self._documents
+
+    def healthcheck(self) -> HealthCheckResult:
+        return HealthCheckResult(success=True, backend="StubStorageProvider", details={}, checks={})
 
 
 def test_httpx_cache_integration_with_storage_provider(monkeypatch: pytest.MonkeyPatch) -> None:

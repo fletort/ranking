@@ -112,3 +112,14 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
         "cache_hits_count": 4,
         "cache_misses_count": 1,
     }
+
+
+def test_check_storage_local():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_module.cli,
+        ["check", "storage", "--storage", "local"],
+    )
+
+    assert result.exit_code == 0
+    assert "SUCCESS" in result.output
