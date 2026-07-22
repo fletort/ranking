@@ -151,18 +151,29 @@ def add_storage_option(f):
     )(f)
 
 
+def build_storage(
+    storage_type: str,
+    plugin_name: str,
+) -> StorageProvider:
+
+    if storage_type == "local":
+        return LocalStorageProvider(plugin_name)
+
+    if storage_type == "s3":
+        return S3StorageProvider(
+            plugin_name=plugin_name,
+            bucket=os.environ["RANKING_S3_BUCKET"],
+            region=os.getenv("RANKING_S3_REGION"),
+            endpoint_url=os.getenv("RANKING_S3_ENDPOINT"),
+            access_key_id=os.getenv("RANKING_S3_ACCESS_KEY_ID"),
+            secret_access_key=os.getenv("RANKING_S3_SECRET_ACCESS_KEY"),
+        )
+
+    raise ValueError(f"Unknown storage type: {storage_type}")
+
+
 def build_cache(storage: str) -> HttpxCrawlerRuntime:
-    storage_provider: StorageProvider
-    if storage == "s3":
-        bucket = os.environ.get("RANKING_S3_BUCKET")
-        if not bucket:
-            raise click.ClickException(
-                "RANKING_S3_BUCKET environment variable is required for S3 storage"
-            )
-        region = os.environ.get("RANKING_S3_REGION")
-        storage_provider = S3StorageProvider(PLUGIN_NAME, bucket=bucket, region=region)
-    else:
-        storage_provider = LocalStorageProvider(PLUGIN_NAME)
+    storage_provider = build_storage(storage, PLUGIN_NAME)
     return HttpxCrawlerRuntime(
         PLUGIN_NAME,
         network_sleep_seconds=NETWORK_SLEEP_SECONDS,
@@ -466,3 +477,41 @@ def extract(
         )
     else:
         click.echo(json_result)
+
+
+@cli.group()
+def check():
+    """Diagnostic commands."""
+
+
+@check.command("storage")
+@add_storage_option
+def check_storage(storage: str) -> None:
+    """Validate storage backend configuration."""
+
+    storage_provider = build_storage(
+        storage_type=storage,
+        plugin_name="healthcheck",
+    )
+
+    result = storage_provider.healthcheck()
+
+    click.echo(f"Storage backend : {result.backend}")
+    click.echo()
+
+    for name, value in result.details.items():
+        click.echo(f"{name:<15}: {value}")
+
+    click.echo()
+
+    for name, ok in result.checks.items():
+        status = "✓" if ok else "✗"
+        click.echo(f"{status} {name}")
+
+    click.echo()
+
+    if result.success:
+        click.secho("SUCCESS", fg="green")
+    else:
+        click.secho("FAILED", fg="red")
+        raise click.ClickException("Storage healthcheck failed")

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
 
 
 class LocalStorageProvider(StorageProvider):
@@ -136,3 +137,40 @@ class LocalStorageProvider(StorageProvider):
         doc_dir = self._document_dir(url)
         metadata_path = doc_dir / "metadata.json"
         return metadata_path.exists()
+
+    from pathlib import Path
+
+    def healthcheck(self) -> HealthCheckResult:
+        cache_root = self.cache_root
+        document_root = self.document_root
+
+        cache_root.mkdir(parents=True, exist_ok=True)
+        document_root.mkdir(parents=True, exist_ok=True)
+
+        checks = {}
+
+        try:
+            with tempfile.NamedTemporaryFile(dir=cache_root, delete=True):
+                pass
+            checks["cache_writable"] = True
+        except Exception:
+            checks["cache_writable"] = False
+
+        try:
+            with tempfile.NamedTemporaryFile(dir=document_root, delete=True):
+                pass
+            checks["documents_writable"] = True
+        except Exception:
+            checks["documents_writable"] = False
+
+        success = all(checks.values())
+
+        return HealthCheckResult(
+            backend="local",
+            success=success,
+            checks=checks,
+            details={
+                "cache_root": str(cache_root),
+                "document_root": str(document_root),
+            },
+        )

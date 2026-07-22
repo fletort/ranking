@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import boto3
 import pytest
@@ -273,6 +274,26 @@ def test_local_plugin_name_isolation(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# S3StorageProvider — plugin name isolation
+# ---------------------------------------------------------------------------
+
+
+def test_s3_plugin_name_isolation() -> None:
+    with mock_aws():
+        client = boto3.client("s3", region_name="eu-west-1")
+        client.create_bucket(
+            Bucket="ranking",
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+        )
+        provider_a = S3StorageProvider("plugin_a", bucket="ranking", region="eu-west-1")
+        provider_b = S3StorageProvider("plugin_b", bucket="ranking", region="eu-west-1")
+
+        provider_a.save_http_cache(TEST_URL, "from-a")
+        assert provider_a.get_http_cache(TEST_URL) == "from-a"
+        assert provider_b.get_http_cache(TEST_URL) is None
+
+
+# ---------------------------------------------------------------------------
 # S3StorageProvider — HTTP cache (implementation-specific tests)
 # ---------------------------------------------------------------------------
 
@@ -328,20 +349,112 @@ def test_s3_document_metadata_stored_as_dedicated_object(s3_provider: S3StorageP
 
 
 # ---------------------------------------------------------------------------
-# S3StorageProvider — plugin name isolation
+# LocalStorageProvider — Healthcheck (implementation-specific tests)
 # ---------------------------------------------------------------------------
 
 
-def test_s3_plugin_name_isolation() -> None:
-    with mock_aws():
-        client = boto3.client("s3", region_name="eu-west-1")
-        client.create_bucket(
-            Bucket="ranking",
-            CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
-        )
-        provider_a = S3StorageProvider("plugin_a", bucket="ranking", region="eu-west-1")
-        provider_b = S3StorageProvider("plugin_b", bucket="ranking", region="eu-west-1")
+def test_local_healthcheck_success(tmp_path):
+    storage = LocalStorageProvider(
+        plugin_name="test",
+        cache_root=tmp_path / ".cache",
+        document_root=tmp_path / ".documents",
+    )
 
-        provider_a.save_http_cache(TEST_URL, "from-a")
-        assert provider_a.get_http_cache(TEST_URL) == "from-a"
-        assert provider_b.get_http_cache(TEST_URL) is None
+    result = storage.healthcheck()
+
+    assert result.backend == "local"
+    assert result.success is True
+
+    assert result.checks["cache_writable"] is True
+    assert result.checks["documents_writable"] is True
+
+    assert result.details["cache_root"]
+    assert result.details["document_root"]
+
+
+def test_local_healthcheck_cache_not_writable(tmp_path):
+    storage = LocalStorageProvider(
+        plugin_name="test",
+        cache_root=tmp_path / ".cache",
+        document_root=tmp_path / ".documents",
+    )
+
+    with patch(
+        "tempfile.NamedTemporaryFile",
+        side_effect=PermissionError("boom"),
+    ):
+        result = storage.healthcheck()
+
+    assert result.success is False
+    assert result.checks["cache_writable"] is False
+
+
+# ---------------------------------------------------------------------------
+# S3StorageProvider — Healthcheck (implementation-specific tests)
+# ---------------------------------------------------------------------------
+
+
+@mock_aws
+def test_s3_healthcheck_success():
+    bucket = "ranking"
+
+    boto3.client("s3", region_name="eu-west-1").create_bucket(
+        Bucket=bucket,
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+    )
+
+    storage = S3StorageProvider(
+        plugin_name="test",
+        bucket=bucket,
+        region="eu-west-1",
+    )
+
+    result = storage.healthcheck()
+
+    assert result.backend == "s3"
+    assert result.success is True
+
+    assert result.checks["bucket_access"] is True
+    assert result.checks["write"] is True
+    assert result.checks["read"] is True
+    assert result.checks["delete"] is True
+
+
+@mock_aws
+def test_s3_healthcheck_missing_bucket():
+    storage = S3StorageProvider(
+        plugin_name="test",
+        bucket="missing-bucket",
+        region="eu-west-1",
+    )
+
+    result = storage.healthcheck()
+
+    assert result.success is False
+    assert result.checks["bucket_access"] is False
+
+
+@mock_aws
+def test_s3_healthcheck_write_failure():
+    bucket = "ranking"
+
+    boto3.client("s3", region_name="eu-west-1").create_bucket(
+        Bucket=bucket,
+        CreateBucketConfiguration={"LocationConstraint": "eu-west-1"},
+    )
+
+    storage = S3StorageProvider(
+        plugin_name="test",
+        bucket=bucket,
+        region="eu-west-1",
+    )
+
+    with patch.object(
+        storage._s3,
+        "put_object",
+        side_effect=Exception("boom"),
+    ):
+        result = storage.healthcheck()
+
+    assert result.success is False
+    assert result.checks["write"] is False
