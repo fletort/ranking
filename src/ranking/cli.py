@@ -16,6 +16,7 @@ import structlog
 from ranking.core.crawler import CachePolicy, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
 from ranking.core.storage import LocalStorageProvider, S3StorageProvider
+from ranking.core.storage.provider import StorageProvider
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
     build_event_detail_no_info,
@@ -151,6 +152,7 @@ def add_storage_option(f):
 
 
 def build_cache(storage: str) -> HttpxCrawlerRuntime:
+    storage_provider: StorageProvider
     if storage == "s3":
         bucket = os.environ.get("RANKING_S3_BUCKET")
         if not bucket:
@@ -163,7 +165,7 @@ def build_cache(storage: str) -> HttpxCrawlerRuntime:
         storage_provider = LocalStorageProvider(PLUGIN_NAME)
     return HttpxCrawlerRuntime(
         PLUGIN_NAME,
-        network_sleep_seconds=1,
+        network_sleep_seconds=NETWORK_SLEEP_SECONDS,
         normalize_for_comparison=normalize_breizhchrono,
         save_extracted=True,
         base_url=EVENTS_LIST_URL,
