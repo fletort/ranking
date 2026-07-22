@@ -100,7 +100,7 @@ Goal: prepare long-term unattended execution
 - [x] define storage strategy
 - [x] implement S3-backed storage (StorageProvider/LocalStorageProvider/S3StorageProvider)
       [#63](https://github.com/fletort/ranking/issues/63)
-- [ ] support storage backend selection (local / s3) from CLI
+- [x] support storage backend selection (local / s3) from CLI
       [#69](https://github.com/fletort/ranking/issues/69)
 - [ ] add storage diagnostic command [#70](https://github.com/fletort/ranking/issues/70)
 - [ ] Valid: restart behavior using persistent storage
