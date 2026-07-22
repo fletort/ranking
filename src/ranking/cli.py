@@ -32,6 +32,7 @@ from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
 PLUGIN_NAME = "breizhchrono"
+NETWORK_SLEEP_SECONDS = 1
 
 
 @dataclass
