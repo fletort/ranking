@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ import structlog
 
 from ranking.core.crawler import CachePolicy, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
+from ranking.core.storage import LocalStorageProvider, S3StorageProvider
+from ranking.core.storage.provider import StorageProvider
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
     build_event_detail_no_info,
@@ -30,6 +33,7 @@ from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
 PLUGIN_NAME = "breizhchrono"
+NETWORK_SLEEP_SECONDS = 1
 
 
 @dataclass
@@ -137,6 +141,38 @@ def is_valid_url(url: str) -> bool:
     return url.startswith("http")
 
 
+def add_storage_option(f):
+    return click.option(
+        "--storage",
+        type=click.Choice(["local", "s3"]),
+        default="local",
+        show_default=True,
+        help="Storage backend to use",
+    )(f)
+
+
+def build_cache(storage: str) -> HttpxCrawlerRuntime:
+    storage_provider: StorageProvider
+    if storage == "s3":
+        bucket = os.environ.get("RANKING_S3_BUCKET")
+        if not bucket:
+            raise click.ClickException(
+                "RANKING_S3_BUCKET environment variable is required for S3 storage"
+            )
+        region = os.environ.get("RANKING_S3_REGION")
+        storage_provider = S3StorageProvider(PLUGIN_NAME, bucket=bucket, region=region)
+    else:
+        storage_provider = LocalStorageProvider(PLUGIN_NAME)
+    return HttpxCrawlerRuntime(
+        PLUGIN_NAME,
+        network_sleep_seconds=NETWORK_SLEEP_SECONDS,
+        normalize_for_comparison=normalize_breizhchrono,
+        save_extracted=True,
+        base_url=EVENTS_LIST_URL,
+        storage=storage_provider,
+    )
+
+
 @click.group()
 @click.option("--debug", is_flag=True, help="Enable debug logging", default=False)
 @click.pass_context
@@ -144,17 +180,11 @@ def cli(ctx, debug) -> None:
     setup_logging(debug)
     ctx.obj = {
         "log": structlog.get_logger().bind(component="cli"),
-        "cache": HttpxCrawlerRuntime(
-            PLUGIN_NAME,
-            network_sleep_seconds=1,
-            normalize_for_comparison=normalize_breizhchrono,
-            save_extracted=True,
-            base_url=EVENTS_LIST_URL,
-        ),
     }
 
 
 @cli.command()
+@add_storage_option
 @click.option(
     "--page-event-max",
     type=int,
@@ -168,9 +198,9 @@ def cli(ctx, debug) -> None:
     help="Maximum number of race result pages to process per race",
 )
 @click.pass_context
-def list(ctx, page_event_max, page_race_max) -> None:
+def list(ctx, storage, page_event_max, page_race_max) -> None:
     log = ctx.obj["log"]
-    cache = ctx.obj["cache"]
+    cache = build_cache(storage)
     summary = CrawlSummary(started_at=time.monotonic())
 
     log.info("mode_selected", mode="event_list")
@@ -208,6 +238,7 @@ def list(ctx, page_event_max, page_race_max) -> None:
 
 
 @cli.command()
+@add_storage_option
 @click.option("--url", type=str, required=True, help="Process a single event by URL")
 @click.option(
     "--page-race-max",
@@ -216,9 +247,9 @@ def list(ctx, page_event_max, page_race_max) -> None:
     help="Maximum number of race result pages to process per race",
 )
 @click.pass_context
-def event(ctx, url, page_race_max) -> None:
+def event(ctx, storage, url, page_race_max) -> None:
     log = ctx.obj["log"]
-    cache = ctx.obj["cache"]
+    cache = build_cache(storage)
 
     if not is_valid_url(url):
         log.error("invalid_event_url", url=url)
