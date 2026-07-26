@@ -18,14 +18,19 @@ The runtime intentionally remains independent from:
 
 - filesystem layout
 - S3 implementation
-- details plugin business logic
+- plugin-specific business logic
 
 Storage concerns are delegated to a `StorageProvider`.
 
-## Main Componenents
+## Main Components
 
 ```mermaid
 classDiagram
+
+    class HttpxCrawlerRuntime {
+        +fetcher(url)
+        +downloader(url)
+    }
 
     class CrawlerRuntime {
         <<abstract>>
@@ -36,9 +41,13 @@ classDiagram
         +downloader(url)
     }
 
-    class HttpxCrawlerRuntime {
-        +fetcher(url)
-        +downloader(url)
+    class AwsS3StorageProvider
+    class GcsS3StorageProvider
+
+    class LocalStorageProvider
+
+    class S3StorageProvider {
+        _build_client_kwargs()
     }
 
     class StorageProvider {
@@ -50,9 +59,6 @@ classDiagram
         +save_document()
         +get_document()
     }
-
-    class LocalStorageProvider
-    class S3StorageProvider
 
     class DownloadedDocument {
         +url
@@ -68,6 +74,8 @@ classDiagram
 
     LocalStorageProvider --|> StorageProvider
     S3StorageProvider --|> StorageProvider
+    AwsS3StorageProvider --|> S3StorageProvider
+    GcsS3StorageProvider --|> S3StorageProvider
 
     StorageProvider --> DownloadedDocument
     HttpxCrawlerRuntime --> DownloadedDocument
@@ -122,8 +130,8 @@ Not responsible for:
 
 ### DownloadedDocument
 
-Represents a downloaded document independently of the storage backend. A downloaded document
-contains:
+DownloadedDocument represents the logical document exchanged between2the runtime and the storage
+provider. A downloaded document contains:
 
 - content
 - metadata
@@ -147,7 +155,8 @@ Examples:
 
 ```text
 LocalStorageProvider
-S3StorageProvider
+AwsS3StorageProvider
+GcsS3StorageProvider
 ```
 
 The runtime interacts only with URLs. Concepts such as:
@@ -157,3 +166,20 @@ The runtime interacts only with URLs. Concepts such as:
 - S3 object keys
 
 remain internal implementation details of the storage provider.
+
+## S3-Compatible Storage Providers
+
+The runtime supports multiple S3-compatible storage backends.
+
+Common S3 storage behavior is implemented in `S3StorageProvider`.
+
+Provider-specific implementations customize boto3 client configuration through the
+`_build_client_kwargs()` extension hook.
+
+Current implementations:
+
+- AwsS3StorageProvider
+- GcsS3StorageProvider
+
+This design keeps all storage behavior centralized while allowing provider-specific client
+configuration.

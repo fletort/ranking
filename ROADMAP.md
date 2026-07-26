@@ -111,6 +111,8 @@ Goal: prepare long-term unattended execution
   - [ ] create VM installation script and/or document VM prerequesite
   - [ ] create deployment GitHub Action (manual action)
   - [ ] validate full crawl execution on VM
+  - [x] Refactor S3StorageProvider to support multiple S3-compatible backends (added)
+        [#76](https://github.com/fletort/ranking/issues/76)
 
 ## 🚧 Phase 7 — Incremental Crawling
 

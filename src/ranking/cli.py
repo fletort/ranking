@@ -15,8 +15,12 @@ import structlog
 
 from ranking.core.crawler import CachePolicy, HttpxCrawlerRuntime
 from ranking.core.errors import ExternalRedirectError
-from ranking.core.storage import LocalStorageProvider, S3StorageProvider
-from ranking.core.storage.provider import StorageProvider
+from ranking.core.storage import (
+    AwsS3StorageProvider,
+    GcsS3StorageProvider,
+    LocalStorageProvider,
+    StorageProvider,
+)
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
     build_event_detail_no_info,
@@ -144,7 +148,7 @@ def is_valid_url(url: str) -> bool:
 def add_storage_option(f):
     return click.option(
         "--storage",
-        type=click.Choice(["local", "s3"]),
+        type=click.Choice(["local", "s3-gcs"]),
         default="local",
         show_default=True,
         help="Storage backend to use",
@@ -159,8 +163,18 @@ def build_storage(
     if storage_type == "local":
         return LocalStorageProvider(plugin_name)
 
-    if storage_type == "s3":
-        return S3StorageProvider(
+    if storage_type == "s3-gcs":
+        return GcsS3StorageProvider(
+            plugin_name=plugin_name,
+            bucket=os.environ["RANKING_S3_BUCKET"],
+            region=os.getenv("RANKING_S3_REGION"),
+            endpoint_url=os.getenv("RANKING_S3_ENDPOINT"),
+            access_key_id=os.getenv("RANKING_S3_ACCESS_KEY_ID"),
+            secret_access_key=os.getenv("RANKING_S3_SECRET_ACCESS_KEY"),
+        )
+
+    if storage_type == "s3-aws":
+        return AwsS3StorageProvider(
             plugin_name=plugin_name,
             bucket=os.environ["RANKING_S3_BUCKET"],
             region=os.getenv("RANKING_S3_REGION"),

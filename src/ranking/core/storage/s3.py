@@ -12,7 +12,11 @@ from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult,
 
 
 class S3StorageProvider(StorageProvider):
-    """StorageProvider backed by Amazon S3.
+    """StorageProvider backed by S3-compatible object storage.
+
+    Common S3 storage behavior is implemented here, while provider-specific implementations
+    can extend this class to customize boto3 client configuration through the
+    `_build_client_kwargs()` extension hook.
 
     All objects are stored in a single bucket under plugin-centric prefixes::
 
@@ -40,21 +44,28 @@ class S3StorageProvider(StorageProvider):
         """Initialize the S3 storage provider."""
         super().__init__(plugin_name)
         self.bucket = bucket
-        kwargs = {"service_name": "s3"}
-        if region:
-            kwargs["region_name"] = region
-        self.region = region if region else None
-        if endpoint_url:
-            kwargs["endpoint_url"] = endpoint_url
-        self.endpoint_url = endpoint_url if endpoint_url else None
-        if access_key_id:
-            kwargs["aws_access_key_id"] = access_key_id
-            # We are not using the default AWS_ACCESS_KEY_ID used by boto3
-        if secret_access_key:
-            kwargs["aws_secret_access_key"] = secret_access_key
-            # We are not using the default AWS_SECRET_ACCESS_KEY used by boto3
+        self.region = region
+        self.endpoint_url = endpoint_url
+        self.access_key_id = access_key_id
+        self.secret_access_key = secret_access_key
+        self._s3 = boto3.client(service_name="s3", **self._build_client_kwargs())
 
-        self._s3 = boto3.client(**kwargs)
+    def _build_client_kwargs(self) -> dict[str, Any]:
+        """Build generic keyword arguments for the boto3 S3 client."""
+        kwargs = {}
+        if self.region:
+            kwargs["region_name"] = self.region
+
+        if self.endpoint_url:
+            kwargs["endpoint_url"] = self.endpoint_url
+
+        if self.access_key_id:
+            kwargs["aws_access_key_id"] = self.access_key_id
+
+        if self.secret_access_key:
+            kwargs["aws_secret_access_key"] = self.secret_access_key
+
+        return kwargs
 
     def _http_cache_key(self, url: str) -> str:
         rid = self._compute_resource_id(url)
