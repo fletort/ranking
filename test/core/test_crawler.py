@@ -67,7 +67,9 @@ def test_cache_if_present_cache_hit_does_not_sleep_or_fetch(tmp_path: Path, monk
 
     class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
-            super().__init__("demo", cache_root=tmp_path, network_sleep_seconds=1)
+            super().__init__(
+                "demo", cache_root=tmp_path, network_sleep_seconds={"min": 1, "max": 3}
+            )
 
         def fetcher(self, url: str) -> str:
             raise AssertionError("fetcher should not be called on cache hit")
@@ -89,7 +91,9 @@ def test_cache_if_present_cache_miss_sleeps_before_fetch(tmp_path: Path, monkeyp
 
     class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
-            super().__init__("demo", cache_root=tmp_path, network_sleep_seconds=1)
+            super().__init__(
+                "demo", cache_root=tmp_path, network_sleep_seconds={"min": 1, "max": 3}
+            )
 
         def fetcher(self, url: str) -> str:
             return "fresh-content"
@@ -100,8 +104,8 @@ def test_cache_if_present_cache_miss_sleeps_before_fetch(tmp_path: Path, monkeyp
     content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
 
     assert content == "fresh-content"
-    assert sleep_calls == [1]
-    assert cache.sleep_duration_seconds == 1
+    assert sleep_calls[0] >= 1 and sleep_calls[0] <= 3
+    assert cache.sleep_duration_seconds == sleep_calls[0]
 
 
 def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: Path) -> None:

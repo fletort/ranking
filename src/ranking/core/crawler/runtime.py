@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -32,7 +33,7 @@ class CrawlerRuntime(ABC):
         plugin_name: str,
         cache_root: Path | str = ".cache",
         document_root: Path | str = ".document",
-        network_sleep_seconds: int | float = 0,
+        network_sleep_seconds: dict[str, int] = {"min": 1, "max": 3},
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         logger: Any = structlog.get_logger(),
@@ -150,7 +151,10 @@ class CrawlerRuntime(ABC):
         return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H-%M-%S-%f")
 
     def _sleep_before_network(self) -> None:
-        if self.network_sleep_seconds <= 0:
+        if self.network_sleep_seconds["min"] <= 0 or self.network_sleep_seconds["max"] <= 0:
             return
-        time.sleep(self.network_sleep_seconds)
-        self.sleep_duration_seconds += self.network_sleep_seconds
+        sleep_duration = random.uniform(
+            self.network_sleep_seconds["min"], self.network_sleep_seconds["max"]
+        )
+        time.sleep(sleep_duration)
+        self.sleep_duration_seconds += sleep_duration
