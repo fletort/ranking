@@ -33,7 +33,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         plugin_name: str,
         cache_root: Path | str = ".cache",
         document_root: Path | str = ".document",
-        network_sleep_seconds: int | float = 0,
+        network_sleep_seconds: dict[str, int] = {"min": 1, "max": 3},
         normalize_for_comparison: Callable[[str, str], str] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,

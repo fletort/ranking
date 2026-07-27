@@ -115,6 +115,7 @@ Goal: prepare long-term unattended execution
   - [x] Refactor S3StorageProvider to support multiple S3-compatible backends (added)
         [#76](https://github.com/fletort/ranking/issues/76)
   - [x] Update cli race process to process all detailed result links
+  - [x] Sleep must be random between given range before a fetch
 
 ## 🚧 Phase 7 — Incremental Crawling
 
