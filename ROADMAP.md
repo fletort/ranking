@@ -102,7 +102,6 @@ Goal: prepare long-term unattended execution
       [#63](https://github.com/fletort/ranking/issues/63)
 - [x] support storage backend selection (local / s3) from CLI
       [#69](https://github.com/fletort/ranking/issues/69)
-- [x] add storage diagnostic command [#70](https://github.com/fletort/ranking/issues/70)
 - [ ] Valid: restart behavior using persistent storage
   - [x] dev: move lazy pause on real crawl only (faster cache)
         [#66](https://github.com/fletort/ranking/issues/66)
@@ -111,8 +110,11 @@ Goal: prepare long-term unattended execution
   - [ ] create VM installation script and/or document VM prerequesite
   - [ ] create deployment GitHub Action (manual action)
   - [ ] validate full crawl execution on VM
+- [ ] Added task discovered during the landing process:
+  - [x] add storage diagnostic command [#70](https://github.com/fletort/ranking/issues/70)
   - [x] Refactor S3StorageProvider to support multiple S3-compatible backends (added)
         [#76](https://github.com/fletort/ranking/issues/76)
+  - [x] Update cli race process to process all detailed result links
 
 ## 🚧 Phase 7 — Incremental Crawling
 

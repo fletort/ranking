@@ -402,7 +402,6 @@ def process_race(
         results = race_result["results"]
         if summary is not None:
             summary.races_processed_count += 1
-            summary.results_processed_count += len(results)
         cache.save_extracted_json(current_url, race_result)
         log.info("race_processed", race_url=current_url)
         pages_processed += 1
@@ -413,36 +412,41 @@ def process_race(
                 race_url=current_url,
                 sample=results[:1],
             )
-
-            result_detail_url = results[0].get("result_detail_url_computed")
-            if not isinstance(result_detail_url, str) or not result_detail_url:
-                log.info(
-                    "partial_data_available",
-                    missing="result_detail",
-                    race_url=current_url,
-                )
-            else:
-                full_result_detail_url = EVENTS_LIST_URL + result_detail_url
-                try:
-                    detail_html = cache.fetch(full_result_detail_url, CachePolicy.CACHE_IF_PRESENT)
-                    detail = extract_result_detail(detail_html)
-                    cache.save_extracted_json(full_result_detail_url, detail)
-                    log.info("result_detail_processed", url=full_result_detail_url)
-                except ExternalRedirectError as exc:
-                    if summary is not None:
-                        summary.results_failed_count += 1
+            # Fetch and extract all detailed results pages
+            for result in results:
+                result_detail_url = result.get("result_detail_url_computed")
+                if not isinstance(result_detail_url, str) or not result_detail_url:
                     log.info(
-                        "result_detail_skipped",
-                        reason="external_redirect",
-                        from_url=exc.requested_url,
-                        to_url=exc.final_url,
+                        "partial_data_available",
+                        missing="result_detail",
+                        race_url=current_url,
                     )
-                except RuntimeError as exc:
-                    if summary is not None:
-                        summary.results_failed_count += 1
-                    log.error(
-                        "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
-                    )
+                else:
+                    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
+                    try:
+                        detail_html = cache.fetch(
+                            full_result_detail_url, CachePolicy.CACHE_IF_PRESENT
+                        )
+                        detail = extract_result_detail(detail_html)
+                        if summary is not None:
+                            summary.results_processed_count += 1
+                        cache.save_extracted_json(full_result_detail_url, detail)
+                        log.info("result_detail_processed", url=full_result_detail_url)
+                    except ExternalRedirectError as exc:
+                        if summary is not None:
+                            summary.results_failed_count += 1
+                        log.info(
+                            "result_detail_skipped",
+                            reason="external_redirect",
+                            from_url=exc.requested_url,
+                            to_url=exc.final_url,
+                        )
+                    except RuntimeError as exc:
+                        if summary is not None:
+                            summary.results_failed_count += 1
+                        log.error(
+                            "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
+                        )
 
         next_url = race_result["next_url"]
         if not next_url:
