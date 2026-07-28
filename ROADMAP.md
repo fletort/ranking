@@ -116,6 +116,10 @@ Goal: prepare long-term unattended execution
         [#76](https://github.com/fletort/ranking/issues/76)
   - [x] Update cli race process to process all detailed result links
   - [x] Sleep must be random between given range before a fetch
+  - [x] support configurable logging output
+    - RANKING_LOG_OUTPUT=console,file
+    - RANKING_LOG_FORMAT=console|json
+  - [ ] support systemd oneshot deployment (to be used in production)
 
 ## 🚧 Phase 7 — Incremental Crawling
 
@@ -158,5 +162,8 @@ Goal: formalize plugin structure when needed
 - serverless execution (AWS)
 - distributed scraping
 - document parsing (PDF/XLSX)
+- DevOps: Cloud-native logging:
+  - run crawler through systemd oneshot services
+  - switch production logging to stdout/stderr JSON (no more log files)
 
 [technical-specification]: ./docs/technical_specification.md
