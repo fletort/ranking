@@ -119,7 +119,7 @@ Goal: prepare long-term unattended execution
   - [x] support configurable logging output
     - RANKING_LOG_OUTPUT=console,file
     - RANKING_LOG_FORMAT=console|json
-  - [ ] support systemd oneshot deployment (to be used in production)
+  - [x] support systemd oneshot deployment (to be used in production)
 
 ## 🚧 Phase 7 — Incremental Crawling
 
