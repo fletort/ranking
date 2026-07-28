@@ -1,0 +1,15 @@
+[Unit]
+Description=Ranking crawler
+
+[Service]
+Type=oneshot
+
+# Adapt to your environment
+WorkingDirectory=<INSTALL_DIR>
+
+EnvironmentFile=/etc/ranking/ranking.env
+
+ExecStart=/bin/sh -c '<INSTALL_DIR>/.venv/bin/ranking list --storage "$CLI_RANKING_STORAGE"'
+
+StandardOutput=journal
+StandardError=journal
