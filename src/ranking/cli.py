@@ -90,28 +90,33 @@ def log_crawl_summary(
 def setup_logging(debug: bool = False) -> None:
     level = logging.DEBUG if debug else logging.INFO
 
-    # Créer dossier .log
-    log_dir = Path(".log")
-    log_dir.mkdir(exist_ok=True)
+    outputs = {
+        item.strip() for item in os.environ.get("RANKING_LOG_OUTPUT", "console,file").split(",")
+    }
 
-    # Nom fichier avec timestamp
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file = log_dir / f"run-{timestamp}.log"
+    if "file" in outputs:
+        # Créer dossier .log
+        log_dir = Path(".log")
+        log_dir.mkdir(exist_ok=True)
 
-    # --- Handlers ---
+        # Nom fichier avec timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_file = log_dir / f"run-{timestamp}.log"
 
-    # Console handler (avec couleurs)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
+        # File handler (sans couleurs)
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(level)
 
-    # File handler (sans couleurs)
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(level)
+    if "console" in outputs:
+        # Console handler (avec couleurs)
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(level)
 
     # Root logger
     logging.basicConfig(
         level=level,
-        handlers=[console_handler, file_handler],
+        handlers=([console_handler] if "console" in outputs else [])
+        + ([file_handler] if "file" in outputs else []),
         format="%(message)s",
     )
 
@@ -130,17 +135,36 @@ def setup_logging(debug: bool = False) -> None:
     )
 
     # --- Formatters ---
+    if "console" in outputs:
+        console_format = os.getenv(
+            "RANKING_LOG_CONSOLE_FORMAT",
+            os.getenv("RANKING_LOG_FORMAT", "console"),
+        )
 
-    formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.dev.ConsoleRenderer(colors=True)
-    )
+        console_formatter = structlog.stdlib.ProcessorFormatter(
+            processor=create_renderer(console_format, colors=True)
+        )
 
-    file_formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.dev.ConsoleRenderer(colors=False)
-    )
+        console_handler.setFormatter(console_formatter)
 
-    console_handler.setFormatter(formatter)
-    file_handler.setFormatter(file_formatter)
+    if "file" in outputs:
+        file_format = os.getenv(
+            "RANKING_LOG_FILE_FORMAT",
+            os.getenv("RANKING_LOG_FORMAT", "console"),
+        )
+
+        file_formatter = structlog.stdlib.ProcessorFormatter(
+            processor=create_renderer(file_format, colors=False)
+        )
+
+        file_handler.setFormatter(file_formatter)
+
+
+def create_renderer(log_format: str, colors: bool) -> structlog.types.Processor:
+    if log_format == "json":
+        return structlog.processors.JSONRenderer()
+    else:
+        return structlog.dev.ConsoleRenderer(colors=colors)
 
 
 def is_valid_url(url: str) -> bool:
