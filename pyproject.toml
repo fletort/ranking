@@ -20,7 +20,7 @@ mypy = "^2.3.0"
 pytest = "^9.1.1"
 pytest-httpx = "^0.36.2"
 pyyaml = "^6.0.3"
-moto = {extras = ["s3"], version = "^5.2.2"}
+moto = {extras = ["s3"], version = "^5.2.3"}
 
 [project.scripts]
 ranking = "ranking.cli:cli"
