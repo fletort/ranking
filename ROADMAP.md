@@ -120,6 +120,9 @@ Goal: prepare long-term unattended execution
     - RANKING_LOG_OUTPUT=console,file
     - RANKING_LOG_FORMAT=console|json
   - [x] support systemd oneshot deployment (to be used in production)
+  - [x] retry transient HTTP infrastructure failures (502, 503, 504) with exponential backoff
+    - RANKING_HTTP_RETRY_STATUS_CODES=502,503,504 (retryable status codes)
+    - RANKING_HTTP_RETRY_DELAYS_SECONDS=30,60,120,300,3600 (backoff schedule)
 
 ## 🚧 Phase 7 — Incremental Crawling
 

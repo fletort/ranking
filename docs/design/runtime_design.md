@@ -106,12 +106,63 @@ Responsible for:
 - HTTP requests
 - redirects
 - response validation
+- retrying transient HTTP infrastructure failures
 - document downloading
 
 Not responsible for:
 
 - storage
 - cache persistence
+
+### Transient HTTP Failures
+
+Target websites may become temporarily unavailable (maintenance windows, gateway micro-outages).
+Instead of failing immediately, `HttpxCrawlerRuntime.fetcher` retries such requests.
+
+Retried status codes (default):
+
+- 502 Bad Gateway
+- 503 Service Unavailable
+- 504 Gateway Timeout
+
+Any other HTTP status code (e.g. 404, 500) and network-level errors (DNS, connection, timeout) fail
+immediately.
+
+#### Retry schedule
+
+Each retry waits longer than the previous one (exponential backoff). Default schedule:
+
+| Attempt | Delay before attempt |
+| ------- | -------------------- |
+| 1       | 0s (immediate)       |
+| 2       | 30s                  |
+| 3       | 60s                  |
+| 4       | 120s                 |
+| 5       | 300s                 |
+| 6       | 3600s                |
+
+The delay before attempt `N` is the item `N - 1` of `DEFAULT_RETRY_DELAYS_SECONDS`, so the maximum
+number of attempts is `len(DEFAULT_RETRY_DELAYS_SECONDS) + 1` (6).
+
+#### Configuration
+
+Retry configuration is centralized in the runtime:
+
+- `HttpxCrawlerRuntime(retryable_status_codes=..., retry_delays_seconds=...)` for explicit
+  overrides.
+- `RANKING_HTTP_RETRY_STATUS_CODES` environment variable to override the retryable status codes
+  without code change (comma-separated list, e.g. `502,503,504,429`). When unset or empty, the
+  default list is used. Invalid values raise a `ValueError`.
+- `RANKING_HTTP_RETRY_DELAYS_SECONDS` environment variable to override the backoff schedule
+  (comma-separated delays in seconds, in retry order, e.g. `30,60,120,300,3600`). When unset or
+  empty, the default schedule is used. The number of delays defines the maximum number of attempts:
+  `len(delays) + 1`. Decimals are accepted (e.g. `0.5,1,2`). Invalid values raise a `ValueError`.
+
+If both the constructor argument and the environment variable are set, the constructor argument
+wins.
+
+Backoff sleeps are accounted for in `sleep_duration_seconds` and reported in the crawl summary, like
+the random pre-fetch sleep.
 
 ### StorageProvider
 
