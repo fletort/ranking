@@ -16,6 +16,8 @@ from ranking.core.crawler.httpx import (
     HttpxCrawlerRuntime,
     parse_retry_delays_seconds,
     parse_retryable_status_codes,
+    validate_retry_delays_seconds,
+    validate_retryable_status_codes,
 )
 from ranking.core.errors import ExternalRedirectError
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
@@ -263,6 +265,69 @@ def test_httpx_fetcher_custom_backoff_raises_after_max_attempts(
 
     assert sleep_calls == [0.5, 1.5]
     assert len(httpx_mock.get_requests()) == 3
+
+
+# ---------------------------------------------------------------------------
+# Shared validation of the retry configuration
+# (constructor argument and environment variable use the same checks)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("codes", [(0,), (99,), (600,)])
+def test_httpx_fetcher_rejects_invalid_status_codes_from_constructor(
+    tmp_path: Path, codes: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="retryable_status_codes"):
+        HttpxCrawlerRuntime("demo", tmp_path, retryable_status_codes=codes)
+
+
+def test_httpx_fetcher_rejects_empty_status_codes_from_constructor(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="retryable_status_codes"):
+        HttpxCrawlerRuntime("demo", tmp_path, retryable_status_codes=())
+
+
+def test_validate_retryable_status_codes_keeps_order_and_duplicates() -> None:
+    assert validate_retryable_status_codes([502, 429, 502]) == (502, 429, 502)
+
+
+@pytest.mark.parametrize("codes", [(0,), (99,), (600,), ()])
+def test_validate_retryable_status_codes_rejects_invalid_values(codes: tuple[int, ...]) -> None:
+    with pytest.raises(ValueError, match=RETRYABLE_STATUS_CODES_ENV):
+        validate_retryable_status_codes(codes)
+
+
+def test_httpx_fetcher_rejects_negative_retry_delay_from_constructor(tmp_path: Path) -> None:
+    """A negative delay would make time.sleep raise inside the retry loop."""
+    with pytest.raises(ValueError, match="retry_delays_seconds"):
+        HttpxCrawlerRuntime("demo", tmp_path, retry_delays_seconds=(-1.0,))
+
+
+@pytest.mark.parametrize("invalid_delay", [float("inf"), float("nan")])
+def test_httpx_fetcher_rejects_non_finite_retry_delay_from_constructor(
+    tmp_path: Path, invalid_delay: float
+) -> None:
+    with pytest.raises(ValueError, match="retry_delays_seconds"):
+        HttpxCrawlerRuntime("demo", tmp_path, retry_delays_seconds=(invalid_delay,))
+
+
+def test_httpx_fetcher_rejects_empty_retry_delays_from_constructor(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="retry_delays_seconds"):
+        HttpxCrawlerRuntime("demo", tmp_path, retry_delays_seconds=())
+
+
+def test_validate_retry_delays_seconds_keeps_order_and_accepts_zero() -> None:
+    assert validate_retry_delays_seconds((0, 1.5, 30.0)) == (0.0, 1.5, 30.0)
+
+
+@pytest.mark.parametrize("delays", [(-1.0,), (1.0, -2.0), (float("inf"),), (float("nan"),), ()])
+def test_validate_retry_delays_seconds_rejects_invalid_values(delays: tuple[float, ...]) -> None:
+    with pytest.raises(ValueError, match=RETRY_DELAYS_ENV):
+        validate_retry_delays_seconds(delays)
+
+
+def test_validate_retry_delays_seconds_rejects_non_numeric_values() -> None:
+    with pytest.raises(ValueError, match=RETRY_DELAYS_ENV):
+        validate_retry_delays_seconds((None,))  # type: ignore[arg-type]
 
 
 def test_httpx_fetcher_missing_retry_env_uses_default_codes(tmp_path: Path) -> None:

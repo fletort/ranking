@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -56,20 +56,52 @@ def parse_retryable_status_codes(raw: str | None) -> tuple[int, ...]:
         item = item.strip()
         if not item:
             continue
-        error_message = f"Invalid HTTP status code {item!r} in {RETRYABLE_STATUS_CODES_ENV}"
         try:
             code = int(item)
         except ValueError as e:
-            raise ValueError(error_message) from e
-        if not 100 <= code <= 599:
-            raise ValueError(error_message)
+            raise ValueError(
+                f"Invalid HTTP status code {item!r} in {RETRYABLE_STATUS_CODES_ENV}"
+            ) from e
         if code not in codes:
             codes.append(code)
 
-    if not codes:
-        raise ValueError(f"No HTTP status code found in {RETRYABLE_STATUS_CODES_ENV}: {raw!r}")
+    return validate_retryable_status_codes(codes)
 
-    return tuple(codes)
+
+def validate_retryable_status_codes(
+    codes: Iterable[int], *, context: str = RETRYABLE_STATUS_CODES_ENV
+) -> tuple[int, ...]:
+    """Validate HTTP status codes, whatever their source.
+
+    Used for both the ``RANKING_HTTP_RETRY_STATUS_CODES`` value and the
+    ``retryable_status_codes`` constructor argument, so both are checked the same way.
+
+    Args:
+        codes: Candidate status codes, in declaration order.
+        context: Name reported in error messages to locate the offending value.
+
+    Returns:
+        The status codes as a tuple, in the given order.
+
+    Raises:
+        ValueError: If the sequence is empty, or contains a value that is not an
+            HTTP status code (100-599).
+    """
+    validated: list[int] = []
+    for code in codes:
+        error_message = f"Invalid HTTP status code {code!r} in {context}"
+        try:
+            value = int(code)
+        except (TypeError, ValueError) as e:
+            raise ValueError(error_message) from e
+        if not 100 <= value <= 599:
+            raise ValueError(error_message)
+        validated.append(value)
+
+    if not validated:
+        raise ValueError(f"No HTTP status code found in {context}: {codes!r}")
+
+    return tuple(validated)
 
 
 def parse_retry_delays_seconds(raw: str | None) -> tuple[float, ...]:
@@ -94,19 +126,50 @@ def parse_retry_delays_seconds(raw: str | None) -> tuple[float, ...]:
         item = item.strip()
         if not item:
             continue
-        error_message = f"Invalid retry delay {item!r} in {RETRY_DELAYS_ENV}"
         try:
-            delay = float(item)
+            delays.append(float(item))
         except ValueError as e:
+            raise ValueError(f"Invalid retry delay {item!r} in {RETRY_DELAYS_ENV}") from e
+
+    return validate_retry_delays_seconds(delays)
+
+
+def validate_retry_delays_seconds(
+    delays: Iterable[float], *, context: str = RETRY_DELAYS_ENV
+) -> tuple[float, ...]:
+    """Validate a backoff schedule, whatever its source.
+
+    Used for both the ``RANKING_HTTP_RETRY_DELAYS_SECONDS`` value and the
+    ``retry_delays_seconds`` constructor argument, so both are checked the same way.
+    A delay that is negative or non-finite would be passed to ``time.sleep`` and
+    break the retry loop, so it is rejected up front.
+
+    Args:
+        delays: Candidate delays, in seconds, in the order the retries happen.
+        context: Name reported in error messages to locate the offending value.
+
+    Returns:
+        The delays as a tuple, in the given order.
+
+    Raises:
+        ValueError: If the sequence is empty, or contains a negative or
+            non-finite (``nan``/``inf``) value.
+    """
+    validated: list[float] = []
+    for delay in delays:
+        error_message = f"Invalid retry delay {delay!r} in {context}"
+        try:
+            value = float(delay)
+        except (TypeError, ValueError) as e:
             raise ValueError(error_message) from e
-        if not 0 <= delay < float("inf"):  # reject negative and non-finite values
+        if not 0 <= value < float("inf"):  # reject negative and non-finite values
             raise ValueError(error_message)
-        delays.append(delay)
+        validated.append(value)
 
-    if not delays:
-        raise ValueError(f"No retry delay found in {RETRY_DELAYS_ENV}: {raw!r}")
+    if not validated:
+        raise ValueError(f"No retry delay found in {context}: {delays!r}")
 
-    return tuple(delays)
+    return tuple(validated)
 
 
 class HttpxCrawlerRuntime(CrawlerRuntime):
@@ -135,6 +198,10 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 is item N-1. Defaults to the ``RANKING_HTTP_RETRY_DELAYS_SECONDS``
                 environment variable, or to ``DEFAULT_RETRY_DELAYS_SECONDS`` when it is not set.
                 At most ``len(retry_delays_seconds) + 1`` attempts are made.
+
+        Raises:
+            ValueError: If ``retryable_status_codes`` or ``retry_delays_seconds`` are
+                empty or contain invalid values, e.g. a negative or non-finite delay.
         """
         super().__init__(
             plugin_name,
@@ -147,13 +214,21 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         )
         self.base_url = base_url
         if retryable_status_codes is None:
-            retryable_status_codes = parse_retryable_status_codes(
+            self.retryable_status_codes = parse_retryable_status_codes(
                 os.getenv(RETRYABLE_STATUS_CODES_ENV)
             )
-        self.retryable_status_codes = tuple(retryable_status_codes)
+        else:
+            self.retryable_status_codes = validate_retryable_status_codes(
+                retryable_status_codes, context="retryable_status_codes"
+            )
+
         if retry_delays_seconds is None:
-            retry_delays_seconds = parse_retry_delays_seconds(os.getenv(RETRY_DELAYS_ENV))
-        self.retry_delays_seconds = tuple(retry_delays_seconds)
+            self.retry_delays_seconds = parse_retry_delays_seconds(os.getenv(RETRY_DELAYS_ENV))
+        else:
+            self.retry_delays_seconds = validate_retry_delays_seconds(
+                retry_delays_seconds, context="retry_delays_seconds"
+            )
+
         self.max_attempts = len(self.retry_delays_seconds) + 1
 
     def fetcher(self, url: str) -> str:
