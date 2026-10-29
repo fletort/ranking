@@ -78,9 +78,14 @@ def sleep_calls(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return calls
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def no_retry_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make sure the retry env variables do not leak from the host environment."""
+    """Clear the retry env variables so host settings never leak into the tests.
+
+    Autouse: every test starts from the defaults. Tests that need an
+    environment override still call ``monkeypatch.setenv`` after this fixture
+    has run, so their own values take precedence.
+    """
     monkeypatch.delenv(RETRYABLE_STATUS_CODES_ENV, raising=False)
     monkeypatch.delenv(RETRY_DELAYS_ENV, raising=False)
 
@@ -90,7 +95,6 @@ def test_httpx_fetcher_retries_transient_error_then_succeeds(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
-    no_retry_env: None,
     status_code: int,
 ) -> None:
     url = "https://example.com/flaky"
@@ -110,7 +114,6 @@ def test_httpx_fetcher_retries_with_exponential_backoff_schedule(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
-    no_retry_env: None,
 ) -> None:
     url = "https://example.com/unavailable"
     httpx_mock.add_response(url=url, status_code=503)
@@ -133,7 +136,6 @@ def test_httpx_fetcher_fails_after_max_attempts(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
-    no_retry_env: None,
 ) -> None:
     url = "https://example.com/down"
     for _ in range(len(DEFAULT_RETRY_DELAYS_SECONDS) + 1):
@@ -154,7 +156,6 @@ def test_httpx_fetcher_does_not_retry_non_retryable_status(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
-    no_retry_env: None,
 ) -> None:
     url = "https://example.com/not-found"
     httpx_mock.add_response(url=url, status_code=404)
@@ -172,7 +173,6 @@ def test_httpx_fetcher_does_not_retry_network_error(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
-    no_retry_env: None,
 ) -> None:
     url = "https://example.com/fail"
     httpx_mock.add_exception(httpx.ConnectError("connection refused"), url=url)
@@ -265,9 +265,7 @@ def test_httpx_fetcher_custom_backoff_raises_after_max_attempts(
     assert len(httpx_mock.get_requests()) == 3
 
 
-def test_httpx_fetcher_missing_retry_env_uses_default_codes(
-    tmp_path: Path, no_retry_env: None
-) -> None:
+def test_httpx_fetcher_missing_retry_env_uses_default_codes(tmp_path: Path) -> None:
     client = HttpxCrawlerRuntime("demo", tmp_path)
 
     assert client.retryable_status_codes == DEFAULT_RETRYABLE_STATUS_CODES
