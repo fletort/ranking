@@ -59,13 +59,20 @@
         "yzhang.markdown-all-in-one",
         "GitHub.vscode-github-actions",
         "esbenp.prettier-vscode",
-        "DavidAnson.vscode-markdownlint"
+        "DavidAnson.vscode-markdownlint",
+        "saoudrizwan.claude-dev" // CLINE EXTENSION (https://fast.io/resources/how-to-run-cline-in-docker-sandbox/)
       ]
     }
   },
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
   // "remoteUser": "root"
   "mounts": [
-    "source=${localEnv:HOME}/.copilot/skills,target=/home/vscode/.copilot/skills,type=bind"
-  ]
+    "source=${localEnv:HOME}/.copilot/skills,target=/home/vscode/.copilot/skills,type=bind",
+    // CLINE extension cache:  Cline saves some extension approval settings here
+    //"source=cline-ranking-ext-storage,target=/home/vscode/.vscode-server/data/User/globalStorage/saoudrizwan.claude-dev,type=volume",
+    // CLINE global configuration: skills, providers, mcp, ...
+    "source=cline-ranking-config,target=/home/vscode/.cline,type=volume"
+  ],
+  // CLINE: adjusts ownership of mounted volume && install dependencies for cline headless webclient
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.cline && sudo apt-get update && sudo apt-get install -y libgtk2.0-0t64 libgtk-3-0t64 libgbm-dev libnotify-dev libnss3 libxss1 libasound2t64 libxtst6 xauth xvfb"
 }
