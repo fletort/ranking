@@ -139,7 +139,7 @@ Each retry waits longer than the previous one (exponential backoff). Default sch
 | 3       | 60s                  |
 | 4       | 120s                 |
 | 5       | 300s                 |
-| 6       | fails                |
+| 6       | 3600s                |
 
 The delay before attempt `N` is the item `N - 1` of `DEFAULT_RETRY_DELAYS_SECONDS`, so the maximum
 number of attempts is `len(DEFAULT_RETRY_DELAYS_SECONDS) + 1` (6).

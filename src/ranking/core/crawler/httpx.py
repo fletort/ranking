@@ -99,7 +99,7 @@ def parse_retry_delays_seconds(raw: str | None) -> tuple[float, ...]:
             delay = float(item)
         except ValueError as e:
             raise ValueError(error_message) from e
-        if delay < 0 or delay != delay:  # negative or NaN
+        if not 0 <= delay < float("inf"):  # reject negative and non-finite values
             raise ValueError(error_message)
         delays.append(delay)
 
