@@ -224,6 +224,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         document_root: Path | str = ".document",
         network_sleep_seconds: dict[str, int] = {"min": 1, "max": 3},
         normalize_for_comparison: Callable[[str, str], str] | None = None,
+        is_temporary_unavailable_page: Callable[[str, str], bool] | None = None,
         save_extracted: bool = False,
         base_url: str | None = None,
         storage: StorageProvider | None = None,
@@ -245,6 +246,11 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 (``CheckPage``) health check before deciding to retry. Defaults to the
                 ``RANKING_HTTP_HEALTH_CHECK_STATUS_CODES`` environment variable, or to
                 ``DEFAULT_HEALTH_CHECK_STATUS_CODES`` (``500``) when it is not set.
+            is_temporary_unavailable_page: Optional plugin hook detecting a temporary
+                maintenance page served with a successful (2xx) status. When it returns
+                ``True``, the page is neither cached nor snapshotted and the fetch is
+                retried through the standard retry mechanism. Defaults to
+                :func:`~ranking.core.crawler.runtime.default_is_temporary_unavailable_page`.
 
         Raises:
             ValueError: If ``retryable_status_codes``, ``retry_delays_seconds`` or
@@ -257,6 +263,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             document_root=document_root,
             network_sleep_seconds=network_sleep_seconds,
             normalize_for_comparison=normalize_for_comparison,
+            is_temporary_unavailable_page=is_temporary_unavailable_page,
             save_extracted=save_extracted,
             storage=storage,
         )
@@ -304,6 +311,11 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         responds normally, the target URL has a localized bug and fails immediately without
         retry (``LocalServerErrorException``); if the reference page is also down, the whole
         website is considered unavailable and the standard retry mechanism applies.
+
+        A temporary maintenance page served with a successful (2xx) status (e.g. a fake
+        ``200 OK`` displaying "On revient très vite !") is detected by the plugin hook
+        ``is_temporary_unavailable_page``. When flagged, the content is never cached nor
+        snapshotted, and the request is retried through the same standard retry mechanism.
 
         Args:
             url: The URL to fetch.
@@ -365,6 +377,32 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 self.sleep_duration_seconds += delay_seconds
                 attempt += 1
             else:
+                # A 2xx page may still be a temporary maintenance page (fake "200 OK").
+                # Such content must not be cached nor snapshotted, so it is intercepted
+                # here and retried through the standard retry mechanism.
+                if self.is_temporary_unavailable_page(url, content):
+                    if attempt >= self.max_attempts:
+                        self.logger.error(
+                            "http_temporary_unavailable_page",
+                            url=url,
+                            attempts=attempt,
+                            max_attempts=self.max_attempts,
+                        )
+                        raise RuntimeError(f"Temporary unavailable page for URL: {url}")
+
+                    delay_seconds = self._retry_delay_seconds(attempt)
+                    self.logger.warning(
+                        "http_temporary_unavailable_page",
+                        url=url,
+                        attempt=attempt,
+                        max_attempts=self.max_attempts,
+                        delay_seconds=delay_seconds,
+                    )
+                    time.sleep(delay_seconds)
+                    self.sleep_duration_seconds += delay_seconds
+                    attempt += 1
+                    continue
+
                 self._last_successful_url = url
                 return content
 

@@ -21,6 +21,16 @@ class CachePolicy(Enum):
     REFRESH_AND_CACHE = "REFRESH_AND_CACHE"
 
 
+def default_is_temporary_unavailable_page(url: str, content: str) -> bool:
+    """Default plugin hook implementation: never flag a page as temporarily unavailable.
+
+    Plugins override this behavior by providing their own
+    ``is_temporary_unavailable_page`` callable to :class:`CrawlerRuntime`. When a plugin
+    does not implement the hook, the crawler keeps its existing behavior unchanged.
+    """
+    return False
+
+
 class CrawlerRuntime(ABC):
     """Orchestrates resource retrieval, cache policies, and artifact persistence.
 
@@ -35,6 +45,7 @@ class CrawlerRuntime(ABC):
         document_root: Path | str = ".document",
         network_sleep_seconds: dict[str, int] = {"min": 1, "max": 3},
         normalize_for_comparison: Callable[[str, str], str] | None = None,
+        is_temporary_unavailable_page: Callable[[str, str], bool] | None = None,
         save_extracted: bool = False,
         logger: Any = structlog.get_logger(),
         storage: StorageProvider | None = None,
@@ -47,6 +58,11 @@ class CrawlerRuntime(ABC):
             document_root: Root directory for downloaded documents
                            (used when *storage* is not provided).
             normalize_for_comparison: Optional hook to normalize content before change detection.
+            is_temporary_unavailable_page: Optional plugin hook to detect a temporary
+                maintenance page returned with a successful (2xx) HTTP status. When it
+                returns ``True``, the content is neither cached nor snapshotted and the
+                fetch is retried through the standard retry mechanism. Defaults to
+                :func:`default_is_temporary_unavailable_page` (never flags anything).
             save_extracted: If True, extracted JSON data is persisted via the storage provider.
             logger: Structured logger instance.
             storage: Storage provider to use. Defaults to
@@ -60,6 +76,14 @@ class CrawlerRuntime(ABC):
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
+
+        # Optional plugin hook flagging a 2xx page that is actually a temporary
+        # maintenance page: such content must not be cached nor snapshotted and the
+        # fetch must be retried through the standard retry mechanism.
+        self.is_temporary_unavailable_page = (
+            is_temporary_unavailable_page or default_is_temporary_unavailable_page
+        )
+
         self.cache_hits = 0
         self.cache_misses = 0
 

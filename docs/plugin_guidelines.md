@@ -109,6 +109,29 @@ The raw extraction output is often useful for debugging, troubleshooting, and fu
 
 ---
 
+### 2.4 Temporary unavailable pages (optional hook)
+
+Some websites answer with a successful HTTP status (`200 OK`) while actually serving a temporary
+maintenance page (e.g. a page displaying "On revient très vite !"). Such a page must not be cached
+nor snapshotted, and the fetch must be retried.
+
+Plugins may detect these pages by exposing an `is_temporary_unavailable_page` hook:
+
+```python
+def is_temporary_unavailable_page(url: str, content: str) -> bool:
+    return "On revient très vite" in content
+```
+
+The hook is optional: when a plugin does not provide it, the crawler uses a default implementation
+that never flags anything, so the existing behavior is unchanged.
+
+- returning `True` skips cache and snapshot writes and triggers the standard retry loop;
+- returning `False` (default) lets the content be cached as usual.
+
+See `docs/design/runtime_design.md` for the retry details.
+
+---
+
 ## 3. Writing a Parser
 
 Start simple and evolve based on real data.

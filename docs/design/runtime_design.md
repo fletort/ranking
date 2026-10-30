@@ -188,6 +188,26 @@ wins.
 Backoff sleeps are accounted for in `sleep_duration_seconds` and reported in the crawl summary, like
 the random pre-fetch sleep.
 
+### Temporary unavailable pages (fake `200 OK`)
+
+Some websites answer `200 OK` while actually serving a temporary maintenance page (e.g. a page
+displaying "On revient très vite !"). Such a page must not be cached nor snapshotted, since it does
+not represent the real content.
+
+Plugins may flag these pages through the `is_temporary_unavailable_page(url, content)` hook. The
+default implementation (`ranking.core.crawler.runtime.default_is_temporary_unavailable_page`) always
+returns `False`, so plugins that do not implement the hook keep their existing behavior unchanged.
+
+A hook returning `True` is handled like a transient failure:
+
+- the page is never cached nor snapshotted;
+- the request is retried through the same backoff schedule and attempt limit as 502/503/504;
+- if the maintenance page persists after the maximum number of attempts, the fetch fails with a
+  `RuntimeError` (handled by the CLI as a regular `fetch_error`).
+
+The hook is wired into the runtime by the CLI (`build_cache`), following the same pattern as
+`normalize_for_comparison`.
+
 ### StorageProvider
 
 Responsible for:

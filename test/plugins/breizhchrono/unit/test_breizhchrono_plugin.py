@@ -1,4 +1,8 @@
-from ranking.plugins.breizhchrono.plugin import normalize_breizhchrono
+from ranking.plugins.breizhchrono.plugin import (
+    MAINTENANCE_PAGE_MARKER,
+    is_temporary_unavailable_page,
+    normalize_breizhchrono,
+)
 
 
 def test_normalize_breizhchrono_returns_same_result_for_different_timestamps() -> None:
@@ -25,3 +29,22 @@ def test_normalize_breizhchrono_does_not_modify_content_without_timestamps() -> 
     normalized = normalize_breizhchrono("", content)
 
     assert normalized == content
+
+
+def test_is_temporary_unavailable_page_detects_maintenance_marker() -> None:
+    content = f"<html><body><h1>{MAINTENANCE_PAGE_MARKER} !</h1></body></html>"
+
+    assert is_temporary_unavailable_page("", content) is True
+
+
+def test_is_temporary_unavailable_page_returns_false_for_regular_page() -> None:
+    content = "<html><body><h1>Résultats de la course</h1></body></html>"
+
+    assert is_temporary_unavailable_page("", content) is False
+
+
+def test_is_temporary_unavailable_page_ignores_url() -> None:
+    content = f"<html><body>{MAINTENANCE_PAGE_MARKER}</body></html>"
+
+    assert is_temporary_unavailable_page("https://example.com/events", content) is True
+    assert is_temporary_unavailable_page("https://example.com/events", "regular") is False

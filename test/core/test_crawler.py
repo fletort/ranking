@@ -5,8 +5,19 @@ from pathlib import Path
 import pytest
 
 import ranking.core.crawler.runtime as runtime_module
-from ranking.core.crawler.runtime import CachePolicy, CrawlerRuntime
+from ranking.core.crawler.runtime import (
+    CachePolicy,
+    CrawlerRuntime,
+    default_is_temporary_unavailable_page,
+)
 from ranking.core.storage.provider import DownloadedDocument
+
+
+class PlainFetcher(CrawlerRuntime):
+    """Minimal concrete runtime with the default (no-op) hooks."""
+
+    def fetcher(self, url: str) -> str:
+        return ""
 
 
 class EmptyFetcher(CrawlerRuntime):
@@ -160,8 +171,30 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     assert snapshots[0] == (ts1, content1)
 
 
-def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
+def test_default_is_temporary_unavailable_page_returns_false() -> None:
+    assert default_is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is False
 
+
+def test_crawler_runtime_default_temporary_unavailable_hook_returns_false() -> None:
+    cache = PlainFetcher("demo")
+
+    assert cache.is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is False
+
+
+def test_crawler_runtime_uses_custom_temporary_unavailable_hook() -> None:
+    calls: list[tuple[str, str]] = []
+
+    def hook(url: str, content: str) -> bool:
+        calls.append((url, content))
+        return True
+
+    cache = PlainFetcher("demo", is_temporary_unavailable_page=hook)
+
+    assert cache.is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is True
+    assert calls == [("https://example.com", "<html>ok</html>")]
+
+
+def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
     class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)

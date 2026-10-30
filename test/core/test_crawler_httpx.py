@@ -22,6 +22,7 @@ from ranking.core.crawler.httpx import (
     validate_retry_delays_seconds,
     validate_retryable_status_codes,
 )
+from ranking.core.crawler.runtime import CachePolicy
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
 
@@ -818,6 +819,7 @@ class StubStorageProvider(StorageProvider):
         self._http_cache: dict[str, str] = {}
         self._extracted: dict[str, dict] = {}
         self._documents: dict[str, DownloadedDocument] = {}
+        self._snapshots: dict[str, list[tuple[str, str]]] = {}
 
     def save_http_cache(self, url: str, content: str) -> None:
         self._http_cache[url] = content
@@ -829,10 +831,10 @@ class StubStorageProvider(StorageProvider):
         return url in self._http_cache
 
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
-        pass  # Not needed for this test
+        self._snapshots.setdefault(url, []).append((timestamp, content))
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
-        return []  # Not needed for this test
+        return list(self._snapshots.get(url, []))
 
     def save_extracted(self, url: str, data: dict) -> None:
         self._extracted[url] = data
@@ -869,8 +871,6 @@ def test_httpx_cache_integration_with_storage_provider(monkeypatch: pytest.Monke
     storage = StubStorageProvider("myplugin")
     cache = HttpxCrawlerRuntime(plugin_name="myplugin", storage=storage)
 
-    from ranking.core.crawler.runtime import CachePolicy
-
     url = "https://example.com/events"
     first = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
     second = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
@@ -879,3 +879,120 @@ def test_httpx_cache_integration_with_storage_provider(monkeypatch: pytest.Monke
     assert second == "<html>cached content</html>"
     assert calls == [url]  # Only one network call
     assert storage.exists_http_cache(url)
+
+
+# ---------------------------------------------------------------------------
+# Temporary unavailable pages (fake "200 OK" maintenance pages)
+# ---------------------------------------------------------------------------
+
+MAINTENANCE_CONTENT = "<html><body><h1>On revient très vite !</h1></body></html>"
+REGULAR_CONTENT = "<html><body><h1>Résultats de la course</h1></body></html>"
+
+
+def _flags_maintenance(url: str, content: str) -> bool:
+    return "On revient très vite" in content
+
+
+def test_fetch_retries_temporary_unavailable_page_and_never_caches_it(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """A fake 200 OK maintenance page is retried and never cached nor snapshotted."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=MAINTENANCE_CONTENT)
+    httpx_mock.add_response(url=url, text=REGULAR_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+        is_temporary_unavailable_page=_flags_maintenance,
+        retry_delays_seconds=(0.5,),
+    )
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == REGULAR_CONTENT
+    assert len(httpx_mock.get_requests()) == 2
+    # The maintenance page is retried through the standard backoff mechanism.
+    assert sleep_calls == [0.5]
+    assert storage.get_http_cache(url) == REGULAR_CONTENT
+    assert storage.list_http_snapshots(url) == []
+
+
+def test_fetch_writes_nothing_when_maintenance_page_persists(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """When the maintenance page never clears, the fetch fails without persisting anything."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=MAINTENANCE_CONTENT)
+    httpx_mock.add_response(url=url, text=MAINTENANCE_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+        is_temporary_unavailable_page=_flags_maintenance,
+        retry_delays_seconds=(0.5,),
+    )
+
+    with pytest.raises(RuntimeError, match="Temporary unavailable page"):
+        cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert len(httpx_mock.get_requests()) == 2
+    assert sleep_calls == [0.5]
+    assert storage.exists_http_cache(url) is False
+    assert storage.list_http_snapshots(url) == []
+
+
+def test_fetch_refresh_snapshots_previous_content_only(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """On refresh, only the previous valid version is snapshotted, never the maintenance page."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=MAINTENANCE_CONTENT)
+    httpx_mock.add_response(url=url, text=REGULAR_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    storage.save_http_cache(url, "previous-content")
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+        is_temporary_unavailable_page=_flags_maintenance,
+        retry_delays_seconds=(0.5,),
+    )
+
+    content = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+
+    assert content == REGULAR_CONTENT
+    assert storage.get_http_cache(url) == REGULAR_CONTENT
+    snapshots = storage.list_http_snapshots(url)
+    assert [value for _, value in snapshots] == ["previous-content"]
+
+
+def test_fetch_without_hook_caches_maintenance_page_unchanged(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """Plugins not implementing the hook keep the existing behavior (page cached as-is)."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=MAINTENANCE_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+    )
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == MAINTENANCE_CONTENT
+    assert len(httpx_mock.get_requests()) == 1
+    assert sleep_calls == []
+    assert storage.get_http_cache(url) == MAINTENANCE_CONTENT
