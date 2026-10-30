@@ -396,23 +396,26 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         """
         check_url = self._reference_page_url(url)
         if not check_url:
-            self.logger.warning("http_health_check_unvailable", url=url)
+            self.logger.warning("http_health_check_unavailable", url=url)
             return False
         self.logger.info("http_health_check", url=url, check_url=check_url)
         try:
-            response = httpx.get(
+            with httpx.stream(
+                "GET",
                 check_url,
                 headers=HEADERS,
                 follow_redirects=True,
                 verify=VERIFY_SSL,
                 timeout=HTTP_TIMEOUT,
-            )
+            ) as response:
+                # Only the status is needed, so the page body is never downloaded.
+                status_code = response.status_code
         except httpx.RequestError as e:
             self.logger.warning(
                 "http_health_check_unreachable", url=url, check_url=check_url, error=str(e)
             )
             return False
-        return response.status_code == 200
+        return status_code < 500
 
     def _retry_delay_seconds(self, attempt: int) -> float:
         """Return the backoff delay before the next attempt (``attempt`` is 1-based)."""
