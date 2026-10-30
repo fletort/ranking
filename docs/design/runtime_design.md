@@ -169,8 +169,8 @@ number of attempts is `len(DEFAULT_RETRY_DELAYS_SECONDS) + 1` (6).
 
 Retry configuration is centralized in the runtime:
 
-- `HttpxCrawlerRuntime(retryable_status_codes=..., retry_delays_seconds=...,
-  health_check_status_codes=...)` for explicit overrides.
+- `HttpxCrawlerRuntime(retryable_status_codes=..., retry_delays_seconds=..., health_check_status_codes=...)`
+  for explicit overrides.
 - `RANKING_HTTP_RETRY_STATUS_CODES` environment variable to override the retryable status codes
   without code change (comma-separated list, e.g. `502,503,504,429`). When unset or empty, the
   default list is used. Invalid values raise a `ValueError`.
