@@ -8,18 +8,21 @@ from pytest_httpx import HTTPXMock
 
 import ranking.core.crawler.httpx as httpx_module
 from ranking.core.crawler.httpx import (
+    DEFAULT_HEALTH_CHECK_STATUS_CODES,
     DEFAULT_RETRY_DELAYS_SECONDS,
     DEFAULT_RETRYABLE_STATUS_CODES,
     HEADERS,
+    HEALTH_CHECK_STATUS_CODES_ENV,
     RETRY_DELAYS_ENV,
     RETRYABLE_STATUS_CODES_ENV,
     HttpxCrawlerRuntime,
+    parse_health_check_status_codes,
     parse_retry_delays_seconds,
     parse_retryable_status_codes,
     validate_retry_delays_seconds,
     validate_retryable_status_codes,
 )
-from ranking.core.errors import ExternalRedirectError
+from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
 
 
@@ -90,6 +93,7 @@ def no_retry_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     monkeypatch.delenv(RETRYABLE_STATUS_CODES_ENV, raising=False)
     monkeypatch.delenv(RETRY_DELAYS_ENV, raising=False)
+    monkeypatch.delenv(HEALTH_CHECK_STATUS_CODES_ENV, raising=False)
 
 
 @pytest.mark.parametrize("status_code", RETRYABLE_CODES)
@@ -186,6 +190,199 @@ def test_httpx_fetcher_does_not_retry_network_error(
 
     assert sleep_calls == []
     assert len(httpx_mock.get_requests()) == 1
+
+
+# ---------------------------------------------------------------------------
+# HTTP 500 health check: localized page bug vs. global site outage
+# ---------------------------------------------------------------------------
+
+
+def test_httpx_fetcher_500_with_healthy_check_page_fails_immediately(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """A healthy reference page means the 500 is page-specific: fail without retrying."""
+    url = "https://example.com/broken"
+    check_url = "https://example.com/events"
+    httpx_mock.add_response(url=url, status_code=500)
+    httpx_mock.add_response(url=check_url, text="<html>Home</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url=check_url)
+
+    with pytest.raises(LocalServerErrorException) as exc_info:
+        client.fetcher(url)
+
+    assert exc_info.value.requested_url == url
+    assert exc_info.value.status_code == 500
+    assert sleep_calls == []  # no retry
+    # One request for the target URL, one lightweight check request.
+    assert [str(request.url) for request in httpx_mock.get_requests()] == [url, check_url]
+
+
+def test_local_server_error_exception_is_a_runtime_error() -> None:
+    """The CLI records per-page fetch failures through ``except RuntimeError``."""
+    assert issubclass(LocalServerErrorException, RuntimeError)
+
+
+def test_httpx_fetcher_500_with_unhealthy_check_page_retries(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """A down reference page means a global outage: apply the exponential backoff."""
+    url = "https://example.com/broken"
+    check_url = "https://example.com/events"
+    for _ in range(3):
+        httpx_mock.add_response(url=url, status_code=500)
+    httpx_mock.add_response(url=check_url, status_code=503, is_reusable=True)
+
+    client = HttpxCrawlerRuntime(
+        "demo", tmp_path, base_url=check_url, retry_delays_seconds=(1.0, 2.0)
+    )
+
+    with pytest.raises(RuntimeError, match="HTTP error 500"):
+        client.fetcher(url)
+
+    assert client.max_attempts == 3
+    assert sleep_calls == [1.0, 2.0]
+    # 3 target attempts + 3 health checks (one per attempt).
+    assert len(httpx_mock.get_requests()) == 6
+
+
+def test_httpx_fetcher_500_recovers_when_site_comes_back(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """When the reference page is down but the target recovers, the retry loop succeeds."""
+    url = "https://example.com/broken"
+    check_url = "https://example.com/events"
+    httpx_mock.add_response(url=url, status_code=500)
+    httpx_mock.add_response(url=check_url, status_code=503, is_reusable=True)
+    httpx_mock.add_response(url=url, text="<html>Recovered</html>")
+
+    client = HttpxCrawlerRuntime(
+        "demo", tmp_path, base_url=check_url, retry_delays_seconds=(0.5,)
+    )
+
+    assert client.fetcher(url) == "<html>Recovered</html>"
+    assert sleep_calls == [0.5]
+
+
+def test_httpx_fetcher_500_with_unreachable_check_page_retries(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """A network failure on the reference page is treated as a global outage."""
+    url = "https://example.com/broken"
+    check_url = "https://example.com/events"
+    for _ in range(2):
+        httpx_mock.add_response(url=url, status_code=500)
+    httpx_mock.add_exception(
+        httpx.ConnectError("connection refused"), url=check_url, is_reusable=True
+    )
+
+    client = HttpxCrawlerRuntime(
+        "demo", tmp_path, base_url=check_url, retry_delays_seconds=(1.0,)
+    )
+
+    with pytest.raises(RuntimeError, match="HTTP error 500"):
+        client.fetcher(url)
+
+    assert sleep_calls == [1.0]
+    # 2 target attempts + 2 failed health checks.
+    assert len(httpx_mock.get_requests()) == 4
+
+
+def test_httpx_fetcher_500_health_check_prefers_last_successful_page(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """The last successfully fetched page wins over the configured base_url."""
+    good_url = "https://example.com/good"
+    broken_url = "https://example.com/broken"
+    httpx_mock.add_response(url=good_url, text="<html>Good</html>")
+    httpx_mock.add_response(url=broken_url, status_code=500)
+    httpx_mock.add_response(url=good_url, text="<html>Good</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com/base")
+
+    assert client.fetcher(good_url) == "<html>Good</html>"
+    with pytest.raises(LocalServerErrorException):
+        client.fetcher(broken_url)
+
+    assert [str(request.url) for request in httpx_mock.get_requests()] == [
+        good_url,
+        broken_url,
+        good_url,
+    ]
+
+
+def test_httpx_fetcher_500_health_check_falls_back_to_root_domain(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """Without base_url nor known good page, the root domain is used as CheckPage."""
+    url = "https://example.com/deep/broken"
+    root_url = "https://example.com/"
+    httpx_mock.add_response(url=url, status_code=500)
+    httpx_mock.add_response(url=root_url, text="<html>Home</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    with pytest.raises(LocalServerErrorException):
+        client.fetcher(url)
+
+    assert [str(request.url) for request in httpx_mock.get_requests()] == [url, root_url]
+
+
+def test_httpx_fetcher_default_health_check_status_codes(tmp_path: Path) -> None:
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    assert client.health_check_status_codes == DEFAULT_HEALTH_CHECK_STATUS_CODES
+
+
+def test_httpx_fetcher_health_check_codes_from_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(HEALTH_CHECK_STATUS_CODES_ENV, "500, 502")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    assert client.health_check_status_codes == (500, 502)
+
+
+@pytest.mark.parametrize("codes", [(0,), (600,), ()])
+def test_httpx_fetcher_rejects_invalid_health_check_codes(
+    tmp_path: Path, codes: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="health_check_status_codes"):
+        HttpxCrawlerRuntime("demo", tmp_path, health_check_status_codes=codes)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, (500,)),
+        ("", (500,)),
+        ("   ", (500,)),
+        ("500", (500,)),
+        ("502,500", (502, 500)),
+        ("500,500", (500,)),
+    ],
+)
+def test_parse_health_check_status_codes(raw: str | None, expected: tuple[int, ...]) -> None:
+    assert parse_health_check_status_codes(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["abc", "500,foo", "99", "600", "-1", ","])
+def test_parse_health_check_status_codes_rejects_invalid_values(raw: str) -> None:
+    with pytest.raises(ValueError, match=HEALTH_CHECK_STATUS_CODES_ENV):
+        parse_health_check_status_codes(raw)
 
 
 def test_httpx_fetcher_retryable_codes_from_environment(
