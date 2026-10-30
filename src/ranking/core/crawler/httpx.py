@@ -368,7 +368,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 self._last_successful_url = url
                 return content
 
-    def _reference_page_url(self, url: str) -> str:
+    def _reference_page_url(self, url: str) -> str | None:
         """Return the reference page (``CheckPage``) to probe for a site health check.
 
         Preference order:
@@ -376,13 +376,17 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         1. the last successfully fetched page, when one is known;
         2. the configured ``base_url`` (the website's known entry page);
         3. the root domain of the requested URL, as a last resort.
+        If any of the above options are not applicable, return ``None``.
         """
-        if self._last_successful_url:
+        if self._last_successful_url and self._last_successful_url != url:
             return self._last_successful_url
-        if self.base_url:
+        if self.base_url and self.base_url != url:
             return self.base_url
         parsed = urlparse(url)
-        return f"{parsed.scheme}://{parsed.netloc}/"
+        root = f"{parsed.scheme}://{parsed.netloc}/"
+        if root != url:
+            return root
+        return None
 
     def _is_reference_page_healthy(self, url: str) -> bool:
         """Return ``True`` when the reference page responds without a server error.
@@ -391,6 +395,9 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         target error is not a localized page bug.
         """
         check_url = self._reference_page_url(url)
+        if not check_url:
+            self.logger.warning("http_health_check_unvailable", url=url)
+            return False
         self.logger.info("http_health_check", url=url, check_url=check_url)
         try:
             response = httpx.get(
@@ -405,7 +412,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 "http_health_check_unreachable", url=url, check_url=check_url, error=str(e)
             )
             return False
-        return not response.is_server_error
+        return response.status_code == 200
 
     def _retry_delay_seconds(self, attempt: int) -> float:
         """Return the backoff delay before the next attempt (``attempt`` is 1-based)."""
