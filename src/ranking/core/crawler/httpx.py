@@ -12,7 +12,7 @@ import httpx
 import structlog
 
 from ranking.core.crawler.runtime import CrawlerRuntime
-from ranking.core.errors import ExternalRedirectError
+from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
@@ -28,15 +28,54 @@ DOCUMENT_DOWNLOAD_TIMEOUT = 10.0
 
 RETRYABLE_STATUS_CODES_ENV = "RANKING_HTTP_RETRY_STATUS_CODES"
 RETRY_DELAYS_ENV = "RANKING_HTTP_RETRY_DELAYS_SECONDS"
+HEALTH_CHECK_STATUS_CODES_ENV = "RANKING_HTTP_HEALTH_CHECK_STATUS_CODES"
 # Transient infrastructure failures (maintenance windows, gateway micro-outages).
 DEFAULT_RETRYABLE_STATUS_CODES = (502, 503, 504)
+# Server errors that may be page-specific (application bug) or site-wide (outage).
+# When one of these codes is received, the runtime probes a reference page to tell both
+# cases apart before deciding whether the URL is worth retrying.
+DEFAULT_HEALTH_CHECK_STATUS_CODES = (500,)
 # Exponential backoff schedule: the delay before attempt N is the item N-1 of this tuple.
 # The last delay is reused when the schedule is shorter than the number of attempts.
 DEFAULT_RETRY_DELAYS_SECONDS = (30.0, 60.0, 120.0, 300.0, 3600.0)
 
 
+def _parse_status_codes(
+    raw: str | None, *, default: tuple[int, ...], context: str
+) -> tuple[int, ...]:
+    """Parse a comma-separated list of HTTP status codes with a shared implementation.
+
+    Args:
+        raw: Raw value, e.g. ``"502,503,504"``. When empty or ``None``, *default* is returned.
+        default: Value returned when *raw* is empty or ``None``.
+        context: Name reported in error messages to locate the offending value.
+
+    Returns:
+        The status codes to use, in declaration order and without duplicates.
+
+    Raises:
+        ValueError: If a value is not a valid HTTP status code (100-599).
+    """
+    if raw is None or not raw.strip():
+        return default
+
+    codes: list[int] = []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            code = int(item)
+        except ValueError as e:
+            raise ValueError(f"Invalid HTTP status code {item!r} in {context}") from e
+        if code not in codes:
+            codes.append(code)
+
+    return validate_retryable_status_codes(codes, context=context)
+
+
 def parse_retryable_status_codes(raw: str | None) -> tuple[int, ...]:
-    """Parse a comma-separated list of HTTP status codes.
+    """Parse a comma-separated list of HTTP status codes to retry on.
 
     Args:
         raw: Raw value, e.g. ``"502,503,504"``. When empty or ``None``,
@@ -48,24 +87,27 @@ def parse_retryable_status_codes(raw: str | None) -> tuple[int, ...]:
     Raises:
         ValueError: If a value is not a valid HTTP status code (100-599).
     """
-    if raw is None or not raw.strip():
-        return DEFAULT_RETRYABLE_STATUS_CODES
+    return _parse_status_codes(
+        raw, default=DEFAULT_RETRYABLE_STATUS_CODES, context=RETRYABLE_STATUS_CODES_ENV
+    )
 
-    codes: list[int] = []
-    for item in raw.split(","):
-        item = item.strip()
-        if not item:
-            continue
-        try:
-            code = int(item)
-        except ValueError as e:
-            raise ValueError(
-                f"Invalid HTTP status code {item!r} in {RETRYABLE_STATUS_CODES_ENV}"
-            ) from e
-        if code not in codes:
-            codes.append(code)
 
-    return validate_retryable_status_codes(codes)
+def parse_health_check_status_codes(raw: str | None) -> tuple[int, ...]:
+    """Parse a comma-separated list of HTTP status codes triggering a reference page check.
+
+    Args:
+        raw: Raw value, e.g. ``"500"``. When empty or ``None``,
+            ``DEFAULT_HEALTH_CHECK_STATUS_CODES`` is returned.
+
+    Returns:
+        The status codes to health-check, in declaration order and without duplicates.
+
+    Raises:
+        ValueError: If a value is not a valid HTTP status code (100-599).
+    """
+    return _parse_status_codes(
+        raw, default=DEFAULT_HEALTH_CHECK_STATUS_CODES, context=HEALTH_CHECK_STATUS_CODES_ENV
+    )
 
 
 def validate_retryable_status_codes(
@@ -187,6 +229,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         storage: StorageProvider | None = None,
         retryable_status_codes: tuple[int, ...] | None = None,
         retry_delays_seconds: tuple[float, ...] | None = None,
+        health_check_status_codes: tuple[int, ...] | None = None,
     ) -> None:
         """Initialize the cache with httpx as the fetcher.
 
@@ -198,10 +241,15 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 is item N-1. Defaults to the ``RANKING_HTTP_RETRY_DELAYS_SECONDS``
                 environment variable, or to ``DEFAULT_RETRY_DELAYS_SECONDS`` when it is not set.
                 At most ``len(retry_delays_seconds) + 1`` attempts are made.
+            health_check_status_codes: HTTP status codes that trigger a reference page
+                (``CheckPage``) health check before deciding to retry. Defaults to the
+                ``RANKING_HTTP_HEALTH_CHECK_STATUS_CODES`` environment variable, or to
+                ``DEFAULT_HEALTH_CHECK_STATUS_CODES`` (``500``) when it is not set.
 
         Raises:
-            ValueError: If ``retryable_status_codes`` or ``retry_delays_seconds`` are
-                empty or contain invalid values, e.g. a negative or non-finite delay.
+            ValueError: If ``retryable_status_codes``, ``retry_delays_seconds`` or
+                ``health_check_status_codes`` are empty or contain invalid values, e.g. a
+                negative or non-finite delay.
         """
         super().__init__(
             plugin_name,
@@ -213,6 +261,8 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             storage=storage,
         )
         self.base_url = base_url
+        # Last URL successfully fetched, used as a reference page for the health check.
+        self._last_successful_url: str | None = None
         if retryable_status_codes is None:
             self.retryable_status_codes = parse_retryable_status_codes(
                 os.getenv(RETRYABLE_STATUS_CODES_ENV)
@@ -229,6 +279,15 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 retry_delays_seconds, context="retry_delays_seconds"
             )
 
+        if health_check_status_codes is None:
+            self.health_check_status_codes = parse_health_check_status_codes(
+                os.getenv(HEALTH_CHECK_STATUS_CODES_ENV)
+            )
+        else:
+            self.health_check_status_codes = validate_retryable_status_codes(
+                health_check_status_codes, context="health_check_status_codes"
+            )
+
         self.max_attempts = len(self.retry_delays_seconds) + 1
 
     def fetcher(self, url: str) -> str:
@@ -239,6 +298,13 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         exponential backoff (configurable through the ``RANKING_HTTP_RETRY_DELAYS_SECONDS``
         environment variable). Other HTTP error status codes fail immediately.
 
+        A server error that may be page-specific (500 by default, configurable through the
+        ``RANKING_HTTP_HEALTH_CHECK_STATUS_CODES`` environment variable) first triggers a
+        lightweight health check against a reference page (``CheckPage``): if that page still
+        responds normally, the target URL has a localized bug and fails immediately without
+        retry (``LocalServerErrorException``); if the reference page is also down, the whole
+        website is considered unavailable and the standard retry mechanism applies.
+
         Args:
             url: The URL to fetch.
 
@@ -247,15 +313,35 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
 
         Raises:
             RuntimeError: On HTTP error status codes or network-level errors.
+            LocalServerErrorException: When the target returns a health-check status code but the
+                reference page is healthy (localized page bug, no retry).
             ExternalRedirectError: If the final URL after redirects is outside the allowed base URL.
         """
         attempt = 1
         while True:
             try:
-                return self._fetch_once(url)
+                content = self._fetch_once(url)
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
                 retryable = status_code in self.retryable_status_codes
+
+                # Distinguish a localized page bug (500) from a global site outage before
+                # entering the retry loop: a healthy reference page means the target URL is the
+                # only thing broken, so retrying it would only block the crawler queue.
+                if status_code in self.health_check_status_codes:
+                    if self._is_reference_page_healthy(url):
+                        self.logger.error(
+                            "http_local_server_error",
+                            url=url,
+                            status_code=status_code,
+                            attempts=attempt,
+                        )
+                        raise LocalServerErrorException(
+                            requested_url=url, status_code=status_code
+                        ) from e
+                    # Reference page is down too: the whole site is unavailable, retry.
+                    retryable = True
+
                 if not retryable or attempt >= self.max_attempts:
                     self.logger.error(
                         "HTTP error fetching URL",
@@ -278,6 +364,58 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 time.sleep(delay_seconds)
                 self.sleep_duration_seconds += delay_seconds
                 attempt += 1
+            else:
+                self._last_successful_url = url
+                return content
+
+    def _reference_page_url(self, url: str) -> str | None:
+        """Return the reference page (``CheckPage``) to probe for a site health check.
+
+        Preference order:
+
+        1. the last successfully fetched page, when one is known;
+        2. the configured ``base_url`` (the website's known entry page);
+        3. the root domain of the requested URL, as a last resort.
+        If any of the above options are not applicable, return ``None``.
+        """
+        if self._last_successful_url and self._last_successful_url != url:
+            return self._last_successful_url
+        if self.base_url and self.base_url != url:
+            return self.base_url
+        parsed = urlparse(url)
+        root = f"{parsed.scheme}://{parsed.netloc}/"
+        if root != url:
+            return root
+        return None
+
+    def _is_reference_page_healthy(self, url: str) -> bool:
+        """Return ``True`` when the reference page responds without a server error.
+
+        A network-level failure or a 5xx response means the website itself is down, so the
+        target error is not a localized page bug.
+        """
+        check_url = self._reference_page_url(url)
+        if not check_url:
+            self.logger.warning("http_health_check_unavailable", url=url)
+            return False
+        self.logger.info("http_health_check", url=url, check_url=check_url)
+        try:
+            with httpx.stream(
+                "GET",
+                check_url,
+                headers=HEADERS,
+                follow_redirects=True,
+                verify=VERIFY_SSL,
+                timeout=HTTP_TIMEOUT,
+            ) as response:
+                # Only the status is needed, so the page body is never downloaded.
+                status_code = response.status_code
+        except httpx.RequestError as e:
+            self.logger.warning(
+                "http_health_check_unreachable", url=url, check_url=check_url, error=str(e)
+            )
+            return False
+        return status_code < 500
 
     def _retry_delay_seconds(self, attempt: int) -> float:
         """Return the backoff delay before the next attempt (``attempt`` is 1-based)."""

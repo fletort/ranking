@@ -123,6 +123,10 @@ Goal: prepare long-term unattended execution
   - [x] retry transient HTTP infrastructure failures (502, 503, 504) with exponential backoff
     - RANKING_HTTP_RETRY_STATUS_CODES=502,503,504 (retryable status codes)
     - RANKING_HTTP_RETRY_DELAYS_SECONDS=30,60,120,300,3600 (backoff schedule)
+  - [x] health-check HTTP 500 to separate localized page bugs from global outages
+    - RANKING_HTTP_HEALTH_CHECK_STATUS_CODES=500 (health-checked status codes)
+    - validate a reference page (CheckPage) before retrying; fail immediately with
+      LocalServerErrorException when the site is up, fall back to the retry loop when it is down
 
 ## 🚧 Phase 7 — Incremental Crawling
 

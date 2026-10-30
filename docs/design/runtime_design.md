@@ -107,6 +107,7 @@ Responsible for:
 - redirects
 - response validation
 - retrying transient HTTP infrastructure failures
+- detecting localized server errors (HTTP 500) through a reference page health check
 - document downloading
 
 Not responsible for:
@@ -125,8 +126,28 @@ Retried status codes (default):
 - 503 Service Unavailable
 - 504 Gateway Timeout
 
-Any other HTTP status code (e.g. 404, 500) and network-level errors (DNS, connection, timeout) fail
-immediately.
+Any other HTTP status code (e.g. 404) and network-level errors (DNS, connection, timeout) fail
+immediately. An HTTP 500 is a special case: it is first validated with a health check, as described
+below.
+
+#### Localized page bugs (HTTP 500) vs. global outages
+
+Unlike 502/503/504 (always infrastructure-related), an HTTP 500 can be specific to a broken target
+URL (application bug). Retrying a single broken page would only block the crawler queue, so
+`HttpxCrawlerRuntime.fetcher` performs an immediate health check before deciding:
+
+1. **Trigger:** the target URL returns an HTTP 500.
+2. **Action:** a lightweight `CheckPage` request is sent to a reference page. The reference page is,
+   in order of preference: the last successfully fetched page, the configured `base_url`, or the
+   root domain of the target URL.
+3. **Decision:**
+   - **`CheckPage` responds normally (no 5xx):** the issue is local to the target URL. The crawler
+     fails immediately without retry and raises `LocalServerErrorException`.
+   - **`CheckPage` returns a 5xx or is unreachable:** the whole website is down or in maintenance.
+     The standard retry mechanism (exponential backoff) applies to the target URL.
+
+The health check is performed for every health-check status code (500 by default) and its request is
+not counted as a retry of the target URL.
 
 #### Retry schedule
 
@@ -148,8 +169,8 @@ number of attempts is `len(DEFAULT_RETRY_DELAYS_SECONDS) + 1` (6).
 
 Retry configuration is centralized in the runtime:
 
-- `HttpxCrawlerRuntime(retryable_status_codes=..., retry_delays_seconds=...)` for explicit
-  overrides.
+- `HttpxCrawlerRuntime(retryable_status_codes=..., retry_delays_seconds=..., health_check_status_codes=...)`
+  for explicit overrides.
 - `RANKING_HTTP_RETRY_STATUS_CODES` environment variable to override the retryable status codes
   without code change (comma-separated list, e.g. `502,503,504,429`). When unset or empty, the
   default list is used. Invalid values raise a `ValueError`.
@@ -157,6 +178,9 @@ Retry configuration is centralized in the runtime:
   (comma-separated delays in seconds, in retry order, e.g. `30,60,120,300,3600`). When unset or
   empty, the default schedule is used. The number of delays defines the maximum number of attempts:
   `len(delays) + 1`. Decimals are accepted (e.g. `0.5,1,2`). Invalid values raise a `ValueError`.
+- `RANKING_HTTP_HEALTH_CHECK_STATUS_CODES` environment variable to override the status codes
+  triggering a reference page (`CheckPage`) health check (comma-separated list, e.g. `500`). When
+  unset or empty, the default list (`500`) is used. Invalid values raise a `ValueError`.
 
 If both the constructor argument and the environment variable are set, the constructor argument
 wins.
