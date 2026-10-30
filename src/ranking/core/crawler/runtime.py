@@ -111,7 +111,12 @@ class CrawlerRuntime(ABC):
         return old != new
 
     def fetch(self, url: str, cache_policy: CachePolicy) -> str:
-        """Fetch content according to policy and update storage when needed."""
+        """Fetch content according to policy and update storage when needed.
+
+        Cached entries flagged by the plugin hook ``is_temporary_unavailable_page`` (fake
+        ``200 OK`` maintenance pages) are treated as poisoned: they are never returned as a
+        cache hit, nor snapshotted, and are refetched instead so the cache self-heals.
+        """
         if cache_policy is CachePolicy.NO_CACHE:
             self.logger.info("No cache policy, fetching directly", url=url)
             self._sleep_before_network()
@@ -120,10 +125,17 @@ class CrawlerRuntime(ABC):
         existing_content = self.storage.get_http_cache(url)
 
         if cache_policy is CachePolicy.CACHE_IF_PRESENT:
-            if existing_content is not None:
+            if existing_content is not None and not self.is_temporary_unavailable_page(
+                url, existing_content
+            ):
                 self.cache_hits += 1
                 self.logger.info("Cache hit", url=url)
                 return existing_content
+
+            # A cached entry flagged as a temporary maintenance page is a poisoned cache:
+            # ignore it and refetch so the entry self-heals with the current content.
+            if existing_content is not None:
+                self.logger.warning("cache_temporary_unavailable_page", url=url)
 
             self.cache_misses += 1
             self.logger.info("Cache miss, fetching", url=url)
@@ -140,10 +152,16 @@ class CrawlerRuntime(ABC):
             if existing_content is None:
                 self.logger.info("No existing content, writing current cache", url=url)
                 self.storage.save_http_cache(url, fetched_content)
+                return fetched_content
 
-            if existing_content is not None and self._has_changed(
-                url, existing_content, fetched_content
-            ):
+            if self.is_temporary_unavailable_page(url, existing_content):
+                # The previously cached content is a maintenance page: discard it instead
+                # of snapshotting it, and refresh the cache with the current content.
+                self.logger.warning("cache_temporary_unavailable_page", url=url)
+                self.storage.save_http_cache(url, fetched_content)
+                return fetched_content
+
+            if self._has_changed(url, existing_content, fetched_content):
                 self.logger.info("Content changed, updating cache", url=url)
                 self.storage.save_http_snapshot(url, existing_content, self._snapshot_timestamp())
                 self.storage.save_http_cache(url, fetched_content)

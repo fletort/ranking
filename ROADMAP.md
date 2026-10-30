@@ -130,6 +130,7 @@ Goal: prepare long-term unattended execution
   - [x] detect temporary maintenance pages returned with a successful HTTP status (fake `200 OK`)
     - plugin hook is_temporary_unavailable_page(url, content) (default: never flagged)
     - flagged pages are never cached nor snapshotted and trigger the standard retry loop
+    - cache hits are also guarded: flagged cached entries are ignored and refetched (self-healing)
 
 ## 🚧 Phase 7 — Incremental Crawling
 
@@ -175,5 +176,9 @@ Goal: formalize plugin structure when needed
 - DevOps: Cloud-native logging:
   - run crawler through systemd oneshot services
   - switch production logging to stdout/stderr JSON (no more log files)
+- Helper:
+  - [ ] add a cache verifier/cleaner for cached temporary maintenance pages (retroactive)
+    - scan cached HTTP entries (local + S3) and apply the plugin is_temporary_unavailable_page hook
+    - `ranking check cache [--delete]`; report resource IDs only (cache keys are URL hashes)
 
 [technical-specification]: ./docs/technical_specification.md

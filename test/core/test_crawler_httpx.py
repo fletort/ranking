@@ -996,3 +996,52 @@ def test_fetch_without_hook_caches_maintenance_page_unchanged(
     assert len(httpx_mock.get_requests()) == 1
     assert sleep_calls == []
     assert storage.get_http_cache(url) == MAINTENANCE_CONTENT
+
+
+def test_fetch_cache_hit_with_cached_maintenance_page_refetches(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """A maintenance page cached by an earlier run is a poisoned hit: ignore it and refetch."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=REGULAR_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    storage.save_http_cache(url, MAINTENANCE_CONTENT)
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+        is_temporary_unavailable_page=_flags_maintenance,
+    )
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == REGULAR_CONTENT
+    assert len(httpx_mock.get_requests()) == 1
+    assert sleep_calls == []
+    assert storage.get_http_cache(url) == REGULAR_CONTENT
+
+
+def test_fetch_refresh_does_not_snapshot_cached_maintenance_page(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """A cached maintenance page is never snapshotted on refresh."""
+    url = "https://example.com/events"
+    httpx_mock.add_response(url=url, text=REGULAR_CONTENT)
+
+    storage = StubStorageProvider("myplugin")
+    storage.save_http_cache(url, MAINTENANCE_CONTENT)
+    cache = HttpxCrawlerRuntime(
+        plugin_name="myplugin",
+        storage=storage,
+        network_sleep_seconds={"min": 0, "max": 0},
+        is_temporary_unavailable_page=_flags_maintenance,
+    )
+
+    content = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+
+    assert content == REGULAR_CONTENT
+    assert storage.get_http_cache(url) == REGULAR_CONTENT
+    assert storage.list_http_snapshots(url) == []

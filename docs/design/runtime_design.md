@@ -205,8 +205,22 @@ A hook returning `True` is handled like a transient failure:
 - if the maintenance page persists after the maximum number of attempts, the fetch fails with a
   `RuntimeError` (handled by the CLI as a regular `fetch_error`).
 
+The hook is also applied to already cached content, so poisoned cache entries (flagged maintenance
+pages cached by an earlier run) self-heal:
+
+- with `CACHE_IF_PRESENT`, a flagged cached entry is not returned: it is treated as a cache miss and
+  refetched, then the cache is overwritten with the current content;
+- with `REFRESH_AND_CACHE`, a flagged cached entry is not snapshotted as the previous version and
+  the cache is refreshed with the current content.
+
+Purging snapshots that were already written before this behavior existed is not handled here and
+requires an explicit cache cleanup (see the roadmap cache verifier task).
+
 The hook is wired into the runtime by the CLI (`build_cache`), following the same pattern as
 `normalize_for_comparison`.
+
+The cache semantics implied by this behavior (which cache hits are valid, and when snapshots are
+created) are part of the storage contract and are defined in `docs/storage_strategy.md`.
 
 ### StorageProvider
 

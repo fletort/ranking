@@ -128,7 +128,8 @@ that never flags anything, so the existing behavior is unchanged.
 - returning `True` skips cache and snapshot writes and triggers the standard retry loop;
 - returning `False` (default) lets the content be cached as usual.
 
-See `docs/design/runtime_design.md` for the retry details.
+See `docs/design/runtime_design.md` for the retry details, and `docs/storage_strategy.md` for the
+resulting cache semantics (valid cache hits, snapshot creation).
 
 ---
 
