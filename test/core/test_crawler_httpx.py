@@ -262,9 +262,7 @@ def test_httpx_fetcher_500_recovers_when_site_comes_back(
     httpx_mock.add_response(url=check_url, status_code=503, is_reusable=True)
     httpx_mock.add_response(url=url, text="<html>Recovered</html>")
 
-    client = HttpxCrawlerRuntime(
-        "demo", tmp_path, base_url=check_url, retry_delays_seconds=(0.5,)
-    )
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url=check_url, retry_delays_seconds=(0.5,))
 
     assert client.fetcher(url) == "<html>Recovered</html>"
     assert sleep_calls == [0.5]
@@ -284,9 +282,7 @@ def test_httpx_fetcher_500_with_unreachable_check_page_retries(
         httpx.ConnectError("connection refused"), url=check_url, is_reusable=True
     )
 
-    client = HttpxCrawlerRuntime(
-        "demo", tmp_path, base_url=check_url, retry_delays_seconds=(1.0,)
-    )
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url=check_url, retry_delays_seconds=(1.0,))
 
     with pytest.raises(RuntimeError, match="HTTP error 500"):
         client.fetcher(url)

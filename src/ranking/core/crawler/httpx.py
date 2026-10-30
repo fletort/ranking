@@ -110,7 +110,6 @@ def parse_health_check_status_codes(raw: str | None) -> tuple[int, ...]:
     )
 
 
-
 def validate_retryable_status_codes(
     codes: Iterable[int], *, context: str = RETRYABLE_STATUS_CODES_ENV
 ) -> tuple[int, ...]:
@@ -291,7 +290,6 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
 
         self.max_attempts = len(self.retry_delays_seconds) + 1
 
-
     def fetcher(self, url: str) -> str:
         """Fetch the HTML content of a page at the given URL using httpx.
 
@@ -408,7 +406,6 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             )
             return False
         return not response.is_server_error
-
 
     def _retry_delay_seconds(self, attempt: int) -> float:
         """Return the backoff delay before the next attempt (``attempt`` is 1-based)."""
