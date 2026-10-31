@@ -161,7 +161,7 @@ Supported policies:
   - Used when fresh data is required and caching is undesirable.
 
 - **CACHE_IF_PRESENT**
-  - Use cached content if available.
+  - Use cached content if available and not flagged as a temporary unavailable page (see below).
   - Otherwise fetch and store the response.
   - Used for stable pages (results, detail pages).
 
@@ -169,7 +169,8 @@ Supported policies:
   - Always fetch from the network.
   - Then **only when the fetched content differs from the** **currently cached version**:
     - Overwrite the active cache entry.
-    - Keep a timestamped snapshot of the previous version (if exist) for debugging
+    - Keep a timestamped snapshot of the previous version (if it exists and is not flagged as a
+      temporary unavailable page — see below) for debugging
   - Used for pages that must be refreshed regularly but still need replayability (e.g. event listing
     pages).
 
@@ -187,6 +188,7 @@ Snapshots are created only when:
 
 - using `REFRESH_AND_CACHE`
 - content is detected as changed
+- the previous version is not a temporary unavailable page (see below)
 
 Snapshots are:
 
@@ -200,13 +202,31 @@ Snapshots are:
 - Raw content is always persisted without modification.
 - The cache remains independent from parsing and normalization concerns.
 
+### Temporary unavailable pages (fake `200 OK`)
+
+Some target websites answer with a successful HTTP status (`200 OK`) while actually serving a
+temporary maintenance page (e.g. a page displaying "On revient très vite !"). Such content must not
+be treated as a valid HTTP resource.
+
+Rule:
+
+- flagged content is never cached nor snapshotted;
+- a flagged cached entry is not a valid cache hit: it is treated as invalid, refetched and
+  overwritten;
+- a flagged previous version is never snapshotted by `REFRESH_AND_CACHE`.
+
+Detection is delegated to plugins through the `is_temporary_unavailable_page` hook (see
+`plugin_guidelines.md`). The retry mechanism applied when such a page is detected is described in
+`design/runtime_design.md`.
+
 ### Non-Goals
 
 Version 1 intentionally excludes:
 
 - HTTP cache headers (ETag, Cache-Control, etc.)
 - Time-based expiration (TTL)
-- Partial invalidation
+- Partial invalidation (except the targeted, content-based invalidation of temporary unavailable
+  pages described above)
 - Concurrency or distributed cache
 
 ## Extracted Data

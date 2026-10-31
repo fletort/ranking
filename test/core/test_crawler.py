@@ -5,8 +5,19 @@ from pathlib import Path
 import pytest
 
 import ranking.core.crawler.runtime as runtime_module
-from ranking.core.crawler.runtime import CachePolicy, CrawlerRuntime
+from ranking.core.crawler.runtime import (
+    CachePolicy,
+    CrawlerRuntime,
+    default_is_temporary_unavailable_page,
+)
 from ranking.core.storage.provider import DownloadedDocument
+
+
+class PlainFetcher(CrawlerRuntime):
+    """Minimal concrete runtime with the default (no-op) hooks."""
+
+    def fetcher(self, url: str) -> str:
+        return ""
 
 
 class EmptyFetcher(CrawlerRuntime):
@@ -160,8 +171,107 @@ def test_refresh_and_cache_creates_snapshot_only_when_content_changes(tmp_path: 
     assert snapshots[0] == (ts1, content1)
 
 
-def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
+def test_default_is_temporary_unavailable_page_returns_false() -> None:
+    assert default_is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is False
 
+
+def test_crawler_runtime_default_temporary_unavailable_hook_returns_false() -> None:
+    cache = PlainFetcher("demo")
+
+    assert cache.is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is False
+
+
+def test_crawler_runtime_uses_custom_temporary_unavailable_hook() -> None:
+    calls: list[tuple[str, str]] = []
+
+    def hook(url: str, content: str) -> bool:
+        calls.append((url, content))
+        return True
+
+    cache = PlainFetcher("demo", is_temporary_unavailable_page=hook)
+
+    assert cache.is_temporary_unavailable_page("https://example.com", "<html>ok</html>") is True
+    assert calls == [("https://example.com", "<html>ok</html>")]
+
+
+def test_cache_if_present_refetches_flagged_cached_content(tmp_path: Path) -> None:
+    calls: list[str] = []
+
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__(
+                "demo",
+                cache_root=tmp_path,
+                network_sleep_seconds={"min": 0, "max": 0},
+                is_temporary_unavailable_page=lambda url, content: "maintenance" in content,
+            )
+
+        def fetcher(self, url: str) -> str:
+            calls.append(url)
+            return "fresh-content"
+
+    cache = DummyFetcher()
+    url = "https://example.com/events"
+    cache.storage.save_http_cache(url, "maintenance-page")
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == "fresh-content"
+    assert calls == [url]
+    assert cache.storage.get_http_cache(url) == "fresh-content"
+    assert cache.cache_hits == 0
+    assert cache.cache_misses == 1
+
+
+def test_cache_if_present_still_hits_for_valid_cached_content(tmp_path: Path) -> None:
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__(
+                "demo",
+                cache_root=tmp_path,
+                network_sleep_seconds={"min": 0, "max": 0},
+                is_temporary_unavailable_page=lambda url, content: "maintenance" in content,
+            )
+
+        def fetcher(self, url: str) -> str:
+            raise AssertionError("fetcher should not be called for a valid cache hit")
+
+    cache = DummyFetcher()
+    url = "https://example.com/events"
+    cache.storage.save_http_cache(url, "valid-content")
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == "valid-content"
+    assert cache.cache_hits == 1
+    assert cache.cache_misses == 0
+
+
+def test_refresh_and_cache_does_not_snapshot_flagged_cached_content(tmp_path: Path) -> None:
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__(
+                "demo",
+                cache_root=tmp_path,
+                network_sleep_seconds={"min": 0, "max": 0},
+                is_temporary_unavailable_page=lambda url, content: "maintenance" in content,
+            )
+
+        def fetcher(self, url: str) -> str:
+            return "fresh-content"
+
+    cache = DummyFetcher()
+    url = "https://example.com/events"
+    cache.storage.save_http_cache(url, "maintenance-page")
+
+    content = cache.fetch(url, CachePolicy.REFRESH_AND_CACHE)
+
+    assert content == "fresh-content"
+    assert cache.storage.get_http_cache(url) == "fresh-content"
+    assert cache.storage.list_http_snapshots(url) == []
+
+
+def test_fetch_propagates_network_errors(tmp_path: Path) -> None:
     class DummyFetcher(CrawlerRuntime):
         def __init__(self) -> None:
             super().__init__("demo", cache_root=tmp_path)
@@ -252,3 +362,35 @@ def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -
     assert saved is not None
     assert saved.content == b"pdf-content"
     assert saved.original_filename == "race.pdf"
+
+
+@pytest.mark.parametrize("cache_policy", list(CachePolicy))
+def test_base_runtime_rejects_flagged_fresh_content_without_writing(
+    tmp_path: Path, cache_policy: CachePolicy
+) -> None:
+    """Safety net: a flagged fresh response is rejected before any cache or snapshot write.
+
+    Retrying belongs to the ``fetcher`` implementation (see ``HttpxCrawlerRuntime``); this guard
+    only ensures a custom ``fetcher`` returning a temporary unavailable page cannot persist it.
+    """
+
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__(
+                "demo",
+                cache_root=tmp_path,
+                network_sleep_seconds={"min": 0, "max": 0},
+                is_temporary_unavailable_page=lambda url, content: "maintenance" in content,
+            )
+
+        def fetcher(self, url: str) -> str:
+            return "maintenance-page"
+
+    cache = DummyFetcher()
+    url = "https://example.com/events"
+
+    with pytest.raises(RuntimeError, match="Temporary unavailable page"):
+        cache.fetch(url, cache_policy)
+
+    assert not cache.storage.exists_http_cache(url)
+    assert cache.storage.list_http_snapshots(url) == []

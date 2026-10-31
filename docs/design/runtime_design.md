@@ -188,6 +188,51 @@ wins.
 Backoff sleeps are accounted for in `sleep_duration_seconds` and reported in the crawl summary, like
 the random pre-fetch sleep.
 
+### Temporary unavailable pages (fake `200 OK`)
+
+Some websites answer `200 OK` while actually serving a temporary maintenance page (e.g. a page
+displaying "On revient très vite !"). Such a page must not be cached nor snapshotted, since it does
+not represent the real content.
+
+Plugins may flag these pages through the `is_temporary_unavailable_page(url, content)` hook. The
+default implementation (`ranking.core.crawler.runtime.default_is_temporary_unavailable_page`) always
+returns `False`, so plugins that do not implement the hook keep their existing behavior unchanged.
+
+A hook returning `True` is handled like a transient failure:
+
+- the page is never cached nor snapshotted;
+- the request is retried through the same backoff schedule and attempt limit as 502/503/504;
+- if the maintenance page persists after the maximum number of attempts, the fetch fails with a
+  `RuntimeError` (handled by the CLI as a regular `fetch_error`).
+
+The hook is consumed as follows:
+
+- `HttpxCrawlerRuntime.fetcher` handles **freshly fetched** content: a flagged response is retried
+  and never returned, so it never reaches the cache layer (the retry mechanism is network-level and
+  belongs to the HTTP runtime);
+- `CrawlerRuntime.fetch` handles **already cached** content: a flagged entry is invalidated and
+  never snapshotted (see below);
+- `CrawlerRuntime.fetch` also acts as a **safety net** for freshly fetched content: a flagged
+  response returned by a `fetcher` that does not apply the hook is rejected with a `RuntimeError`
+  before any cache or snapshot write. Retrying remains the `fetcher`'s responsibility.
+
+The hook is also applied to already cached content, so poisoned cache entries (flagged maintenance
+pages cached by an earlier run) self-heal:
+
+- with `CACHE_IF_PRESENT`, a flagged cached entry is not returned: it is treated as a cache miss and
+  refetched, then the cache is overwritten with the current content;
+- with `REFRESH_AND_CACHE`, a flagged cached entry is not snapshotted as the previous version and
+  the cache is refreshed with the current content.
+
+Purging snapshots that were already written before this behavior existed is not handled here and
+requires an explicit cache cleanup (see the roadmap cache verifier task).
+
+The hook is wired into the runtime by the CLI (`build_cache`), following the same pattern as
+`normalize_for_comparison`.
+
+The cache semantics implied by this behavior (which cache hits are valid, and when snapshots are
+created) are part of the storage contract and are defined in `docs/storage_strategy.md`.
+
 ### StorageProvider
 
 Responsible for:

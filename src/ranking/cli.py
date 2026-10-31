@@ -32,7 +32,10 @@ from ranking.plugins.breizhchrono.eventlist import (
     extract_events_list,
 )
 from ranking.plugins.breizhchrono.extractors import EXTRACTORS
-from ranking.plugins.breizhchrono.plugin import normalize_breizhchrono
+from ranking.plugins.breizhchrono.plugin import (
+    is_temporary_unavailable_page,
+    normalize_breizhchrono,
+)
 from ranking.plugins.breizhchrono.raceresults import extract_race_results
 from ranking.plugins.breizhchrono.resultdetail import extract_result_detail
 
@@ -218,6 +221,7 @@ def build_cache(storage: str) -> HttpxCrawlerRuntime:
         PLUGIN_NAME,
         network_sleep_seconds=NETWORK_SLEEP_SECONDS,
         normalize_for_comparison=normalize_breizhchrono,
+        is_temporary_unavailable_page=is_temporary_unavailable_page,
         save_extracted=True,
         base_url=EVENTS_LIST_URL,
         storage=storage_provider,
