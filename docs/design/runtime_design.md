@@ -263,8 +263,8 @@ delegating every operation to the wrapped provider.
 
 Responsible for:
 
-- emitting a structured trace after a successful storage write
-  (see `storage_strategy.md`, "Storage Traces")
+- emitting a structured trace after a successful storage write (see `storage_strategy.md`, "Storage
+  Traces")
 
 Not responsible for:
 
