@@ -271,15 +271,16 @@ Not responsible for:
 - identity, layout or persistence (delegated to the wrapped provider)
 - cache decisions
 
-Wiring is opt-in at construction time:
+Tracing is applied at construction time by wrapping the desired provider (there is no runtime
+switch):
 
 ```text
 TracingStorageProvider(LocalStorageProvider(...))
 TracingStorageProvider(S3StorageProvider(...))
 ```
 
-It is wired in the CLI (`build_cache`). Existing backends remain unchanged, and the abstract
-`StorageProvider` interface is left untouched.
+The CLI wraps the cache provider unconditionally in `build_cache`. Existing backends remain
+unchanged, and the abstract `StorageProvider` interface is left untouched.
 
 ### DownloadedDocument
 

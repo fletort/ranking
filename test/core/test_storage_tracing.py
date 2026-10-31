@@ -107,6 +107,25 @@ def test_save_document_emits_document_saved_trace(
     )
 
 
+def test_trace_uses_wrapped_provider_identity(tmp_path: Path, logger: MagicMock) -> None:
+    """The traced resource ID must come from the wrapped provider's identity method."""
+
+    class FixedIdentityProvider(LocalStorageProvider):
+        def _compute_resource_id(self, url: str) -> str:
+            return "custom-resource-id"
+
+    provider = FixedIdentityProvider("myplugin", cache_root=tmp_path / ".cache")
+    tracing = TracingStorageProvider(provider, logger=logger)
+
+    tracing.save_http_cache(TEST_URL, "<html>content</html>")
+
+    logger.info.assert_called_once_with(
+        "cache_saved",
+        url=TEST_URL,
+        resource_id="custom-resource-id",
+    )
+
+
 def test_trace_resource_id_is_deterministic_across_url_variants(
     tracing: TracingStorageProvider, logger: MagicMock
 ) -> None:

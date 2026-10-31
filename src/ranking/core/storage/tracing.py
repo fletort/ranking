@@ -4,7 +4,6 @@ from typing import Any
 
 import structlog
 
-from ranking.core.storage.identity import compute_resource_id
 from ranking.core.storage.provider import (
     DownloadedDocument,
     HealthCheckResult,
@@ -30,8 +29,9 @@ class TracingStorageProvider(StorageProvider):
     ``document_saved``.
 
     The wrapped provider stays unchanged and remains responsible for identity,
-    layout and persistence. This decorator is opt-in and can be wired at
-    construction time (see ``ranking.cli.build_cache``).
+    layout and persistence. Tracing is applied at construction time by wrapping the
+    desired provider; the CLI (``ranking.cli.build_cache``) wraps the cache provider
+    unconditionally, so every CLI cache write is traced.
     """
 
     def __init__(self, provider: StorageProvider, logger: Any = None) -> None:
@@ -47,8 +47,13 @@ class TracingStorageProvider(StorageProvider):
         self._logger = logger or structlog.get_logger().bind(component="storage")
 
     def _trace(self, event: str, url: str) -> None:
-        """Emit a structured storage trace for *url*."""
-        self._logger.info(event, url=url, resource_id=compute_resource_id(url))
+        """Emit a structured storage trace for *url*.
+
+        The resource ID is computed through the wrapped provider, so it always matches
+        the identity actually used to persist the object — even if a backend overrides
+        ``_compute_resource_id``.
+        """
+        self._logger.info(event, url=url, resource_id=self._provider._compute_resource_id(url))
 
     def save_http_cache(self, url: str, content: str) -> None:
         self._provider.save_http_cache(url, content)
