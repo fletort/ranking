@@ -46,12 +46,7 @@ class StorageProvider(ABC):
         self.plugin_name = plugin_name
 
     def _compute_resource_id(self, url: str) -> str:
-        """Derive a deterministic SHA-1 resource ID from a canonicalized URL.
-
-        This is the single identity extension point a backend may override. It is
-        honored by the tracing decorator so that emitted traces always match the
-        identity used to persist the object.
-        """
+        """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
         return compute_resource_id(url)
 
     @abstractmethod
