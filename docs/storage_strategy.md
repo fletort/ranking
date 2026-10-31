@@ -404,6 +404,37 @@ s3://ranking/
 
 Logical separation is achieved through prefixes rather than multiple buckets.
 
+## Storage Traces (Observability)
+
+Storage writes emit a structured trace, so that persisted artifacts can be correlated with their
+source URL and their deterministic Resource ID.
+
+Each trace is a structlog event emitted **after** a successful write. It carries:
+
+- `url`: the source URL of the artifact;
+- `resource_id`: the deterministic Resource ID derived from the canonicalized URL.
+
+Example:
+
+```text
+http_cache_saved
+url=https://...
+resource_id=1c4230...
+```
+
+The trace concerns the storage layer, because the Resource ID is a storage-internal detail (the
+runtime only manipulates URLs).
+
+Traces are emitted by `TracingStorageProvider`, a decorator wrapping any `StorageProvider`:
+
+- existing backends (`LocalStorageProvider`, `S3StorageProvider`, …) stay unchanged and remain
+  responsible for identity, layout and persistence;
+- observability is opt-in and enabled at construction time (see `design/runtime_design.md`).
+
+Current events:
+
+- `http_cache_saved`
+
 ## Retention Policy
 
 Current rule: **Keep Everything**

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+from ranking.core.storage.identity import canonicalize_url, compute_resource_id
 
 
 @dataclass
@@ -43,25 +43,12 @@ class StorageProvider(ABC):
 
     def _compute_resource_id(self, url: str) -> str:
         """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
-        canonical = self._canonicalize_url(url)
-        return hashlib.sha1(canonical.encode("utf-8")).hexdigest()  # noqa: S324
+        return compute_resource_id(url)
 
     @staticmethod
     def _canonicalize_url(url: str) -> str:
         """Canonicalize URL by sorting query parameters to stabilize resource IDs."""
-        parsed = urlparse(url)
-        sorted_query = sorted(parse_qsl(parsed.query, keep_blank_values=True))
-        canonical_query = urlencode(sorted_query, doseq=True)
-        return urlunparse(
-            (
-                parsed.scheme,
-                parsed.netloc,
-                parsed.path,
-                parsed.params,
-                canonical_query,
-                parsed.fragment,
-            )
-        )
+        return canonicalize_url(url)
 
     @abstractmethod
     def save_http_cache(self, url: str, content: str) -> None:
