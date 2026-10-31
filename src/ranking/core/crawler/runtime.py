@@ -59,9 +59,18 @@ class CrawlerRuntime(ABC):
                            (used when *storage* is not provided).
             normalize_for_comparison: Optional hook to normalize content before change detection.
             is_temporary_unavailable_page: Optional plugin hook to detect a temporary
-                maintenance page returned with a successful (2xx) HTTP status. When it
-                returns ``True``, the content is neither cached nor snapshotted and the
-                fetch is retried through the standard retry mechanism. Defaults to
+                maintenance page returned with a successful (2xx) HTTP status. The hook is
+                consulted at two levels:
+
+                - by :meth:`fetch`, on **already cached** content: a flagged entry is not a
+                  valid cache hit and is never snapshotted (it is refetched instead);
+                - by the network ``fetcher`` implementation, on **freshly fetched** content
+                  (see :class:`HttpxCrawlerRuntime`): a flagged response is never returned,
+                  hence never cached nor snapshotted, and is retried through the standard
+                  retry mechanism.
+
+                This base class only guards cached content; implementations of ``fetcher``
+                are responsible for not returning flagged content. Defaults to
                 :func:`default_is_temporary_unavailable_page` (never flags anything).
             save_extracted: If True, extracted JSON data is persisted via the storage provider.
             logger: Structured logger instance.
@@ -77,9 +86,11 @@ class CrawlerRuntime(ABC):
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
 
-        # Optional plugin hook flagging a 2xx page that is actually a temporary
-        # maintenance page: such content must not be cached nor snapshotted and the
-        # fetch must be retried through the standard retry mechanism.
+        # Optional plugin hook flagging a 2xx page that is actually a temporary maintenance
+        # page. It is consumed at two levels: by fetch() for cached content (flagged entries
+        # are invalidated and never snapshotted) and by the network fetcher for freshly
+        # fetched content (flagged responses are never returned, hence never cached nor
+        # snapshotted, and are retried via the standard retry mechanism).
         self.is_temporary_unavailable_page = (
             is_temporary_unavailable_page or default_is_temporary_unavailable_page
         )
@@ -95,7 +106,13 @@ class CrawlerRuntime(ABC):
 
     @abstractmethod
     def fetcher(self, url: str) -> str:
-        """Fetch a resource, without using the cache. This is the network-level fetcher."""
+        """Fetch a resource, without using the cache. This is the network-level fetcher.
+
+        Implementations must not return content flagged by the plugin hook
+        ``is_temporary_unavailable_page``: a freshly fetched temporary unavailable page must be
+        retried through the standard retry mechanism instead, so it never reaches the cache
+        layer. See :class:`HttpxCrawlerRuntime` for the reference implementation.
+        """
         pass
 
     def downloader(self, url: str) -> DownloadedDocument:
@@ -116,6 +133,9 @@ class CrawlerRuntime(ABC):
         Cached entries flagged by the plugin hook ``is_temporary_unavailable_page`` (fake
         ``200 OK`` maintenance pages) are treated as poisoned: they are never returned as a
         cache hit, nor snapshotted, and are refetched instead so the cache self-heals.
+
+        Freshly fetched content is expected to be already validated by the ``fetcher``
+        implementation, whose contract forbids returning flagged content.
         """
         if cache_policy is CachePolicy.NO_CACHE:
             self.logger.info("No cache policy, fetching directly", url=url)

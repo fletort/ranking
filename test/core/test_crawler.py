@@ -362,3 +362,33 @@ def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -
     assert saved is not None
     assert saved.content == b"pdf-content"
     assert saved.original_filename == "race.pdf"
+
+
+def test_base_runtime_relies_on_fetcher_to_reject_flagged_fresh_content(tmp_path: Path) -> None:
+    """Contract boundary: fresh-content detection is the ``fetcher`` implementation's job.
+
+    Guarding (and retrying) freshly fetched temporary unavailable pages is network-level, so it
+    lives in the ``fetcher`` implementation (see ``HttpxCrawlerRuntime``). ``CrawlerRuntime.fetch``
+    only guards already cached content, so a custom fetcher returning flagged content is persisted
+    as-is. This test pins that boundary.
+    """
+
+    class DummyFetcher(CrawlerRuntime):
+        def __init__(self) -> None:
+            super().__init__(
+                "demo",
+                cache_root=tmp_path,
+                network_sleep_seconds={"min": 0, "max": 0},
+                is_temporary_unavailable_page=lambda url, content: "maintenance" in content,
+            )
+
+        def fetcher(self, url: str) -> str:
+            return "maintenance-page"
+
+    cache = DummyFetcher()
+    url = "https://example.com/events"
+
+    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+
+    assert content == "maintenance-page"
+    assert cache.storage.get_http_cache(url) == "maintenance-page"
