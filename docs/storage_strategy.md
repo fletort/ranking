@@ -87,6 +87,10 @@ Before hash generation:
 
 This guarantees that semantically equivalent URLs generate the same Resource ID.
 
+Canonicalization is a global, backend-agnostic rule: it is shared by all storage areas and all
+backends. Backends do not customize it, so the same URL always maps to the same Resource ID
+regardless of the storage implementation.
+
 ### Hash Algorithm
 
 The hashing algorithm used in v1 is **SHA‑1**, applied to the UTF‑8 encoded URL.

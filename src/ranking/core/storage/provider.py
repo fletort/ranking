@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from ranking.core.storage.identity import canonicalize_url, compute_resource_id
+from ranking.core.storage.identity import compute_resource_id
 
 
 @dataclass
@@ -35,6 +35,10 @@ class StorageProvider(ABC):
 
     All storage areas (HTTP cache, snapshots, extracted data, documents) are
     addressed by URL. Path/key construction is an internal detail of each provider.
+
+    URL identity (canonicalization + hashing) is a shared, invariant mechanism
+    (:mod:`ranking.core.storage.identity`): the same URL must always yield the same
+    Resource ID, across runs and across backends.
     """
 
     def __init__(self, plugin_name: str) -> None:
@@ -42,13 +46,13 @@ class StorageProvider(ABC):
         self.plugin_name = plugin_name
 
     def _compute_resource_id(self, url: str) -> str:
-        """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
-        return compute_resource_id(url)
+        """Derive a deterministic SHA-1 resource ID from a canonicalized URL.
 
-    @staticmethod
-    def _canonicalize_url(url: str) -> str:
-        """Canonicalize URL by sorting query parameters to stabilize resource IDs."""
-        return canonicalize_url(url)
+        This is the single identity extension point a backend may override. It is
+        honored by the tracing decorator so that emitted traces always match the
+        identity used to persist the object.
+        """
+        return compute_resource_id(url)
 
     @abstractmethod
     def save_http_cache(self, url: str, content: str) -> None:
