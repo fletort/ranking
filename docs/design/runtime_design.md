@@ -46,6 +46,11 @@ classDiagram
 
     class LocalStorageProvider
 
+    class TracingStorageProvider {
+        +save_http_cache()
+        +_trace()
+    }
+
     class S3StorageProvider {
         _build_client_kwargs()
     }
@@ -76,6 +81,9 @@ classDiagram
     S3StorageProvider --|> StorageProvider
     AwsS3StorageProvider --|> S3StorageProvider
     GcsS3StorageProvider --|> S3StorageProvider
+
+    TracingStorageProvider --|> StorageProvider
+    TracingStorageProvider --> StorageProvider : wraps
 
     StorageProvider --> DownloadedDocument
     HttpxCrawlerRuntime --> DownloadedDocument
@@ -247,6 +255,31 @@ Not responsible for:
 - HTTP requests
 - cache decisions
 - parsing
+
+### TracingStorageProvider
+
+A decorator wrapping another `StorageProvider`. It adds a single observability concern while
+delegating every operation to the wrapped provider.
+
+Responsible for:
+
+- emitting a structured trace after a successful storage write
+  (see `storage_strategy.md`, "Storage Traces")
+
+Not responsible for:
+
+- identity, layout or persistence (delegated to the wrapped provider)
+- cache decisions
+
+Wiring is opt-in at construction time:
+
+```text
+TracingStorageProvider(LocalStorageProvider(...))
+TracingStorageProvider(S3StorageProvider(...))
+```
+
+It is wired in the CLI (`build_cache`). Existing backends remain unchanged, and the abstract
+`StorageProvider` interface is left untouched.
 
 ### DownloadedDocument
 

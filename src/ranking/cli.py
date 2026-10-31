@@ -20,6 +20,7 @@ from ranking.core.storage import (
     GcsS3StorageProvider,
     LocalStorageProvider,
     StorageProvider,
+    TracingStorageProvider,
 )
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
@@ -216,7 +217,7 @@ def build_storage(
 
 
 def build_cache(storage: str) -> HttpxCrawlerRuntime:
-    storage_provider = build_storage(storage, PLUGIN_NAME)
+    storage_provider = TracingStorageProvider(build_storage(storage, PLUGIN_NAME))
     return HttpxCrawlerRuntime(
         PLUGIN_NAME,
         network_sleep_seconds=NETWORK_SLEEP_SECONDS,
