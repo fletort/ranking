@@ -417,7 +417,7 @@ Each trace is a structlog event emitted **after** a successful write. It carries
 Example:
 
 ```text
-http_cache_saved
+cache_saved
 url=https://...
 resource_id=1c4230...
 ```
@@ -433,7 +433,10 @@ Traces are emitted by `TracingStorageProvider`, a decorator wrapping any `Storag
 
 Current events:
 
-- `http_cache_saved`
+- `cache_saved` — HTTP cache write (`save_http_cache`)
+- `snapshot_saved` — HTTP snapshot write (`save_http_snapshot`)
+- `extracted_json_saved` — extracted data write (`save_extracted`)
+- `document_saved` — downloaded document write (`save_document`)
 
 ## Retention Policy
 

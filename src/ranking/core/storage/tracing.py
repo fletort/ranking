@@ -22,9 +22,12 @@ class TracingStorageProvider(StorageProvider):
 
     Trace format (as rendered by structlog)::
 
-        http_cache_saved
+        cache_saved
         url=https://...
         resource_id=1c4230...
+
+    Emitted events: ``cache_saved``, ``snapshot_saved``, ``extracted_json_saved`` and
+    ``document_saved``.
 
     The wrapped provider stays unchanged and remains responsible for identity,
     layout and persistence. This decorator is opt-in and can be wired at
@@ -49,7 +52,7 @@ class TracingStorageProvider(StorageProvider):
 
     def save_http_cache(self, url: str, content: str) -> None:
         self._provider.save_http_cache(url, content)
-        self._trace("http_cache_saved", url)
+        self._trace("cache_saved", url)
 
     def get_http_cache(self, url: str) -> str | None:
         return self._provider.get_http_cache(url)
@@ -59,18 +62,21 @@ class TracingStorageProvider(StorageProvider):
 
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         self._provider.save_http_snapshot(url, content, timestamp)
+        self._trace("snapshot_saved", url)
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         return self._provider.list_http_snapshots(url)
 
     def save_extracted(self, url: str, data: Any) -> None:
         self._provider.save_extracted(url, data)
+        self._trace("extracted_json_saved", url)
 
     def get_extracted(self, url: str) -> Any:
         return self._provider.get_extracted(url)
 
     def save_document(self, document: DownloadedDocument) -> None:
         self._provider.save_document(document)
+        self._trace("document_saved", document.url)
 
     def get_document(self, url: str) -> DownloadedDocument | None:
         return self._provider.get_document(url)
