@@ -364,13 +364,14 @@ def test_download_uses_subclass_downloader_and_caches_document(tmp_path: Path) -
     assert saved.original_filename == "race.pdf"
 
 
-def test_base_runtime_relies_on_fetcher_to_reject_flagged_fresh_content(tmp_path: Path) -> None:
-    """Contract boundary: fresh-content detection is the ``fetcher`` implementation's job.
+@pytest.mark.parametrize("cache_policy", list(CachePolicy))
+def test_base_runtime_rejects_flagged_fresh_content_without_writing(
+    tmp_path: Path, cache_policy: CachePolicy
+) -> None:
+    """Safety net: a flagged fresh response is rejected before any cache or snapshot write.
 
-    Guarding (and retrying) freshly fetched temporary unavailable pages is network-level, so it
-    lives in the ``fetcher`` implementation (see ``HttpxCrawlerRuntime``). ``CrawlerRuntime.fetch``
-    only guards already cached content, so a custom fetcher returning flagged content is persisted
-    as-is. This test pins that boundary.
+    Retrying belongs to the ``fetcher`` implementation (see ``HttpxCrawlerRuntime``); this guard
+    only ensures a custom ``fetcher`` returning a temporary unavailable page cannot persist it.
     """
 
     class DummyFetcher(CrawlerRuntime):
@@ -388,7 +389,8 @@ def test_base_runtime_relies_on_fetcher_to_reject_flagged_fresh_content(tmp_path
     cache = DummyFetcher()
     url = "https://example.com/events"
 
-    content = cache.fetch(url, CachePolicy.CACHE_IF_PRESENT)
+    with pytest.raises(RuntimeError, match="Temporary unavailable page"):
+        cache.fetch(url, cache_policy)
 
-    assert content == "maintenance-page"
-    assert cache.storage.get_http_cache(url) == "maintenance-page"
+    assert not cache.storage.exists_http_cache(url)
+    assert cache.storage.list_http_snapshots(url) == []

@@ -205,17 +205,16 @@ A hook returning `True` is handled like a transient failure:
 - if the maintenance page persists after the maximum number of attempts, the fetch fails with a
   `RuntimeError` (handled by the CLI as a regular `fetch_error`).
 
-The hook is consumed at two levels:
+The hook is consumed as follows:
 
 - `HttpxCrawlerRuntime.fetcher` handles **freshly fetched** content: a flagged response is retried
   and never returned, so it never reaches the cache layer (the retry mechanism is network-level and
   belongs to the HTTP runtime);
 - `CrawlerRuntime.fetch` handles **already cached** content: a flagged entry is invalidated and
-  never snapshotted (see below).
-
-The contract on the abstract `fetcher` method makes applying the hook to fresh content the
-responsibility of each fetcher implementation; a `CrawlerRuntime` subclass whose `fetcher` does not
-apply it would persist flagged content.
+  never snapshotted (see below);
+- `CrawlerRuntime.fetch` also acts as a **safety net** for freshly fetched content: a flagged
+  response returned by a `fetcher` that does not apply the hook is rejected with a `RuntimeError`
+  before any cache or snapshot write. Retrying remains the `fetcher`'s responsibility.
 
 The hook is also applied to already cached content, so poisoned cache entries (flagged maintenance
 pages cached by an earlier run) self-heal:
