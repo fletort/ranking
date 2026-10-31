@@ -64,9 +64,7 @@ def test_trace_resource_id_is_deterministic_across_url_variants(
     assert first == second
 
 
-def test_no_trace_when_wrapped_write_fails(
-    local: LocalStorageProvider, logger: MagicMock
-) -> None:
+def test_no_trace_when_wrapped_write_fails(local: LocalStorageProvider, logger: MagicMock) -> None:
     local.save_http_cache = MagicMock(side_effect=OSError("disk full"))  # type: ignore[method-assign]
     tracing = TracingStorageProvider(local, logger=logger)
 
@@ -92,9 +90,7 @@ def test_plugin_name_is_exposed(tracing: TracingStorageProvider) -> None:
     assert tracing.plugin_name == "myplugin"
 
 
-def test_read_operations_are_delegated(
-    tracing: TracingStorageProvider, logger: MagicMock
-) -> None:
+def test_read_operations_are_delegated(tracing: TracingStorageProvider, logger: MagicMock) -> None:
     tracing.save_http_cache(TEST_URL, "<html>content</html>")
     logger.info.reset_mock()
 
