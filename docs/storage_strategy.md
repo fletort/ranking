@@ -429,9 +429,8 @@ Traces are emitted by `TracingStorageProvider`, a decorator wrapping any `Storag
 
 - existing backends (`LocalStorageProvider`, `S3StorageProvider`, …) stay unchanged and remain
   responsible for identity, layout and persistence;
-- tracing is applied at construction time by wrapping the desired provider; the CLI wraps the
-  cache provider unconditionally, so all CLI cache writes are traced (see
-  `design/runtime_design.md`).
+- tracing is applied at construction time by wrapping the desired provider; the CLI wraps the cache
+  provider unconditionally, so all CLI cache writes are traced (see `design/runtime_design.md`).
 
 Current events:
 
