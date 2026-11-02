@@ -62,6 +62,7 @@ class LocalStorageProvider(StorageProvider):
         path = self._http_cache_path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8", newline="\n")
+        self.log.info("cache_saved", url=url, resource_id=self._compute_resource_id(url), path=path)
 
     def get_http_cache(self, url: str) -> str | None:
         path = self._http_cache_path(url)
@@ -76,6 +77,12 @@ class LocalStorageProvider(StorageProvider):
         snapshots_dir = self._snapshots_dir(url)
         snapshots_dir.mkdir(parents=True, exist_ok=True)
         (snapshots_dir / f"{timestamp}.html").write_text(content, encoding="utf-8", newline="\n")
+        self.log.info(
+            "snapshot_saved",
+            url=url,
+            resource_id=self._compute_resource_id(url),
+            path=snapshots_dir / f"{timestamp}.html",
+        )
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         snapshots_dir = self._snapshots_dir(url)
@@ -89,6 +96,9 @@ class LocalStorageProvider(StorageProvider):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
+        )
+        self.log.info(
+            "extracted_json_saved", url=url, resource_id=self._compute_resource_id(url), path=path
         )
 
     def get_extracted(self, url: str) -> Any:
@@ -112,6 +122,12 @@ class LocalStorageProvider(StorageProvider):
         }
         (doc_dir / "metadata.json").write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        self.log.info(
+            "document_saved",
+            url=document.url,
+            resource_id=self._compute_resource_id(document.url),
+            path=doc_dir / filename,
         )
 
     def get_document(self, url: str) -> DownloadedDocument | None:

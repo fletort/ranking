@@ -118,7 +118,9 @@ class S3StorageProvider(StorageProvider):
             raise
 
     def save_http_cache(self, url: str, content: str) -> None:
-        self._put(self._http_cache_key(url), content.encode("utf-8"), "text/html")
+        key = self._http_cache_key(url)
+        self._put(key, content.encode("utf-8"), "text/html")
+        self.log.info("cache_saved", url=url, resource_id=self._compute_resource_id(url), key=key)
 
     def get_http_cache(self, url: str) -> str | None:
         data = self._get(self._http_cache_key(url))
@@ -128,7 +130,11 @@ class S3StorageProvider(StorageProvider):
         return self._exists(self._http_cache_key(url))
 
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
-        self._put(self._snapshot_key(url, timestamp), content.encode("utf-8"), "text/html")
+        key = self._snapshot_key(url, timestamp)
+        self._put(key, content.encode("utf-8"), "text/html")
+        self.log.info(
+            "snapshot_saved", url=url, resource_id=self._compute_resource_id(url), key=key
+        )
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         """Fetch all snapshots for a URL.
@@ -155,7 +161,11 @@ class S3StorageProvider(StorageProvider):
 
     def save_extracted(self, url: str, data: Any) -> None:
         body = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
-        self._put(self._extracted_key(url), body, "application/json")
+        key = self._extracted_key(url)
+        self._put(key, body, "application/json")
+        self.log.info(
+            "extracted_json_saved", url=url, resource_id=self._compute_resource_id(url), key=key
+        )
 
     def get_extracted(self, url: str) -> Any:
         data = self._get(self._extracted_key(url))
@@ -164,13 +174,15 @@ class S3StorageProvider(StorageProvider):
     def save_document(self, document: DownloadedDocument) -> None:
         filename = document.original_filename if document.original_filename else "document"
         content_type = document.content_type if document.content_type else ""
+        key = self._document_content_key(document.url, filename)
+        ressource_id = self._compute_resource_id(document.url)
         self._put(
-            self._document_content_key(document.url, filename),
+            key,
             document.content,
             content_type,
         )
         metadata = {
-            "key": self._compute_resource_id(document.url),
+            "key": ressource_id,
             "url": document.url,
             "original_filename": filename,
             "content_type": content_type,
@@ -179,6 +191,7 @@ class S3StorageProvider(StorageProvider):
         }
         metadata_body = json.dumps(metadata, indent=2, ensure_ascii=False).encode("utf-8")
         self._put(self._document_metadata_key(document.url), metadata_body, "application/json")
+        self.log.info("document_saved", url=document.url, resource_id=ressource_id, key=key)
 
     def get_document(self, url: str) -> DownloadedDocument | None:
         metadata_data = self._get(self._document_metadata_key(url))
