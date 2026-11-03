@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+import structlog
+
 
 @dataclass
 class DownloadedDocument:
@@ -40,6 +42,7 @@ class StorageProvider(ABC):
     def __init__(self, plugin_name: str) -> None:
         """Initialize the storage provider scoped to a plugin name."""
         self.plugin_name = plugin_name
+        self.log = structlog.get_logger().bind(component="storage")
 
     def _compute_resource_id(self, url: str) -> str:
         """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
