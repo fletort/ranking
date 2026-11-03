@@ -62,7 +62,9 @@ class LocalStorageProvider(StorageProvider):
         path = self._http_cache_path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8", newline="\n")
-        self.log.info("cache_saved", url=url, resource_id=self._compute_resource_id(url), path=path)
+        self.log.info(
+            "cache_saved", url=url, resource_id=self._compute_resource_id(url), path=path.as_posix()
+        )
 
     def get_http_cache(self, url: str) -> str | None:
         path = self._http_cache_path(url)
@@ -81,7 +83,7 @@ class LocalStorageProvider(StorageProvider):
             "snapshot_saved",
             url=url,
             resource_id=self._compute_resource_id(url),
-            path=snapshots_dir / f"{timestamp}.html",
+            path=str(snapshots_dir / f"{timestamp}.html"),
         )
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
@@ -98,7 +100,10 @@ class LocalStorageProvider(StorageProvider):
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
         )
         self.log.info(
-            "extracted_json_saved", url=url, resource_id=self._compute_resource_id(url), path=path
+            "extracted_json_saved",
+            url=url,
+            resource_id=self._compute_resource_id(url),
+            path=path.as_posix(),
         )
 
     def get_extracted(self, url: str) -> Any:
@@ -127,7 +132,7 @@ class LocalStorageProvider(StorageProvider):
             "document_saved",
             url=document.url,
             resource_id=self._compute_resource_id(document.url),
-            path=doc_dir / filename,
+            path=str(doc_dir / filename),
         )
 
     def get_document(self, url: str) -> DownloadedDocument | None:
