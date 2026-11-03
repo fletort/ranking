@@ -175,14 +175,14 @@ class S3StorageProvider(StorageProvider):
         filename = document.original_filename if document.original_filename else "document"
         content_type = document.content_type if document.content_type else ""
         key = self._document_content_key(document.url, filename)
-        ressource_id = self._compute_resource_id(document.url)
+        resource_id = self._compute_resource_id(document.url)
         self._put(
             key,
             document.content,
             content_type,
         )
         metadata = {
-            "key": ressource_id,
+            "key": resource_id,
             "url": document.url,
             "original_filename": filename,
             "content_type": content_type,
@@ -191,7 +191,7 @@ class S3StorageProvider(StorageProvider):
         }
         metadata_body = json.dumps(metadata, indent=2, ensure_ascii=False).encode("utf-8")
         self._put(self._document_metadata_key(document.url), metadata_body, "application/json")
-        self.log.info("document_saved", url=document.url, resource_id=ressource_id, key=key)
+        self.log.info("document_saved", url=document.url, resource_id=resource_id, key=key)
 
     def get_document(self, url: str) -> DownloadedDocument | None:
         metadata_data = self._get(self._document_metadata_key(url))
