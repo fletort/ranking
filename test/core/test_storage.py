@@ -52,20 +52,20 @@ def storage_provider(request, local, s3_provider):
 
 
 def test_resource_id_same_url_is_deterministic(local: LocalStorageProvider) -> None:
-    rid1 = local._compute_resource_id(TEST_URL)
-    rid2 = local._compute_resource_id(TEST_URL)
+    rid1 = local.compute_resource_id(TEST_URL)
+    rid2 = local.compute_resource_id(TEST_URL)
     assert rid1 == rid2
 
 
 def test_resource_id_ignores_query_parameter_order(local: LocalStorageProvider) -> None:
-    rid1 = local._compute_resource_id(TEST_URL)
-    rid2 = local._compute_resource_id(TEST_URL_REORDERED)
+    rid1 = local.compute_resource_id(TEST_URL)
+    rid2 = local.compute_resource_id(TEST_URL_REORDERED)
     assert rid1 == rid2
 
 
 def test_resource_id_differs_for_different_urls(local: LocalStorageProvider) -> None:
-    rid1 = local._compute_resource_id(TEST_URL)
-    rid2 = local._compute_resource_id(TEST_URL_DIFFERENT)
+    rid1 = local.compute_resource_id(TEST_URL)
+    rid2 = local.compute_resource_id(TEST_URL_DIFFERENT)
     assert rid1 != rid2
 
 
@@ -81,7 +81,7 @@ def test_resource_id_is_sha1_hex(local: LocalStorageProvider) -> None:
         (parsed.scheme, parsed.netloc, parsed.path, parsed.params, canonical_query, parsed.fragment)
     )
     expected = hashlib.sha1(canonical.encode("utf-8")).hexdigest()  # noqa: S324
-    assert local._compute_resource_id(url) == expected
+    assert local.compute_resource_id(url) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ def test_http_cache_url_canonicalization(storage_provider) -> None:
 
 def test_local_http_cache_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
     local.save_http_cache(TEST_URL, "content")
-    rid = local._compute_resource_id(TEST_URL)
+    rid = local.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected = tmp_path / ".cache" / "myplugin" / "http" / "current" / shard / f"{rid}.html"
     assert expected.exists()
@@ -189,7 +189,7 @@ def test_local_extracted_is_indented_json(local: LocalStorageProvider) -> None:
 
 def test_local_extracted_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
     local.save_extracted(TEST_URL, {"k": "v"})
-    rid = local._compute_resource_id(TEST_URL)
+    rid = local.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected = tmp_path / ".cache" / "myplugin" / "extracted" / shard / f"{rid}.json"
     assert expected.exists()
@@ -252,7 +252,7 @@ def test_local_document_path_sharding(local: LocalStorageProvider, tmp_path: Pat
         downloaded_at=datetime.now(),
     )
     local.save_document(document)
-    rid = local._compute_resource_id(TEST_URL)
+    rid = local.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected_dir = tmp_path / ".documents" / "myplugin" / shard / rid
     assert (expected_dir / "f.pdf").exists()
@@ -300,7 +300,7 @@ def test_s3_plugin_name_isolation() -> None:
 
 def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
     s3_provider.save_http_cache(TEST_URL, "content")
-    rid = s3_provider._compute_resource_id(TEST_URL)
+    rid = s3_provider.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected_key = f"myplugin/cache/http/current/{shard}/{rid}.html"
     assert s3_provider._http_cache_key(TEST_URL) == expected_key
@@ -312,7 +312,7 @@ def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
 
 
 def test_s3_extracted_key_sharding(s3_provider: S3StorageProvider) -> None:
-    rid = s3_provider._compute_resource_id(TEST_URL)
+    rid = s3_provider.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected_key = f"myplugin/cache/extracted/{shard}/{rid}.json"
     assert s3_provider._extracted_key(TEST_URL) == expected_key
@@ -324,7 +324,7 @@ def test_s3_extracted_key_sharding(s3_provider: S3StorageProvider) -> None:
 
 
 def test_s3_document_key_sharding(s3_provider: S3StorageProvider) -> None:
-    rid = s3_provider._compute_resource_id(TEST_URL)
+    rid = s3_provider.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected_prefix = f"myplugin/documents/{shard}/{rid}/"
     assert s3_provider._document_prefix(TEST_URL) == expected_prefix
