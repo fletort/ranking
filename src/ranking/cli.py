@@ -568,11 +568,11 @@ def check_storage(storage: str) -> None:
 @check.command("resource-id")
 @click.option("--url", type=str, required=True, help="URL to compute the resource ID for")
 @click.option(
-    "--plugin", type=str, required=False, help="Use by the storage backend for ressource check"
+    "--plugin", type=str, required=False, help="Storage plugin to use for the resource check"
 )
 @click.option(
     "--storage",
-    type=click.Choice(["local", "s3-gcs"]),
+    type=click.Choice(["local", "s3-gcs", "s3-aws"]),
     required=False,
     show_default=True,
     help="Storage backend to check for ressource",
