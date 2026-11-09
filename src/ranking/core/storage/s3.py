@@ -129,6 +129,11 @@ class S3StorageProvider(StorageProvider):
     def exists_http_cache(self, url: str) -> bool:
         return self._exists(self._http_cache_key(url))
 
+    def delete_http_cache(self, url: str) -> None:
+        key = self._http_cache_key(url)
+        self._s3.delete_object(Bucket=self.bucket, Key=key)
+        self.log.info("cache_deleted", url=url, resource_id=self.compute_resource_id(url), key=key)
+
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         key = self._snapshot_key(url, timestamp)
         self._put(key, content.encode("utf-8"), "text/html")

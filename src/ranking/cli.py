@@ -177,7 +177,7 @@ def is_valid_url(url: str) -> bool:
 def add_storage_option(f):
     return click.option(
         "--storage",
-        type=click.Choice(["local", "s3-gcs"]),
+        type=click.Choice(["local", "s3-gcs", "s3-aws"]),
         default="local",
         show_default=True,
         help="Storage backend to use",
@@ -525,6 +525,35 @@ def extract(
         )
     else:
         click.echo(json_result)
+
+
+@cli.command("delete-cache")
+@add_storage_option
+@click.option("--url", type=str, required=True, help="URL of the cached HTTP response to delete")
+@click.pass_context
+def delete_cache(ctx, storage, url) -> None:
+    """Delete the cached HTTP response for a URL."""
+    log = ctx.obj["log"]
+
+    if not is_valid_url(url):
+        log.error("invalid_cache_url", url=url)
+        raise click.BadParameter("Invalid URL")
+
+    storage_provider = build_storage(storage_type=storage, plugin_name=PLUGIN_NAME)
+
+    if not storage_provider.exists_http_cache(url):
+        log.info("cache_not_found", url=url, storage=storage)
+        click.echo(f"No cached HTTP response found for {url}")
+        return
+
+    storage_provider.delete_http_cache(url)
+    log.info(
+        "cache_deleted",
+        url=url,
+        storage=storage,
+        resource_id=StorageProvider.compute_resource_id(url),
+    )
+    click.echo(f"Deleted cached HTTP response for {url}")
 
 
 @cli.group()

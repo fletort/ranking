@@ -80,6 +80,13 @@ class StorageProvider(ABC):
         """Return True if a current cached HTTP response exists for the URL."""
 
     @abstractmethod
+    def delete_http_cache(self, url: str) -> None:
+        """Delete the current cached HTTP response for a URL.
+
+        Deleting an absent cache entry is a no-op.
+        """
+
+    @abstractmethod
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         """Persist a timestamped snapshot of an HTTP response for a URL."""
 

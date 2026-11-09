@@ -109,6 +109,31 @@ def test_http_cache_url_canonicalization(storage_provider) -> None:
     assert storage_provider.get_http_cache(TEST_URL_REORDERED) == "v1"
 
 
+def test_delete_http_cache(storage_provider) -> None:
+    storage_provider.save_http_cache(TEST_URL, "content")
+    storage_provider.delete_http_cache(TEST_URL)
+    assert storage_provider.get_http_cache(TEST_URL) is None
+    assert not storage_provider.exists_http_cache(TEST_URL)
+
+
+def test_delete_http_cache_when_missing_is_noop(storage_provider) -> None:
+    storage_provider.delete_http_cache(TEST_URL)
+    assert not storage_provider.exists_http_cache(TEST_URL)
+
+
+def test_delete_http_cache_uses_canonicalized_url(storage_provider) -> None:
+    storage_provider.save_http_cache(TEST_URL, "content")
+    storage_provider.delete_http_cache(TEST_URL_REORDERED)
+    assert not storage_provider.exists_http_cache(TEST_URL)
+
+
+def test_delete_http_cache_keeps_snapshots(storage_provider) -> None:
+    storage_provider.save_http_cache(TEST_URL, "current")
+    storage_provider.save_http_snapshot(TEST_URL, "v1", "2026-01-01T00-00-00-000000")
+    storage_provider.delete_http_cache(TEST_URL)
+    assert storage_provider.list_http_snapshots(TEST_URL) == [("2026-01-01T00-00-00-000000", "v1")]
+
+
 # ---------------------------------------------------------------------------
 # LocalStorageProvider — HTTP cache (implementation-specific tests)
 # ---------------------------------------------------------------------------
