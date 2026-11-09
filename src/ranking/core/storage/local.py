@@ -77,9 +77,10 @@ class LocalStorageProvider(StorageProvider):
 
     def delete_http_cache(self, url: str) -> None:
         path = self._http_cache_path(url)
-        if not path.exists():
+        try:
+            path.unlink()
+        except FileNotFoundError:
             return
-        path.unlink()
         self.log.info(
             "cache_deleted",
             url=url,
