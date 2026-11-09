@@ -563,3 +563,34 @@ def check_storage(storage: str) -> None:
     else:
         click.secho("FAILED", fg="red")
         raise click.ClickException("Storage healthcheck failed")
+
+
+@check.command("resource-id")
+@click.option("--url", type=str, required=True, help="URL to compute the resource ID for")
+@click.option(
+    "--plugin", type=str, required=False, help="Storage plugin to use for the resource check"
+)
+@click.option(
+    "--storage",
+    type=click.Choice(["local", "s3-gcs", "s3-aws"]),
+    required=False,
+    show_default=True,
+    help="Storage backend to check for ressource",
+)
+def check_resource_id(url: str, plugin: str, storage: str) -> None:
+    """Compute and display the resource ID for a given URL."""
+    resource_id = StorageProvider.compute_resource_id(url)
+    click.echo(f"URL : {url}")
+    click.echo(f"Resource ID : {resource_id}")
+    if storage and plugin:
+        storage_provider = build_storage(storage_type=storage, plugin_name=plugin)
+        http_cache_exists = storage_provider.exists_http_cache(url)
+        doc_cache_exists = storage_provider.document_exists(url)
+        if http_cache_exists or doc_cache_exists:
+            click.echo("Present: yes")
+            click.echo(f"Storage Area: {'HTTP Cache' if http_cache_exists else 'Document Cache'}")
+        else:
+            click.echo("Present: no")
+    else:
+        click.echo()
+        click.echo("You can specify storage backend and plugin to check for ressource.")

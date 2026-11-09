@@ -39,22 +39,22 @@ class LocalStorageProvider(StorageProvider):
         self.document_root = Path(document_root)
 
     def _http_cache_path(self, url: str) -> Path:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return self.cache_root / self.plugin_name / "http" / "current" / shard / f"{rid}.html"
 
     def _snapshots_dir(self, url: str) -> Path:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return self.cache_root / self.plugin_name / "http" / "snapshots" / shard / rid
 
     def _extracted_path(self, url: str) -> Path:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return self.cache_root / self.plugin_name / "extracted" / shard / f"{rid}.json"
 
     def _document_dir(self, url: str) -> Path:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return self.document_root / self.plugin_name / shard / rid
 
@@ -63,7 +63,7 @@ class LocalStorageProvider(StorageProvider):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8", newline="\n")
         self.log.info(
-            "cache_saved", url=url, resource_id=self._compute_resource_id(url), path=path.as_posix()
+            "cache_saved", url=url, resource_id=self.compute_resource_id(url), path=path.as_posix()
         )
 
     def get_http_cache(self, url: str) -> str | None:
@@ -82,7 +82,7 @@ class LocalStorageProvider(StorageProvider):
         self.log.info(
             "snapshot_saved",
             url=url,
-            resource_id=self._compute_resource_id(url),
+            resource_id=self.compute_resource_id(url),
             path=str(snapshots_dir / f"{timestamp}.html"),
         )
 
@@ -102,7 +102,7 @@ class LocalStorageProvider(StorageProvider):
         self.log.info(
             "extracted_json_saved",
             url=url,
-            resource_id=self._compute_resource_id(url),
+            resource_id=self.compute_resource_id(url),
             path=path.as_posix(),
         )
 
@@ -118,7 +118,7 @@ class LocalStorageProvider(StorageProvider):
         filename = document.original_filename if document.original_filename else "document"
         (doc_dir / filename).write_bytes(document.content)
         metadata = {
-            "key": self._compute_resource_id(document.url),
+            "key": self.compute_resource_id(document.url),
             "url": document.url,
             "original_filename": filename,
             "content_type": document.content_type,
@@ -131,7 +131,7 @@ class LocalStorageProvider(StorageProvider):
         self.log.info(
             "document_saved",
             url=document.url,
-            resource_id=self._compute_resource_id(document.url),
+            resource_id=self.compute_resource_id(document.url),
             path=str(doc_dir / filename),
         )
 

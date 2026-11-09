@@ -68,12 +68,12 @@ class S3StorageProvider(StorageProvider):
         return kwargs
 
     def _http_cache_key(self, url: str) -> str:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return f"{self.plugin_name}/cache/http/current/{shard}/{rid}.html"
 
     def _snapshots_prefix(self, url: str) -> str:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return f"{self.plugin_name}/cache/http/snapshots/{shard}/{rid}/"
 
@@ -81,12 +81,12 @@ class S3StorageProvider(StorageProvider):
         return f"{self._snapshots_prefix(url)}{timestamp}.html"
 
     def _extracted_key(self, url: str) -> str:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return f"{self.plugin_name}/cache/extracted/{shard}/{rid}.json"
 
     def _document_prefix(self, url: str) -> str:
-        rid = self._compute_resource_id(url)
+        rid = self.compute_resource_id(url)
         shard = rid[:2]
         return f"{self.plugin_name}/documents/{shard}/{rid}/"
 
@@ -120,7 +120,7 @@ class S3StorageProvider(StorageProvider):
     def save_http_cache(self, url: str, content: str) -> None:
         key = self._http_cache_key(url)
         self._put(key, content.encode("utf-8"), "text/html")
-        self.log.info("cache_saved", url=url, resource_id=self._compute_resource_id(url), key=key)
+        self.log.info("cache_saved", url=url, resource_id=self.compute_resource_id(url), key=key)
 
     def get_http_cache(self, url: str) -> str | None:
         data = self._get(self._http_cache_key(url))
@@ -132,9 +132,7 @@ class S3StorageProvider(StorageProvider):
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         key = self._snapshot_key(url, timestamp)
         self._put(key, content.encode("utf-8"), "text/html")
-        self.log.info(
-            "snapshot_saved", url=url, resource_id=self._compute_resource_id(url), key=key
-        )
+        self.log.info("snapshot_saved", url=url, resource_id=self.compute_resource_id(url), key=key)
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         """Fetch all snapshots for a URL.
@@ -164,7 +162,7 @@ class S3StorageProvider(StorageProvider):
         key = self._extracted_key(url)
         self._put(key, body, "application/json")
         self.log.info(
-            "extracted_json_saved", url=url, resource_id=self._compute_resource_id(url), key=key
+            "extracted_json_saved", url=url, resource_id=self.compute_resource_id(url), key=key
         )
 
     def get_extracted(self, url: str) -> Any:
@@ -175,7 +173,7 @@ class S3StorageProvider(StorageProvider):
         filename = document.original_filename if document.original_filename else "document"
         content_type = document.content_type if document.content_type else ""
         key = self._document_content_key(document.url, filename)
-        resource_id = self._compute_resource_id(document.url)
+        resource_id = self.compute_resource_id(document.url)
         self._put(
             key,
             document.content,

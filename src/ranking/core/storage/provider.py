@@ -44,9 +44,10 @@ class StorageProvider(ABC):
         self.plugin_name = plugin_name
         self.log = structlog.get_logger().bind(component="storage")
 
-    def _compute_resource_id(self, url: str) -> str:
+    @staticmethod
+    def compute_resource_id(url: str) -> str:
         """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
-        canonical = self._canonicalize_url(url)
+        canonical = StorageProvider._canonicalize_url(url)
         return hashlib.sha1(canonical.encode("utf-8")).hexdigest()  # noqa: S324
 
     @staticmethod
