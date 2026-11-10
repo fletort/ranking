@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from ranking.core.storage import DownloadedDocument, LocalStorageProvider, S3StorageProvider
@@ -329,6 +330,29 @@ def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
     shard = rid[:2]
     expected_key = f"myplugin/cache/http/current/{shard}/{rid}.html"
     assert s3_provider._http_cache_key(TEST_URL) == expected_key
+
+
+@pytest.mark.parametrize("error_code", ["NoSuchKey", "404"])
+def test_s3_delete_http_cache_ignores_not_found(
+    s3_provider: S3StorageProvider, error_code: str
+) -> None:
+    """GCS's S3-compatible DELETE returns 404/NoSuchKey for absent objects."""
+    error = ClientError(
+        {"Error": {"Code": error_code, "Message": "Not Found"}},
+        "DeleteObject",
+    )
+    with patch.object(s3_provider._s3, "delete_object", side_effect=error):
+        s3_provider.delete_http_cache(TEST_URL)
+
+
+def test_s3_delete_http_cache_reraises_other_errors(s3_provider: S3StorageProvider) -> None:
+    error = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}},
+        "DeleteObject",
+    )
+    with patch.object(s3_provider._s3, "delete_object", side_effect=error):
+        with pytest.raises(ClientError):
+            s3_provider.delete_http_cache(TEST_URL)
 
 
 # ---------------------------------------------------------------------------

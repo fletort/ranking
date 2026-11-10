@@ -131,7 +131,14 @@ class S3StorageProvider(StorageProvider):
 
     def delete_http_cache(self, url: str) -> None:
         key = self._http_cache_key(url)
-        self._s3.delete_object(Bucket=self.bucket, Key=key)
+        try:
+            self._s3.delete_object(Bucket=self.bucket, Key=key)
+        except ClientError as e:
+            # GCS's S3-compatible DELETE returns 404/NoSuchKey for absent objects,
+            # unlike AWS which treats deletes as idempotent.
+            if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+                return
+            raise
         self.log.info("cache_deleted", url=url, resource_id=self.compute_resource_id(url), key=key)
 
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
