@@ -142,7 +142,7 @@ Goal: prepare long-term unattended execution
 
 ## 🚧 Phase 6.5 — Cache Optimization & Redirect Management (HIGH PRIORITY)
 
-**Milestone:** [POC - Phase 6.5](https://github.com)
+**Milestone:** [POC - Phase 6.5](https://github.com/fletort/ranking/milestone/8)
 
 Goal: Protect cloud storage sizing (Free Tier compatibility) and enforce data uniqueness.
 
