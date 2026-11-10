@@ -102,15 +102,15 @@ Goal: prepare long-term unattended execution
       [#63](https://github.com/fletort/ranking/issues/63)
 - [x] support storage backend selection (local / s3) from CLI
       [#69](https://github.com/fletort/ranking/issues/69)
-- [ ] Valid: restart behavior using persistent storage
+- [x] Valid: restart behavior using persistent storage
   - [x] dev: move lazy pause on real crawl only (faster cache)
         [#66](https://github.com/fletort/ranking/issues/66)
-  - [ ] validate cache reuse across crawler restarts (on S3)
+  - [x] validate cache reuse across crawler restarts (on S3)
 - [ ] CI/CD: prepare VM deployment [#67](https://github.com/fletort/ranking/issues/67)
   - [ ] create VM installation script and/or document VM prerequesite
   - [ ] create deployment GitHub Action (manual action)
   - [ ] validate full crawl execution on VM
-- [ ] Added task discovered during the landing process:
+- [x] Added task discovered during the landing process:
   - [x] add storage diagnostic command [#70](https://github.com/fletort/ranking/issues/70)
   - [x] Refactor S3StorageProvider to support multiple S3-compatible backends (added)
         [#76](https://github.com/fletort/ranking/issues/76)
@@ -139,6 +139,28 @@ Goal: prepare long-term unattended execution
     - Add cache traceability information when persisting HTTP cache entries.
     - Add cli command for storage inspection
     - Add cli command to delete cache item from url
+
+## 🚧 Phase 6.5 — Cache Optimization & Redirect Management (HIGH PRIORITY)
+
+**Milestone:** [POC - Phase 6.5](https://github.com/fletort/ranking/milestone/8)
+
+Goal: Protect cloud storage sizing (Free Tier compatibility) and enforce data uniqueness.
+
+- [ ] Implement robust HTTP redirection management in the caching layer
+      [#122](https://github.com/fletort/ranking/issues/122)
+  - Store raw page content using the final/target URL hash (canonical identity)
+  - Persist lightweight pointer entries for initial URLs to intercept future crawl hits without
+    re-fetching
+- [ ] Implement multi-level Race-scoped ZIP packaging for HTTP and Extracted layers
+      [#123](https://github.com/fletort/ranking/issues/123)
+  - Design a Context Manager (`with`) lifecycle to handle transactional batch execution per race
+  - Automatically sync (download/extract) pre-existing race archives from S3 at session
+    initialization
+  - Group, compress, and upload fine-grained runner pages as a single `.zip` artifact named after
+    the race URL hash upon session close
+
+👉 Crucial step to keep storage footprint minimal and prevent asset duplication before scaling up
+the crawler.
 
 ## 🚧 Phase 7 — Incremental Crawling
 
