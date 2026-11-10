@@ -75,6 +75,19 @@ class LocalStorageProvider(StorageProvider):
     def exists_http_cache(self, url: str) -> bool:
         return self._http_cache_path(url).exists()
 
+    def delete_http_cache(self, url: str) -> None:
+        path = self._http_cache_path(url)
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return
+        self.log.info(
+            "cache_deleted",
+            url=url,
+            resource_id=self.compute_resource_id(url),
+            path=path.as_posix(),
+        )
+
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         snapshots_dir = self._snapshots_dir(url)
         snapshots_dir.mkdir(parents=True, exist_ok=True)

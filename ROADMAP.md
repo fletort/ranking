@@ -121,16 +121,24 @@ Goal: prepare long-term unattended execution
     - RANKING_LOG_FORMAT=console|json
   - [x] support systemd oneshot deployment (to be used in production)
   - [x] retry transient HTTP infrastructure failures (502, 503, 504) with exponential backoff
+        [#102](https://github.com/fletort/ranking/issues/102)
     - RANKING_HTTP_RETRY_STATUS_CODES=502,503,504 (retryable status codes)
     - RANKING_HTTP_RETRY_DELAYS_SECONDS=30,60,120,300,3600 (backoff schedule)
   - [x] health-check HTTP 500 to separate localized page bugs from global outages
+        [#105](https://github.com/fletort/ranking/issues/105)
     - RANKING_HTTP_HEALTH_CHECK_STATUS_CODES=500 (health-checked status codes)
     - validate a reference page (CheckPage) before retrying; fail immediately with
       LocalServerErrorException when the site is up, fall back to the retry loop when it is down
   - [x] detect temporary maintenance pages returned with a successful HTTP status (fake `200 OK`)
+        [#106](https://github.com/fletort/ranking/issues/106)
     - plugin hook is_temporary_unavailable_page(url, content) (default: never flagged)
     - flagged pages are never cached nor snapshotted and trigger the standard retry loop
     - cache hits are also guarded: flagged cached entries are ignored and refetched (self-healing)
+  - [x] improve storage diagnostics and cache investigation tooling
+        [#103](https://github.com/fletort/ranking/issues/103)
+    - Add cache traceability information when persisting HTTP cache entries.
+    - Add cli command for storage inspection
+    - Add cli command to delete cache item from url
 
 ## 🚧 Phase 7 — Incremental Crawling
 

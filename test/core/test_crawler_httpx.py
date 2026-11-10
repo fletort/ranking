@@ -830,6 +830,9 @@ class StubStorageProvider(StorageProvider):
     def exists_http_cache(self, url: str) -> bool:
         return url in self._http_cache
 
+    def delete_http_cache(self, url: str) -> None:
+        self._http_cache.pop(url, None)
+
     def save_http_snapshot(self, url: str, content: str, timestamp: str) -> None:
         self._snapshots.setdefault(url, []).append((timestamp, content))
 
