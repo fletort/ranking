@@ -131,6 +131,10 @@ Goal: prepare long-term unattended execution
     - plugin hook is_temporary_unavailable_page(url, content) (default: never flagged)
     - flagged pages are never cached nor snapshotted and trigger the standard retry loop
     - cache hits are also guarded: flagged cached entries are ignored and refetched (self-healing)
+  - [x] improve storage diagnostics and cache investigation tooling
+    - Add cache traceability information when persisting HTTP cache entries.
+    - Add cli command for storage inspection
+    - Add cli command to delete cache item from url
 
 ## 🚧 Phase 7 — Incremental Crawling
 
