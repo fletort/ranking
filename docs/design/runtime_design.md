@@ -306,9 +306,11 @@ Resolution rules:
   miss and the requested URL is refetched. The next successful fetch rewrites the pointer to the
   final URL, collapsing the chain and breaking the cycle. A real HTTP redirect loop is still
   reported by `httpx` as a fetch error.
-- **Chain collapsing on write:** every successful fetch stores `requested_url → final_url` directly
-  (`final_url` comes from `httpx`, which already follows the whole chain). Refreshing an alias
-  therefore collapses its chain to a single hop.
+- **Chain collapsing on write:** after persisting the canonical body for a successful cache-writing
+  fetch, remove any existing pointer at `final_url` before publishing the requested URL's pointer.
+  If the requested and final Resource IDs differ, store `requested_url → final_url` directly;
+  otherwise leave no pointer for that Resource ID. This applies to `REFRESH_AND_CACHE` and
+  `CACHE_IF_PRESENT` misses, making the final body reachable and breaking stale cached cycles.
 - **Stale body cleanup:** once the canonical content is persisted, the redirecting URL's `current`
   cache body (if any) is removed, while its historical snapshots are preserved. This prevents
   shadowing and keeps the "one body per canonical resource" guarantee.

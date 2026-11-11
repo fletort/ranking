@@ -269,6 +269,10 @@ consistent.
   collapses chains to a single hop) and, once the canonical content is persisted, the redirecting
   URL's stale `current` body is removed. When A stops redirecting, a stale pointer is removed and A
   is stored as a direct body.
+- For both cache-writing policies, pointer creation and stale-body cleanup apply only when A and B
+  have different Resource IDs. If canonicalization gives them the same ID (for example, when only
+  query-parameter order changes), remove any pointer at that ID and retain the canonical body
+  without deleting it.
 - Redirects to another domain are rejected by the HTTP runtime (`ExternalRedirectError`) and no
   pointer is created.
 
