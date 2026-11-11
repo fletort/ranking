@@ -253,18 +253,39 @@ consistent.
 - one small JSON artifact per redirecting URL, addressed by the Resource ID of the **initial** URL
   (A);
 - it maps the initial URL (A) to the final URL (B) and stores both Resource IDs;
-- it is not authoritative: when the target cache entry is missing, the URL is considered a cache
+- pointers may form a chain (`A → B → C`); resolution follows the chain to the canonical URL;
+- a pointer always takes precedence over a legacy HTTP cache body stored for the same URL;
+- it is not authoritative: when the canonical cache entry is missing, the URL is considered a cache
   miss and is refetched (self-healing).
 
 ### Cache policy interaction
 
 - `NO_CACHE`: no pointer is read or written.
-- `CACHE_IF_PRESENT`: a pointer `A → B` is resolved to the cache entry of B. When B is missing, the
-  URL is a cache miss and is refetched.
-- `REFRESH_AND_CACHE`: the pointer is refreshed after each fetch. When A stops redirecting, a stale
-  pointer is removed.
+- `CACHE_IF_PRESENT`: the pointer chain is resolved transitively (`A → B → C → ...`) to the
+  canonical URL, and only that URL's cache entry is read. Intermediate and legacy bodies are never
+  used. When the canonical entry is missing, or the chain is cyclic / exceeds `MAX_REDIRECT_HOPS`
+  (default: 10), the URL is a cache miss and is refetched.
+- `REFRESH_AND_CACHE`: the pointer is rewritten to the final URL reported by the HTTP client (which
+  collapses chains to a single hop) and, once the canonical content is persisted, the redirecting
+  URL's stale `current` body is removed. When A stops redirecting, a stale pointer is removed and A
+  is stored as a direct body.
 - Redirects to another domain are rejected by the HTTP runtime (`ExternalRedirectError`) and no
   pointer is created.
+
+### Chain resolution
+
+An alias may become stale when its target starts redirecting later (`A → B` stored, then `B → C`).
+Resolution is therefore transitive:
+
+- follow pointers until a URL without a pointer is reached; that URL is canonical;
+- a pointer takes precedence over a legacy `current` body for the same URL;
+- only the canonical URL's cache entry is read; intermediate and legacy bodies are never used;
+- cycles, self-references and chains longer than `MAX_REDIRECT_HOPS` (default: 10) are invalid and
+  treated as a cache miss;
+- a successful fetch writes the pointer directly to the final URL, collapsing the chain.
+
+Existing aliases are not rewritten eagerly, as that would require scanning every pointer on each
+write. They remain valid through transitive resolution and collapse on their next refresh.
 
 ### Pointer format
 

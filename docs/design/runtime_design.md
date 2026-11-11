@@ -271,6 +271,51 @@ sequenceDiagram
 On a subsequent crawl of A, the pointer is resolved without any network request: `get_redirect(A)`
 returns `B`, then `get_http_cache(B)` returns the cached content.
 
+#### Chain resolution
+
+A target may itself start redirecting after an alias has been cached: once `A → B` is stored,
+refreshing B can later establish `B → C`. The lookup must therefore resolve the **pointer chain**
+instead of a single hop, so that existing aliases keep resolving to the canonical resource:
+
+```mermaid
+sequenceDiagram
+    participant Runtime as CrawlerRuntime
+    participant Storage as StorageProvider
+
+    Runtime->>Storage: get_redirect(A)
+    Storage-->>Runtime: B
+    Runtime->>Storage: get_redirect(B)
+    Storage-->>Runtime: C
+    Runtime->>Storage: get_redirect(C)
+    Storage-->>Runtime: None
+    Runtime->>Storage: get_http_cache(C)
+    Storage-->>Runtime: content
+```
+
+Resolution rules:
+
+- **Transitive:** follow `get_redirect()` until a URL without a pointer is found. That URL is the
+  canonical resource; only its cache entry is read.
+- **Pointer precedence:** a pointer always takes precedence over a legacy `current` cache body for
+  the same URL. A redirecting URL's own body (e.g. a body cached before B started redirecting) is
+  never used as a cache hit. If the canonical entry is missing, the URL is a cache miss; the runtime
+  never falls back to an intermediate or legacy body.
+- **Cycle handling:** URLs visited during resolution are tracked. A cycle (`A → B → A`), a
+  self-referential pointer (`A → A`), or a chain longer than `MAX_REDIRECT_HOPS` (default: 10,
+  overridable via `RANKING_REDIRECT_MAX_HOPS`) makes the chain invalid. It is treated as a cache
+  miss and the requested URL is refetched. The next successful fetch rewrites the pointer to the
+  final URL, collapsing the chain and breaking the cycle. A real HTTP redirect loop is still
+  reported by `httpx` as a fetch error.
+- **Chain collapsing on write:** every successful fetch stores `requested_url → final_url` directly
+  (`final_url` comes from `httpx`, which already follows the whole chain). Refreshing an alias
+  therefore collapses its chain to a single hop.
+- **Stale body cleanup:** once the canonical content is persisted, the redirecting URL's `current`
+  cache body (if any) is removed, while its historical snapshots are preserved. This prevents
+  shadowing and keeps the "one body per canonical resource" guarantee.
+
+The chain walk is performed by `CrawlerRuntime` through repeated `storage.get_redirect()` calls: the
+storage provider remains a single-hop, URL-addressed store and does not interpret pointers.
+
 Responsibilities:
 
 - `HttpxCrawlerRuntime.fetcher` follows redirects and returns a `FetchedResource` carrying
@@ -281,8 +326,9 @@ Responsibilities:
   - a redirect pointer `A → B` is persisted through the storage provider;
   - with `REFRESH_AND_CACHE`, snapshots are created under B when B changes, and a stale pointer is
     removed when A stops redirecting;
-  - with `CACHE_IF_PRESENT`, an existing pointer is resolved to B's cache entry. A pointer whose
-    target is missing is treated as a cache miss and self-heals.
+  - with `CACHE_IF_PRESENT`, the pointer chain is resolved transitively to the canonical cache entry
+    (pointer precedence over legacy bodies, cycle and hop-limit detection). A chain whose canonical
+    entry is missing is treated as a cache miss and self-heals.
 - `StorageProvider` owns the pointer format and persists/reads it by URL (`save_redirect` /
   `get_redirect` / `exists_redirect` / `delete_redirect`).
 
