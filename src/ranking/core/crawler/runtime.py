@@ -133,6 +133,8 @@ class CrawlerRuntime(ABC):
             if max_redirect_hops is not None
             else parse_max_redirect_hops(os.getenv(REDIRECT_MAX_HOPS_ENV))
         )
+        if self.max_redirect_hops < 1:
+            raise ValueError(f"Invalid redirect hop limit {self.max_redirect_hops}")
 
         # Optional normalization hook (plugin-controlled)
         self.normalize_for_comparison = normalize_for_comparison
