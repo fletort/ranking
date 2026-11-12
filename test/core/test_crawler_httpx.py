@@ -34,7 +34,7 @@ def test_httpx_fetcher_returns_html(httpx_mock: HTTPXMock, tmp_path: Path) -> No
     client = HttpxCrawlerRuntime("demo", tmp_path)
     result = client.fetcher(url)
 
-    assert result == "<html>Hello</html>"
+    assert result.content == "<html>Hello</html>"
 
 
 def test_httpx_fetcher_sends_custom_headers(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
@@ -111,7 +111,7 @@ def test_httpx_fetcher_retries_transient_error_then_succeeds(
     client = HttpxCrawlerRuntime("demo", tmp_path)
     result = client.fetcher(url)
 
-    assert result == "<html>Recovered</html>"
+    assert result.content == "<html>Recovered</html>"
     assert sleep_calls == [RETRY_BACKOFF[0]]
     assert len(httpx_mock.get_requests()) == 2
     assert client.sleep_duration_seconds == RETRY_BACKOFF[0]
@@ -132,7 +132,7 @@ def test_httpx_fetcher_retries_with_exponential_backoff_schedule(
     client = HttpxCrawlerRuntime("demo", tmp_path)
     result = client.fetcher(url)
 
-    assert result == "ok"
+    assert result.content == "ok"
     # Attempt 1 -> 30s, attempt 2 -> 60s, attempt 3 -> 120s, attempt 4 -> 300s
     assert sleep_calls == [30.0, 60.0, 120.0, 300.0]
     assert client.sleep_duration_seconds == 510.0
@@ -265,7 +265,7 @@ def test_httpx_fetcher_500_recovers_when_site_comes_back(
 
     client = HttpxCrawlerRuntime("demo", tmp_path, base_url=check_url, retry_delays_seconds=(0.5,))
 
-    assert client.fetcher(url) == "<html>Recovered</html>"
+    assert client.fetcher(url).content == "<html>Recovered</html>"
     assert sleep_calls == [0.5]
 
 
@@ -307,7 +307,7 @@ def test_httpx_fetcher_500_health_check_prefers_last_successful_page(
 
     client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com/base")
 
-    assert client.fetcher(good_url) == "<html>Good</html>"
+    assert client.fetcher(good_url).content == "<html>Good</html>"
     with pytest.raises(LocalServerErrorException):
         client.fetcher(broken_url)
 
@@ -396,7 +396,7 @@ def test_httpx_fetcher_retryable_codes_from_environment(
     client = HttpxCrawlerRuntime("demo", tmp_path)
 
     assert client.retryable_status_codes == (503, 429)
-    assert client.fetcher(url) == "ok"
+    assert client.fetcher(url).content == "ok"
     assert sleep_calls == [30.0]
 
 
@@ -438,7 +438,7 @@ def test_httpx_fetcher_explicit_retry_config_overrides_environment(
         retry_delays_seconds=(1.0, 2.0),
     )
 
-    assert client.fetcher(url) == "ok"
+    assert client.fetcher(url).content == "ok"
     assert sleep_calls == [1.0, 2.0]
     assert client.max_attempts == 3
 
@@ -571,7 +571,7 @@ def test_httpx_fetcher_retry_delays_from_environment(
 
     assert client.retry_delays_seconds == (1.0, 2.5, 4.0)
     assert client.max_attempts == 4
-    assert client.fetcher(url) == "ok"
+    assert client.fetcher(url).content == "ok"
     assert sleep_calls == [1.0, 2.5, 4.0]
 
 
@@ -608,7 +608,7 @@ def test_httpx_fetcher_explicit_retry_delays_override_environment(
 
     client = HttpxCrawlerRuntime("demo", tmp_path, retry_delays_seconds=(0.01,))
 
-    assert client.fetcher(url) == "ok"
+    assert client.fetcher(url).content == "ok"
     assert sleep_calls == [0.01]
 
 
@@ -667,6 +667,22 @@ def test_httpx_fetcher_raises_on_external_redirect(httpx_mock: HTTPXMock, tmp_pa
         check=lambda e: e.requested_url == url and e.final_url == redirected_url,
     ):
         client.fetcher(url)
+
+
+def test_httpx_fetcher_reports_final_url_on_same_domain_redirect(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    url = "https://example.com/old"
+    redirected_url = "https://example.com/new"
+    httpx_mock.add_response(url=url, status_code=302, headers={"Location": redirected_url})
+    httpx_mock.add_response(url=redirected_url, text="<html>Moved</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+    resource = client.fetcher(url)
+
+    assert resource.requested_url == url
+    assert resource.final_url == redirected_url
+    assert resource.content == "<html>Moved</html>"
 
 
 def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:
@@ -820,6 +836,7 @@ class StubStorageProvider(StorageProvider):
         self._extracted: dict[str, dict] = {}
         self._documents: dict[str, DownloadedDocument] = {}
         self._snapshots: dict[str, list[tuple[str, str]]] = {}
+        self._redirects: dict[str, str] = {}
 
     def save_http_cache(self, url: str, content: str) -> None:
         self._http_cache[url] = content
@@ -838,6 +855,18 @@ class StubStorageProvider(StorageProvider):
 
     def list_http_snapshots(self, url: str) -> list[tuple[str, str]]:
         return list(self._snapshots.get(url, []))
+
+    def save_redirect(self, url: str, target_url: str) -> None:
+        self._redirects[url] = target_url
+
+    def get_redirect(self, url: str) -> str | None:
+        return self._redirects.get(url)
+
+    def exists_redirect(self, url: str) -> bool:
+        return url in self._redirects
+
+    def delete_redirect(self, url: str) -> None:
+        self._redirects.pop(url, None)
 
     def save_extracted(self, url: str, data: dict) -> None:
         self._extracted[url] = data

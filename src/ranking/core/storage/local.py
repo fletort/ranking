@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,7 @@ class LocalStorageProvider(StorageProvider):
             ├── http/
             │   ├── current/<shard>/<resource_id>.html
             │   └── snapshots/<shard>/<resource_id>/<timestamp>.html
+            ├── redirects/<shard>/<resource_id>.json
             └── extracted/<shard>/<resource_id>.json
 
         <document_root>/
@@ -52,6 +53,11 @@ class LocalStorageProvider(StorageProvider):
         rid = self.compute_resource_id(url)
         shard = rid[:2]
         return self.cache_root / self.plugin_name / "extracted" / shard / f"{rid}.json"
+
+    def _redirect_path(self, url: str) -> Path:
+        rid = self.compute_resource_id(url)
+        shard = rid[:2]
+        return self.cache_root / self.plugin_name / "redirects" / shard / f"{rid}.json"
 
     def _document_dir(self, url: str) -> Path:
         rid = self.compute_resource_id(url)
@@ -105,6 +111,50 @@ class LocalStorageProvider(StorageProvider):
             return []
         files = sorted(snapshots_dir.glob("*.html"))
         return [(f.stem, f.read_text(encoding="utf-8")) for f in files]
+
+    def save_redirect(self, url: str, target_url: str) -> None:
+        path = self._redirect_path(url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "url": url,
+            "target_url": target_url,
+            "resource_id": self.compute_resource_id(url),
+            "target_resource_id": self.compute_resource_id(target_url),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
+        )
+        self.log.info(
+            "redirect_saved",
+            url=url,
+            target_url=target_url,
+            resource_id=self.compute_resource_id(url),
+            path=path.as_posix(),
+        )
+
+    def get_redirect(self, url: str) -> str | None:
+        path = self._redirect_path(url)
+        if not path.exists():
+            return None
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload.get("target_url")
+
+    def exists_redirect(self, url: str) -> bool:
+        return self._redirect_path(url).exists()
+
+    def delete_redirect(self, url: str) -> None:
+        path = self._redirect_path(url)
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            return
+        self.log.info(
+            "redirect_deleted",
+            url=url,
+            resource_id=self.compute_resource_id(url),
+            path=path.as_posix(),
+        )
 
     def save_extracted(self, url: str, data: Any) -> None:
         path = self._extracted_path(url)

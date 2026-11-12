@@ -136,6 +136,51 @@ def test_delete_http_cache_keeps_snapshots(storage_provider) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Shared tests — Redirect pointers (parametrized across LocalStorage and S3Storage)
+# ---------------------------------------------------------------------------
+
+REDIRECT_TARGET = "https://example.com/target"
+
+
+def test_save_and_get_redirect(storage_provider) -> None:
+    storage_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    assert storage_provider.get_redirect(TEST_URL) == REDIRECT_TARGET
+
+
+def test_get_redirect_returns_none_when_missing(storage_provider) -> None:
+    assert storage_provider.get_redirect(TEST_URL) is None
+
+
+def test_exists_redirect(storage_provider) -> None:
+    assert not storage_provider.exists_redirect(TEST_URL)
+    storage_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    assert storage_provider.exists_redirect(TEST_URL)
+
+
+def test_delete_redirect(storage_provider) -> None:
+    storage_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    storage_provider.delete_redirect(TEST_URL)
+    assert storage_provider.get_redirect(TEST_URL) is None
+    assert not storage_provider.exists_redirect(TEST_URL)
+
+
+def test_delete_redirect_when_missing_is_noop(storage_provider) -> None:
+    storage_provider.delete_redirect(TEST_URL)
+    assert not storage_provider.exists_redirect(TEST_URL)
+
+
+def test_redirect_url_canonicalization(storage_provider) -> None:
+    storage_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    assert storage_provider.get_redirect(TEST_URL_REORDERED) == REDIRECT_TARGET
+
+
+def test_redirect_is_separate_from_http_cache(storage_provider) -> None:
+    storage_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    # A redirect pointer does not create an HTTP cache entry for the initial URL.
+    assert not storage_provider.exists_http_cache(TEST_URL)
+
+
+# ---------------------------------------------------------------------------
 # LocalStorageProvider — HTTP cache (implementation-specific tests)
 # ---------------------------------------------------------------------------
 
@@ -145,6 +190,14 @@ def test_local_http_cache_path_sharding(local: LocalStorageProvider, tmp_path: P
     rid = local.compute_resource_id(TEST_URL)
     shard = rid[:2]
     expected = tmp_path / ".cache" / "myplugin" / "http" / "current" / shard / f"{rid}.html"
+    assert expected.exists()
+
+
+def test_local_redirect_path_sharding(local: LocalStorageProvider, tmp_path: Path) -> None:
+    local.save_redirect(TEST_URL, REDIRECT_TARGET)
+    rid = local.compute_resource_id(TEST_URL)
+    shard = rid[:2]
+    expected = tmp_path / ".cache" / "myplugin" / "redirects" / shard / f"{rid}.json"
     assert expected.exists()
 
 
@@ -330,6 +383,26 @@ def test_s3_http_cache_key_sharding(s3_provider: S3StorageProvider) -> None:
     shard = rid[:2]
     expected_key = f"myplugin/cache/http/current/{shard}/{rid}.html"
     assert s3_provider._http_cache_key(TEST_URL) == expected_key
+
+
+def test_s3_redirect_key_sharding(s3_provider: S3StorageProvider) -> None:
+    s3_provider.save_redirect(TEST_URL, REDIRECT_TARGET)
+    rid = s3_provider.compute_resource_id(TEST_URL)
+    shard = rid[:2]
+    assert s3_provider._redirect_key(TEST_URL) == f"myplugin/cache/redirects/{shard}/{rid}.json"
+
+
+@pytest.mark.parametrize("error_code", ["NoSuchKey", "404"])
+def test_s3_delete_redirect_ignores_not_found(
+    s3_provider: S3StorageProvider, error_code: str
+) -> None:
+    """GCS's S3-compatible DELETE returns 404/NoSuchKey for absent objects."""
+    error = ClientError(
+        {"Error": {"Code": error_code, "Message": "Not Found"}},
+        "DeleteObject",
+    )
+    with patch.object(s3_provider._s3, "delete_object", side_effect=error):
+        s3_provider.delete_redirect(TEST_URL)
 
 
 @pytest.mark.parametrize("error_code", ["NoSuchKey", "404"])

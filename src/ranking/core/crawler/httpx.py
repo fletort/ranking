@@ -11,7 +11,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 import structlog
 
-from ranking.core.crawler.runtime import CrawlerRuntime
+from ranking.core.crawler.runtime import CrawlerRuntime, FetchedResource
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, StorageProvider
 
@@ -297,7 +297,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
 
         self.max_attempts = len(self.retry_delays_seconds) + 1
 
-    def fetcher(self, url: str) -> str:
+    def fetcher(self, url: str) -> FetchedResource:
         """Fetch the HTML content of a page at the given URL using httpx.
 
         Transient infrastructure failures (502/503/504 by default, configurable through the
@@ -321,7 +321,8 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             url: The URL to fetch.
 
         Returns:
-            The raw HTML content as a string.
+            The raw HTML content and the final URL after redirects, as a
+            :class:`~ranking.core.crawler.runtime.FetchedResource`.
 
         Raises:
             RuntimeError: On HTTP error status codes or network-level errors.
@@ -332,7 +333,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         attempt = 1
         while True:
             try:
-                content = self._fetch_once(url)
+                resource = self._fetch_once(url)
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
                 retryable = status_code in self.retryable_status_codes
@@ -380,7 +381,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 # A 2xx page may still be a temporary maintenance page (fake "200 OK").
                 # Such content must not be cached nor snapshotted, so it is intercepted
                 # here and retried through the standard retry mechanism.
-                if self.is_temporary_unavailable_page(url, content):
+                if self.is_temporary_unavailable_page(url, resource.content):
                     if attempt >= self.max_attempts:
                         self.logger.error(
                             "http_temporary_unavailable_page",
@@ -404,7 +405,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                     continue
 
                 self._last_successful_url = url
-                return content
+                return resource
 
     def _reference_page_url(self, url: str) -> str | None:
         """Return the reference page (``CheckPage``) to probe for a site health check.
@@ -460,7 +461,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         index = min(attempt - 1, len(self.retry_delays_seconds) - 1)
         return self.retry_delays_seconds[index]
 
-    def _fetch_once(self, url: str) -> str:
+    def _fetch_once(self, url: str) -> FetchedResource:
         """Perform a single HTTP request and validate its response.
 
         Raises:
@@ -505,7 +506,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                     to_url=final_url,
                 )
 
-        return response.text
+        return FetchedResource(requested_url=url, final_url=final_url, content=response.text)
 
     def downloader(self, url: str) -> DownloadedDocument:
         """Download a document from the given URL without touching the cache."""
