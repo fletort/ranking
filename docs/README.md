@@ -25,6 +25,7 @@ Documents describing long-term architectural decisions.
   - logical storage areas
   - resource identity
   - storage backends
+  - race archives
   - retention strategy
 
 ## Plugin Development

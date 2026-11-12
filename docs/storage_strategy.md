@@ -44,6 +44,11 @@ Logical storage areas describe the role of stored artifacts.
 
 The same logical area may be implemented differently depending on the storage backend.
 
+For race-scoped areas (HTTP Cache, Redirect Pointers, Extracted Data), a backend may additionally
+**package** the area's fine-grained artifacts into a single per-race archive instead of persisting
+one object per URL. This packaging is orthogonal to the logical areas themselves and is described in
+the [Race Archives](#race-archives) section.
+
 ```mermaid
 flowchart TD
 
@@ -384,9 +389,147 @@ The metadata includes:
 - content_length
 - downloaded_at
 
+## Race Archives
+
+### Purpose
+
+The HTTP Cache and Extracted Data areas produce **one small artifact per URL**. During the crawl of
+a single race this can mean thousands of artifacts:
+
+- paginated race result pages,
+- **deep runner detail pages**,
+- and their extracted JSON.
+
+Persisting each of them as a separate object stresses the storage backend: object count, **Free
+Tier** limits and per-object `PUT`/`GET` latency.
+
+Race Archives group a race's fine-grained artifacts into **one archive per logical layer**, produced
+locally during the crawl and pushed to the backend in a **single `PUT` per layer**.
+
+A race archive is a _packaging_ concern: it wraps existing logical areas without changing their
+role, identity or cache semantics.
+
+### Two-Archive Model
+
+There are **two archives per race**, one per packaged layer:
+
+| Archive               | Wraps                                 | Content                                                                    |
+| --------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| **HTTP archive**      | HTTP Cache bodies + Redirect Pointers | race result pages, deep runner detail pages, race-scoped redirect pointers |
+| **Extracted archive** | Extracted Data                        | race extracted JSON (race pages and runner detail pages)                   |
+
+Downloaded Documents are **never archived**: they keep their flat layout (see
+[Downloaded Documents](#downloaded-documents)).
+
+### Hybrid Topology
+
+**Hybrid** means the coexistence of:
+
+- **flat artifacts** — few, top-level objects, one per URL (event list pages, event pages, event
+  extracted JSON, downloaded documents);
+- **archived artifacts** — many, deep artifacts grouped into a per-race archive.
+
+```mermaid
+flowchart TD
+    subgraph Flat["Flat artifacts (one object per URL)"]
+        EL["Event list pages"]
+        EV["Event pages"]
+        EX["Event extracted JSON"]
+        DOC["Downloaded documents (PDF/XLSX)"]
+    end
+    subgraph Arch["Per-race archives (2 zips per race)"]
+        AH["HTTP archive"]
+        AE["Extracted archive"]
+        RC["Race result pages (http)"]
+        RD["Runner detail pages (http)"]
+        RP["Redirect pointers (race-scoped)"]
+        RE["Race extracted JSON"]
+    end
+    AH --> RC
+    AH --> RD
+    AH --> RP
+    AE --> RE
+```
+
+### Archive Identity & Sharding
+
+An archive is scoped to a single race and named after the **race URL Resource ID**:
+
+```text
+race URL
+  ↓
+compute_resource_id(race_url)
+  ↓
+<race_rid>.zip
+```
+
+The archive is sharded with the same 2-character rule as every other area.
+
+### Why Redirect Pointers Live in the HTTP Archive
+
+A redirect pointer `A → B` is meaningless without B's body, which is stored in the HTTP cache.
+Race-scoped redirect pointers are therefore bundled in the **HTTP archive** so the race stays
+**self-contained** and no small flat object is reintroduced. It also keeps `delete-cache` behavior
+consistent: archived bodies and archived pointers are handled the same way.
+
+### ZIP Layout
+
+An archive mirrors the plugin cache root so that extraction restores the local tree. Paths inside
+the ZIP are relative to that root.
+
+```text
+http.zip
+├── http/current/<shard>/<rid>.html
+└── redirects/<shard>/<rid>.json          # race-scoped redirect pointers
+
+extracted.zip
+└── extracted/<shard>/<rid>.json
+```
+
+### Lifecycle (Race Session)
+
+Archives are produced and consumed through a **race session**: a context manager (`with`) that
+scopes the crawl of one race.
+
+1. **enter** — download the existing layer archives from the backend and extract them into a local
+   working directory → **cache-hit** verification.
+2. **during** — the crawler reads and writes **locally** (fast, zero backend call per file).
+3. **exit** — compress each layer into its own `.zip` and upload it in a single `PUT` per layer,
+   then drop the working directory.
+
+The runtime orchestration is described in `design/runtime_design.md`.
+
+### Error Handling & Edge Cases
+
+- **Failed upload** is logged (`race_area_archive_failed`) without masking the crawl exception: the
+  cache is **not authoritative** (cf. [HTTP Cache](#http-cache)). No retry in v1.
+- **First run** — no archive exists, the working directory is empty, everything is a cache miss, is
+  refetched, then archived. It is **self-healing**.
+- **Migration** — pre-existing flat entries (bodies or pointers) for race URLs are not inside an
+  archive; they cause a one-time refetch, then get archived.
+- **Systematic re-upload** even when a layer is unchanged is acceptable for v1 (a "dirty flag"
+  optimization can come later).
+- **Atomicity** — one upload per layer. No concurrency (sequential crawl) in v1.
+- **Maintenance commands** (`delete-cache`, `check resource-id`) operate on the base provider and do
+  **not** see archived bodies/pointers for race URLs. This is a known limitation, consistent for
+  bodies and pointers alike.
+- Backends without archive support (e.g. the local filesystem) keep the flat layout: the race
+  session degrades to a no-op.
+
+### Non-Goals
+
+- no snapshot archiving (race pages do not create snapshots);
+- no cross-race / event-level archive;
+- no archive compaction or dedup;
+- no archive retention policy (the global rule "keep everything" is unchanged);
+- no archive-aware `delete-cache` / inspection tooling.
+
 ## Local Filesystem Mapping
 
 Current implementation.
+
+The local filesystem provider does not implement [Race Archives](#race-archives): every artifact
+keeps its flat, per-URL layout.
 
 ```text
 .cache/
@@ -493,6 +636,39 @@ s3://ranking/breizhchrono/cache/extracted/1c/1c4230....json
 s3://ranking/breizhchrono/documents/1c/1c4230.../official_file_name.pdf
 ```
 
+S3 is the reference backend for [Race Archives](#race-archives). Archives live **inside the existing
+directories**, next to the flat artifacts: an archive replaces the many per-URL race objects of a
+layer with a single ZIP object named after the race URL Resource ID.
+
+```text
+s3://ranking/
+
+<plugin_name>/
+├── cache/
+│   ├── http/current/<shard>/
+│   │   ├── <rid>.html                 # flat: event list pages, event pages
+│   │   └── <race_rid>.zip             # race HTTP archive (bodies + redirects)
+│   ├── redirects/<shard>/<rid>.json   # flat: event-level redirects only
+│   └── extracted/<shard>/
+│       ├── <rid>.json                 # flat: event extracted JSON
+│       └── <race_rid>.zip             # race extracted archive
+└── documents/<shard>/<rid>/...        # flat (never archived)
+```
+
+Archive keys:
+
+| Layer                     | Key                                                  |
+| ------------------------- | ---------------------------------------------------- |
+| HTTP (bodies + redirects) | `<plugin>/cache/http/current/<shard>/<race_rid>.zip` |
+| Extracted                 | `<plugin>/cache/extracted/<shard>/<race_rid>.zip`    |
+
+Examples:
+
+```text
+s3://ranking/breizhchrono/cache/http/current/1c/1c4230....zip
+s3://ranking/breizhchrono/cache/extracted/1c/1c4230....zip
+```
+
 ### Bucket Strategy
 
 Version 1 uses a single bucket.
@@ -523,3 +699,5 @@ Retention policies will be defined later.
 - storage backend must be replaceable
 - URL identity must remain stable
 - local filesystem and S3 share the same logical structure
+- physical layout (flat objects or per-race archives) is a backend detail and never leaks into
+  plugins

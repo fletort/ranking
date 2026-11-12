@@ -37,6 +37,7 @@ classDiagram
         +fetch(url, policy)
         +download(url)
         +save_extracted_json(url, data)
+        +race_session(race_url)
         +fetcher(url) FetchedResource
         +downloader(url)
     }
@@ -45,6 +46,13 @@ classDiagram
     class GcsS3StorageProvider
 
     class LocalStorageProvider
+
+    class RaceScopedStorage {
+        +save_document()
+        +get_document()
+        +document_exists()
+        +healthcheck()
+    }
 
     class S3StorageProvider {
         _build_client_kwargs()
@@ -60,6 +68,15 @@ classDiagram
         +save_extracted()
         +save_document()
         +get_document()
+        +download_area_archive()
+        +upload_area_archive()
+        +race_session(race_url)
+    }
+
+    class ArchiveArea {
+        <<enumeration>>
+        HTTP
+        EXTRACTED
     }
 
     class DownloadedDocument {
@@ -78,12 +95,17 @@ classDiagram
     }
 
     CrawlerRuntime --> StorageProvider
+    CrawlerRuntime --> RaceScopedStorage : swaps during a race session
     HttpxCrawlerRuntime --|> CrawlerRuntime
 
     LocalStorageProvider --|> StorageProvider
+    RaceScopedStorage --|> LocalStorageProvider
     S3StorageProvider --|> StorageProvider
     AwsS3StorageProvider --|> S3StorageProvider
     GcsS3StorageProvider --|> S3StorageProvider
+
+    RaceScopedStorage --> StorageProvider : delegates documents
+    StorageProvider --> ArchiveArea
 
     StorageProvider --> DownloadedDocument
     HttpxCrawlerRuntime --> DownloadedDocument
@@ -102,6 +124,7 @@ Responsible for:
 - redirect pointer orchestration
 - document download orchestration
 - extracted data persistence
+- race session provider swap (see [Race Session](#race-session-race-archives))
 
 Not responsible for:
 
@@ -340,6 +363,75 @@ with URLs. The pointer layout and format are defined in `docs/storage_strategy.m
 `delete-cache` is URL-scoped: deleting A removes its pointer (and A's own legacy cache entry) but
 never the canonical content of B, which may be shared by other URLs.
 
+### Race Session (Race Archives)
+
+The race session is the **storage-level lifecycle** that groups a race's fine-grained artifacts into
+per-layer archives (see `docs/storage_strategy.md`). It is a `with` block scoping the crawl of a
+single race, naturally aligned with `process_race()` in `cli.py` (1 session = 1 race).
+
+`CrawlerRuntime.race_session()` temporarily swaps `self.storage` for a **scoped provider** for the
+duration of the block, then restores the previous provider:
+
+```python
+@contextmanager
+def race_session(self, race_url: str) -> Iterator[StorageProvider]:
+    with self.storage.race_session(race_url) as scoped:
+        previous, self.storage = self.storage, scoped
+        try:
+            yield scoped
+        finally:
+            self.storage = previous
+```
+
+```mermaid
+sequenceDiagram
+    participant CLI as process_race
+    participant RT as CrawlerRuntime
+    participant SP as StorageProvider
+    participant FS as Local workdir
+
+    CLI->>RT: race_session(race_url)
+    RT->>SP: race_session(race_url)
+    SP->>SP: download_area_archive(HTTP) / download_area_archive(EXTRACTED)
+    alt archives present (cache hit)
+        SP->>FS: extract both layers
+    end
+    SP-->>RT: RaceScopedStorage (buffer)
+    RT-->>CLI: storage swapped
+    CLI->>RT: fetch / save_extracted / save_redirect (buffer) · download (base, flat)
+    RT->>FS: local read/write (http, redirects, extracted)
+    CLI->>RT: exit block
+    RT->>SP: __exit__
+    SP->>FS: pack http+redirects → zip, extracted → zip
+    SP->>SP: upload_area_archive(HTTP) / upload_area_archive(EXTRACTED)
+    SP->>FS: rmtree(session_dir)
+```
+
+Responsibilities:
+
+- `CrawlerRuntime.race_session()` only orchestrates the **provider swap** (and its restoration). The
+  runtime keeps dealing with URLs and never builds keys or archives itself.
+- `StorageProvider.race_session(race_url)` returns the scoped provider. It has a **no-op default**
+  (`nullcontext(self)`) so backends without archives (the local filesystem) are unaffected;
+  `S3StorageProvider` overrides it.
+- `race_archive.race_session()` (`core/storage/race_archive.py`) holds the **generic,
+  backend-agnostic** lifecycle: on enter it calls `download_area_archive()` and extracts each layer;
+  on exit it packs each layer and calls `upload_area_archive()`. A failed upload is logged
+  (`race_area_archive_failed`) without masking the crawl exception.
+- `ArchiveArea` identifies the layer (`HTTP`, `EXTRACTED`).
+- `RaceScopedStorage` is a thin `LocalStorageProvider` rooted at the working directory: it
+  **buffers** the archived layers locally and **delegates** the non-archived area (downloaded
+  documents) to the base provider.
+
+Not responsible for:
+
+- selecting which URLs belong to a race (that is the crawler's traversal);
+- archive naming, sharding or key construction (a storage-provider detail);
+- retention, compaction or dedup (out of scope for v1).
+
+Archives are an opt-in, backend-side optimization: routing (which layer goes where), the ZIP layout
+and the session lifecycle are defined in `docs/storage_strategy.md`.
+
 ### StorageProvider
 
 Responsible for:
@@ -349,6 +441,7 @@ Responsible for:
 - artifact persistence
 - artifact retrieval
 - redirect pointer persistence and retrieval
+- per-race archive download/extraction and packing/upload
 
 Not responsible for:
 
