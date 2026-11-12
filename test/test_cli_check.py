@@ -138,9 +138,15 @@ def test_check_storage_local():
 class DummyStorageProvider:
     """Minimal storage provider exposing the resource existence checks."""
 
-    def __init__(self, http_cache_exists: bool = False, document_exists: bool = False) -> None:
+    def __init__(
+        self,
+        http_cache_exists: bool = False,
+        document_exists: bool = False,
+        redirect_target: str | None = None,
+    ) -> None:
         self._http_cache_exists = http_cache_exists
         self._document_exists = document_exists
+        self._redirect_target = redirect_target
         self.checked_urls: list[str] = []
 
     def exists_http_cache(self, url: str) -> bool:
@@ -150,6 +156,9 @@ class DummyStorageProvider:
     def document_exists(self, url: str) -> bool:
         self.checked_urls.append(url)
         return self._document_exists
+
+    def get_redirect(self, url: str) -> str | None:
+        return self._redirect_target
 
 
 def test_check_resource_id_displays_computed_id() -> None:
@@ -228,3 +237,89 @@ def test_check_resource_id_reports_absent_resource(monkeypatch: pytest.MonkeyPat
     assert "Present: no" in result.output
     assert "Storage Area:" not in result.output
     assert storage_provider.checked_urls == [CHECKED_URL, CHECKED_URL]
+
+
+def test_check_resource_id_reports_redirect_pointer(monkeypatch: pytest.MonkeyPatch) -> None:
+    redirect_target = "https://example.com/target"
+    storage_provider = DummyStorageProvider(redirect_target=redirect_target)
+    monkeypatch.setattr(cli_module, "build_storage", lambda **kwargs: storage_provider)
+
+    result = CliRunner().invoke(
+        cli_module.cli,
+        [
+            "check",
+            "resource-id",
+            "--url",
+            CHECKED_URL,
+            "--storage",
+            "local",
+            "--plugin",
+            "breizhchrono",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Present: yes" in result.output
+    assert "Storage Area: Redirect Pointer" in result.output
+    assert f"Redirect Target: {redirect_target}" in result.output
+
+
+# ---------------------------------------------------------------------------
+# delete-cache
+# ---------------------------------------------------------------------------
+
+
+class RecordingStorageProvider:
+    """Storage provider recording which artifacts delete-cache removes."""
+
+    def __init__(self, pointer: bool = False, cache: bool = False) -> None:
+        self._pointer = pointer
+        self._cache = cache
+        self.deleted: list[str] = []
+
+    def exists_redirect(self, url: str) -> bool:
+        return self._pointer
+
+    def delete_redirect(self, url: str) -> None:
+        self.deleted.append("redirect")
+
+    def exists_http_cache(self, url: str) -> bool:
+        return self._cache
+
+    def delete_http_cache(self, url: str) -> None:
+        self.deleted.append("cache")
+
+
+def test_delete_cache_removes_pointer_without_canonical_target(monkeypatch) -> None:
+    storage_provider = RecordingStorageProvider(pointer=True, cache=False)
+    monkeypatch.setattr(cli_module, "build_storage", lambda **kwargs: storage_provider)
+
+    result = CliRunner().invoke(cli_module.cli, ["delete-cache", "--url", CHECKED_URL])
+
+    assert result.exit_code == 0
+    # The pointer is removed; the canonical target content is never touched.
+    assert storage_provider.deleted == ["redirect"]
+    assert "Deleted redirect pointer" in result.output
+    assert "Deleted cached HTTP response" not in result.output
+
+
+def test_delete_cache_removes_direct_http_cache(monkeypatch) -> None:
+    storage_provider = RecordingStorageProvider(pointer=False, cache=True)
+    monkeypatch.setattr(cli_module, "build_storage", lambda **kwargs: storage_provider)
+
+    result = CliRunner().invoke(cli_module.cli, ["delete-cache", "--url", CHECKED_URL])
+
+    assert result.exit_code == 0
+    assert storage_provider.deleted == ["cache"]
+    assert "Deleted cached HTTP response" in result.output
+
+
+def test_delete_cache_reports_nothing_to_delete(monkeypatch) -> None:
+    storage_provider = RecordingStorageProvider(pointer=False, cache=False)
+    monkeypatch.setattr(cli_module, "build_storage", lambda **kwargs: storage_provider)
+
+    result = CliRunner().invoke(cli_module.cli, ["delete-cache", "--url", CHECKED_URL])
+
+    assert result.exit_code == 0
+    assert storage_provider.deleted == []
+    assert "No cached HTTP response or redirect pointer found" in result.output

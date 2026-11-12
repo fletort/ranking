@@ -146,11 +146,11 @@ Goal: prepare long-term unattended execution
 
 Goal: Protect cloud storage sizing (Free Tier compatibility) and enforce data uniqueness.
 
-- [ ] Implement robust HTTP redirection management in the caching layer
+- [x] Implement robust HTTP redirection management in the caching layer
       [#122](https://github.com/fletort/ranking/issues/122)
-  - Store raw page content using the final/target URL hash (canonical identity)
-  - Persist lightweight pointer entries for initial URLs to intercept future crawl hits without
-    re-fetching
+  - [x] Store raw page content using the final/target URL hash (canonical identity)
+  - [x] Persist lightweight pointer entries for initial URLs to intercept future crawl hits without
+        re-fetching
 - [ ] Implement multi-level Race-scoped ZIP packaging for HTTP and Extracted layers
       [#123](https://github.com/fletort/ranking/issues/123)
   - Design a Context Manager (`with`) lifecycle to handle transactional batch execution per race

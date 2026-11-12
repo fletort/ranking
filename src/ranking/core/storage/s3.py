@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import boto3
@@ -26,6 +26,7 @@ class S3StorageProvider(StorageProvider):
             │   ├── http/
             │   │   ├── current/<shard>/<resource_id>.html
             │   │   └── snapshots/<shard>/<resource_id>/<timestamp>.html
+            │   ├── redirects/<shard>/<resource_id>.json
             │   └── extracted/<shard>/<resource_id>.json
             └── documents/<shard>/<resource_id>/
                 ├── <original_filename>
@@ -84,6 +85,11 @@ class S3StorageProvider(StorageProvider):
         rid = self.compute_resource_id(url)
         shard = rid[:2]
         return f"{self.plugin_name}/cache/extracted/{shard}/{rid}.json"
+
+    def _redirect_key(self, url: str) -> str:
+        rid = self.compute_resource_id(url)
+        shard = rid[:2]
+        return f"{self.plugin_name}/cache/redirects/{shard}/{rid}.json"
 
     def _document_prefix(self, url: str) -> str:
         rid = self.compute_resource_id(url)
@@ -168,6 +174,49 @@ class S3StorageProvider(StorageProvider):
                 timestamp = key[len(prefix) :].removesuffix(".html")
                 result.append((timestamp, data.decode("utf-8")))
         return result
+
+    def save_redirect(self, url: str, target_url: str) -> None:
+        payload = {
+            "url": url,
+            "target_url": target_url,
+            "resource_id": self.compute_resource_id(url),
+            "target_resource_id": self.compute_resource_id(target_url),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        body = json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
+        key = self._redirect_key(url)
+        self._put(key, body, "application/json")
+        self.log.info(
+            "redirect_saved",
+            url=url,
+            target_url=target_url,
+            resource_id=self.compute_resource_id(url),
+            key=key,
+        )
+
+    def get_redirect(self, url: str) -> str | None:
+        data = self._get(self._redirect_key(url))
+        if data is None:
+            return None
+        payload = json.loads(data.decode("utf-8"))
+        return payload.get("target_url")
+
+    def exists_redirect(self, url: str) -> bool:
+        return self._exists(self._redirect_key(url))
+
+    def delete_redirect(self, url: str) -> None:
+        key = self._redirect_key(url)
+        try:
+            self._s3.delete_object(Bucket=self.bucket, Key=key)
+        except ClientError as e:
+            # GCS's S3-compatible DELETE returns 404/NoSuchKey for absent objects,
+            # unlike AWS which treats deletes as idempotent.
+            if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+                return
+            raise
+        self.log.info(
+            "redirect_deleted", url=url, resource_id=self.compute_resource_id(url), key=key
+        )
 
     def save_extracted(self, url: str, data: Any) -> None:
         body = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
