@@ -33,9 +33,10 @@ The storage model is organized around logical storage areas.
 These logical areas are independent from the physical storage implementation (local filesystem, S3,
 or future backends).
 
-The system currently manages three logical storage areas:
+The system currently manages four logical storage areas:
 
 - HTTP Cache
+- Redirect Pointers
 - Extracted Data
 - Downloaded Documents
 
@@ -50,11 +51,17 @@ flowchart TD
 
     CACHE["HTTP Cache"]
 
+    REDIRECTS["Redirect Pointers"]
+
     EXTRACTED["Extracted Data"]
 
     DOCUMENTS["Downloaded Documents"]
 
     HTTP --> CACHE
+
+    HTTP --> REDIRECTS
+
+    REDIRECTS --> CACHE
 
     CACHE --> EXTRACTED
 
@@ -229,6 +236,86 @@ Version 1 intentionally excludes:
   pages described above)
 - Concurrency or distributed cache
 
+## Redirect Pointers
+
+### Purpose
+
+When a URL (A) redirects to another URL (B), the raw HTTP content must be stored **once**, under the
+Resource ID of the final URL (B), which is the canonical identity of the resource. A lightweight
+**redirect pointer** is stored for the initial URL (A) so that a later crawl can resolve A without
+hitting the network.
+
+This avoids duplication (the same content stored under several hashes) and keeps resource identity
+consistent.
+
+### Characteristics
+
+- one small JSON artifact per redirecting URL, addressed by the Resource ID of the **initial** URL
+  (A);
+- it maps the initial URL (A) to the final URL (B) and stores both Resource IDs;
+- pointers may form a chain (`A → B → C`); resolution follows the chain to the canonical URL;
+- a pointer always takes precedence over a legacy HTTP cache body stored for the same URL;
+- it is not authoritative: when the canonical cache entry is missing, the URL is considered a cache
+  miss and is refetched (self-healing).
+
+### Cache policy interaction
+
+- `NO_CACHE`: no pointer is read or written.
+- `CACHE_IF_PRESENT`: the pointer chain is resolved transitively (`A → B → C → ...`) to the
+  canonical URL, and only that URL's cache entry is read. Intermediate and legacy bodies are never
+  used. When the canonical entry is missing, or the chain is cyclic / exceeds `MAX_REDIRECT_HOPS`
+  (default: 10), the URL is a cache miss and is refetched.
+- `REFRESH_AND_CACHE`: the pointer is rewritten to the final URL reported by the HTTP client (which
+  collapses chains to a single hop) and, once the canonical content is persisted, the redirecting
+  URL's stale `current` body is removed. When A stops redirecting, a stale pointer is removed and A
+  is stored as a direct body.
+- For both cache-writing policies, pointer creation and stale-body cleanup apply only when A and B
+  have different Resource IDs. If canonicalization gives them the same ID (for example, when only
+  query-parameter order changes), remove any pointer at that ID and retain the canonical body
+  without deleting it.
+- Redirects to another domain are rejected by the HTTP runtime (`ExternalRedirectError`) and no
+  pointer is created.
+
+### Chain resolution
+
+An alias may become stale when its target starts redirecting later (`A → B` stored, then `B → C`).
+Resolution is therefore transitive:
+
+- follow pointers until a URL without a pointer is reached; that URL is canonical;
+- a pointer takes precedence over a legacy `current` body for the same URL;
+- only the canonical URL's cache entry is read; intermediate and legacy bodies are never used;
+- cycles, self-references and chains longer than `MAX_REDIRECT_HOPS` (default: 10) are invalid and
+  treated as a cache miss;
+- a successful fetch writes the pointer directly to the final URL, collapsing the chain.
+
+Existing aliases are not rewritten eagerly, as that would require scanning every pointer on each
+write. They remain valid through transitive resolution and collapse on their next refresh.
+
+### Pointer format
+
+The physical representation is backend-specific. The logical content is:
+
+```json
+{
+  "url": "https://site/A",
+  "target_url": "https://site/B",
+  "resource_id": "<resource id of A>",
+  "target_resource_id": "<resource id of B>",
+  "created_at": "2026-11-11T09:00:00+00:00"
+}
+```
+
+### Deletion
+
+`delete-cache` is URL-scoped and never cascading. For a redirecting URL A it removes the pointer
+`A → B` and, when present, A's own HTTP cache entry (legacy entry). It never deletes the canonical
+content stored under B, which may be shared by other URLs.
+
+### Non-Goals
+
+Version 1 intentionally excludes cascading deletion: deleting a redirecting URL never deletes the
+canonical content of its target.
+
 ## Extracted Data
 
 ### Purpose
@@ -308,6 +395,8 @@ Current implementation.
     │   ├── current/
     │   └── snapshots/
     │
+    ├── redirects/
+    │
     └── extracted/
 
 .documents/
@@ -331,6 +420,14 @@ http/
     └── 1c/
         └── 1c4230.../
             └── 2026-06-08T10-12-03.html
+```
+
+### Redirect Pointers
+
+```text
+redirects/
+└── 1c/
+    └── 1c4230....json
 ```
 
 ### Extracted
@@ -375,6 +472,7 @@ s3://ranking/
 <plugin_name>/
 ├── cache/
 │   ├── http/
+│   ├── redirects/
 │   └── extracted/
 │
 └── documents/
@@ -390,6 +488,7 @@ Examples:
 
 ```text
 s3://ranking/breizhchrono/cache/http/current/1c/1c4230....html
+s3://ranking/breizhchrono/cache/redirects/1c/1c4230....json
 s3://ranking/breizhchrono/cache/extracted/1c/1c4230....json
 s3://ranking/breizhchrono/documents/1c/1c4230.../official_file_name.pdf
 ```

@@ -28,7 +28,7 @@ Storage concerns are delegated to a `StorageProvider`.
 classDiagram
 
     class HttpxCrawlerRuntime {
-        +fetcher(url)
+        +fetcher(url) FetchedResource
         +downloader(url)
     }
 
@@ -37,7 +37,7 @@ classDiagram
         +fetch(url, policy)
         +download(url)
         +save_extracted_json(url, data)
-        +fetcher(url)
+        +fetcher(url) FetchedResource
         +downloader(url)
     }
 
@@ -55,6 +55,8 @@ classDiagram
         +save_http_cache()
         +get_http_cache()
         +save_http_snapshot()
+        +save_redirect()
+        +get_redirect()
         +save_extracted()
         +save_document()
         +get_document()
@@ -69,6 +71,12 @@ classDiagram
         +downloaded_at
     }
 
+    class FetchedResource {
+        +requested_url
+        +final_url
+        +content
+    }
+
     CrawlerRuntime --> StorageProvider
     HttpxCrawlerRuntime --|> CrawlerRuntime
 
@@ -79,6 +87,7 @@ classDiagram
 
     StorageProvider --> DownloadedDocument
     HttpxCrawlerRuntime --> DownloadedDocument
+    HttpxCrawlerRuntime --> FetchedResource
 ```
 
 ## Responsibilities
@@ -90,6 +99,7 @@ Responsible for:
 - cache policy application
 - cache statistics
 - change detection
+- redirect pointer orchestration
 - document download orchestration
 - extracted data persistence
 
@@ -104,7 +114,7 @@ Not responsible for:
 Responsible for:
 
 - HTTP requests
-- redirects
+- redirect detection and final URL reporting
 - response validation
 - retrying transient HTTP infrastructure failures
 - detecting localized server errors (HTTP 500) through a reference page health check
@@ -233,6 +243,103 @@ The hook is wired into the runtime by the CLI (`build_cache`), following the sam
 The cache semantics implied by this behavior (which cache hits are valid, and when snapshots are
 created) are part of the storage contract and are defined in `docs/storage_strategy.md`.
 
+### HTTP Redirections
+
+When a URL (A) redirects to another URL (B), the content must not be duplicated under both
+identities. The runtime stores the raw content under the **final URL (B)** and keeps a lightweight
+redirect pointer for the initial URL (A).
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant Runtime as CrawlerRuntime
+    participant HTTPX as HttpxCrawlerRuntime
+    participant Storage as StorageProvider
+
+    CLI->>Runtime: fetch(A, CACHE_IF_PRESENT)
+    Runtime->>Storage: get_redirect(A)
+    Storage-->>Runtime: None
+    Runtime->>Storage: get_http_cache(A)
+    Storage-->>Runtime: None
+    Runtime->>HTTPX: fetcher(A)
+    HTTPX-->>Runtime: FetchedResource(A, final_url=B, content)
+    Runtime->>Storage: save_http_cache(B, content)
+    Runtime->>Storage: save_redirect(A, B)
+    Runtime-->>CLI: content
+```
+
+On a subsequent crawl of A, the pointer is resolved without any network request: `get_redirect(A)`
+returns `B`, then `get_http_cache(B)` returns the cached content.
+
+#### Chain resolution
+
+A target may itself start redirecting after an alias has been cached: once `A → B` is stored,
+refreshing B can later establish `B → C`. The lookup must therefore resolve the **pointer chain**
+instead of a single hop, so that existing aliases keep resolving to the canonical resource:
+
+```mermaid
+sequenceDiagram
+    participant Runtime as CrawlerRuntime
+    participant Storage as StorageProvider
+
+    Runtime->>Storage: get_redirect(A)
+    Storage-->>Runtime: B
+    Runtime->>Storage: get_redirect(B)
+    Storage-->>Runtime: C
+    Runtime->>Storage: get_redirect(C)
+    Storage-->>Runtime: None
+    Runtime->>Storage: get_http_cache(C)
+    Storage-->>Runtime: content
+```
+
+Resolution rules:
+
+- **Transitive:** follow `get_redirect()` until a URL without a pointer is found. That URL is the
+  canonical resource; only its cache entry is read.
+- **Pointer precedence:** a pointer always takes precedence over a legacy `current` cache body for
+  the same URL. A redirecting URL's own body (e.g. a body cached before B started redirecting) is
+  never used as a cache hit. If the canonical entry is missing, the URL is a cache miss; the runtime
+  never falls back to an intermediate or legacy body.
+- **Cycle handling:** URLs visited during resolution are tracked. A cycle (`A → B → A`), a
+  self-referential pointer (`A → A`), or a chain longer than `MAX_REDIRECT_HOPS` (default: 10,
+  overridable via `RANKING_REDIRECT_MAX_HOPS`) makes the chain invalid. It is treated as a cache
+  miss and the requested URL is refetched. The next successful fetch rewrites the pointer to the
+  final URL, collapsing the chain and breaking the cycle. A real HTTP redirect loop is still
+  reported by `httpx` as a fetch error.
+- **Chain collapsing on write:** after persisting the canonical body for a successful cache-writing
+  fetch, remove any existing pointer at `final_url` before publishing the requested URL's pointer.
+  If the requested and final Resource IDs differ, store `requested_url → final_url` directly;
+  otherwise leave no pointer for that Resource ID. This applies to `REFRESH_AND_CACHE` and
+  `CACHE_IF_PRESENT` misses, making the final body reachable and breaking stale cached cycles.
+- **Stale body cleanup:** once the canonical content is persisted, the redirecting URL's `current`
+  cache body (if any) is removed, while its historical snapshots are preserved. This prevents
+  shadowing and keeps the "one body per canonical resource" guarantee.
+
+The chain walk is performed by `CrawlerRuntime` through repeated `storage.get_redirect()` calls: the
+storage provider remains a single-hop, URL-addressed store and does not interpret pointers.
+
+Responsibilities:
+
+- `HttpxCrawlerRuntime.fetcher` follows redirects and returns a `FetchedResource` carrying
+  `requested_url`, `final_url` and `content`. Redirects to another domain raise
+  `ExternalRedirectError` and are never cached.
+- `CrawlerRuntime.fetch` applies the cache policy using `final_url` as the canonical identity:
+  - the raw content is persisted under B;
+  - a redirect pointer `A → B` is persisted through the storage provider;
+  - with `REFRESH_AND_CACHE`, snapshots are created under B when B changes, and a stale pointer is
+    removed when A stops redirecting;
+  - with `CACHE_IF_PRESENT`, the pointer chain is resolved transitively to the canonical cache entry
+    (pointer precedence over legacy bodies, cycle and hop-limit detection). A chain whose canonical
+    entry is missing is treated as a cache miss and self-heals.
+- `StorageProvider` owns the pointer format and persists/reads it by URL (`save_redirect` /
+  `get_redirect` / `exists_redirect` / `delete_redirect`).
+
+The runtime never writes the pointer file itself: as for every other storage area, it interacts only
+with URLs. The pointer layout and format are defined in `docs/storage_strategy.md`.
+
+`delete-cache` is URL-scoped: deleting A removes its pointer (and A's own legacy cache entry) but
+never the canonical content of B, which may be shared by other URLs.
+
 ### StorageProvider
 
 Responsible for:
@@ -241,6 +348,7 @@ Responsible for:
 - Resource ID generation
 - artifact persistence
 - artifact retrieval
+- redirect pointer persistence and retrieval
 
 Not responsible for:
 
