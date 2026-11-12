@@ -35,7 +35,7 @@ class HealthCheckResult:
 class StorageProvider(ABC):
     """Abstract base class for URL-based storage operations.
 
-    All storage areas (HTTP cache, snapshots, extracted data, documents) are
+    All storage areas (HTTP cache, snapshots, redirect pointers, extracted data, documents) are
     addressed by URL. Path/key construction is an internal detail of each provider.
     """
 
@@ -95,6 +95,25 @@ class StorageProvider(ABC):
         """Return all snapshots for a URL as a list of (timestamp, content) tuples.
 
         The list is sorted by timestamp in ascending order.
+        """
+
+    @abstractmethod
+    def save_redirect(self, url: str, target_url: str) -> None:
+        """Persist a redirect pointer mapping an initial URL to its final (canonical) URL."""
+
+    @abstractmethod
+    def get_redirect(self, url: str) -> str | None:
+        """Return the redirect target URL for a URL, or None if no pointer exists."""
+
+    @abstractmethod
+    def exists_redirect(self, url: str) -> bool:
+        """Return True if a redirect pointer exists for the URL."""
+
+    @abstractmethod
+    def delete_redirect(self, url: str) -> None:
+        """Delete the redirect pointer for a URL.
+
+        Deleting an absent pointer is a no-op.
         """
 
     @abstractmethod

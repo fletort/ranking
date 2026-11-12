@@ -532,7 +532,11 @@ def extract(
 @click.option("--url", type=str, required=True, help="URL of the cached HTTP response to delete")
 @click.pass_context
 def delete_cache(ctx, storage, url) -> None:
-    """Delete the cached HTTP response for a URL."""
+    """Delete cached artifacts owned by a URL (HTTP response and/or redirect pointer).
+
+    The deletion is URL-scoped and never cascading: deleting a redirecting URL removes its
+    pointer but never the canonical content stored under its redirect target.
+    """
     log = ctx.obj["log"]
 
     if not is_valid_url(url):
@@ -541,19 +545,32 @@ def delete_cache(ctx, storage, url) -> None:
 
     storage_provider = build_storage(storage_type=storage, plugin_name=PLUGIN_NAME)
 
-    if not storage_provider.exists_http_cache(url):
+    pointer_deleted = False
+    if storage_provider.exists_redirect(url):
+        storage_provider.delete_redirect(url)
+        pointer_deleted = True
+
+    cache_deleted = False
+    if storage_provider.exists_http_cache(url):
+        storage_provider.delete_http_cache(url)
+        cache_deleted = True
+
+    if not pointer_deleted and not cache_deleted:
         log.info("cache_not_found", url=url, storage=storage)
-        click.echo(f"No cached HTTP response found for {url}")
+        click.echo(f"No cached HTTP response or redirect pointer found for {url}")
         return
 
-    storage_provider.delete_http_cache(url)
     log.info(
         "cache_deleted",
         url=url,
         storage=storage,
         resource_id=StorageProvider.compute_resource_id(url),
+        redirect=pointer_deleted,
     )
-    click.echo(f"Deleted cached HTTP response for {url}")
+    if pointer_deleted:
+        click.echo(f"Deleted redirect pointer for {url} (canonical target content preserved)")
+    if cache_deleted:
+        click.echo(f"Deleted cached HTTP response for {url}")
 
 
 @cli.group()
@@ -615,7 +632,12 @@ def check_resource_id(url: str, plugin: str, storage: str) -> None:
         storage_provider = build_storage(storage_type=storage, plugin_name=plugin)
         http_cache_exists = storage_provider.exists_http_cache(url)
         doc_cache_exists = storage_provider.document_exists(url)
-        if http_cache_exists or doc_cache_exists:
+        redirect_target = storage_provider.get_redirect(url)
+        if redirect_target is not None:
+            click.echo("Present: yes")
+            click.echo("Storage Area: Redirect Pointer")
+            click.echo(f"Redirect Target: {redirect_target}")
+        elif http_cache_exists or doc_cache_exists:
             click.echo("Present: yes")
             click.echo(f"Storage Area: {'HTTP Cache' if http_cache_exists else 'Document Cache'}")
         else:
