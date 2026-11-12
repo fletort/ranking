@@ -21,7 +21,7 @@ pytest = "^9.1.1"
 pytest-httpx = "^0.36.2"
 pyyaml = "^6.0.3"
 moto = {extras = ["s3"], version = "^5.2.4"}
-boto3-stubs = {extras = ["s3"], version = "^1.43.123"}
+boto3-stubs = {extras = ["s3"], version = "^1.43.126"}
 
 [project.scripts]
 ranking = "ranking.cli:cli"
