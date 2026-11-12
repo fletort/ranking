@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import json
 import uuid
+from contextlib import AbstractContextManager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
+from ranking.core.storage.race_archive import ArchiveArea
+from ranking.core.storage.race_archive import race_session as race_archive_session
 
 
 class S3StorageProvider(StorageProvider):
@@ -101,6 +105,12 @@ class S3StorageProvider(StorageProvider):
 
     def _document_metadata_key(self, url: str) -> str:
         return f"{self._document_prefix(url)}metadata.json"
+
+    def _area_archive_key(self, race_url: str, area: ArchiveArea) -> str:
+        rid = self.compute_resource_id(race_url)
+        shard = rid[:2]
+        area_path = "http/current" if area is ArchiveArea.HTTP else "extracted"
+        return f"{self.plugin_name}/cache/{area_path}/{shard}/{rid}.zip"
 
     def _put(self, key: str, body: bytes, content_type: str = "application/octet-stream") -> None:
         self._s3.put_object(Bucket=self.bucket, Key=key, Body=body, ContentType=content_type)
@@ -272,6 +282,35 @@ class S3StorageProvider(StorageProvider):
 
     def document_exists(self, url: str) -> bool:
         return self._exists(self._document_metadata_key(url))
+
+    def download_area_archive(self, race_url: str, area: ArchiveArea, target: Path) -> bool:
+        key = self._area_archive_key(race_url, area)
+        try:
+            self._s3.download_file(self.bucket, key, str(target))
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
+                return False
+            raise
+
+    def upload_area_archive(self, race_url: str, area: ArchiveArea, source: Path) -> None:
+        key = self._area_archive_key(race_url, area)
+        self._s3.upload_file(
+            str(source),
+            self.bucket,
+            key,
+            ExtraArgs={"ContentType": "application/zip"},
+        )
+        self.log.info(
+            "race_area_archive_saved",
+            race_url=race_url,
+            area=area.value,
+            resource_id=self.compute_resource_id(race_url),
+            key=key,
+        )
+
+    def race_session(self, race_url: str) -> AbstractContextManager[StorageProvider]:
+        return race_archive_session(self, race_url)
 
     def healthcheck(self) -> HealthCheckResult:
         checks: dict[str, bool] = {}
