@@ -121,6 +121,7 @@ def race_session(
     workdir = session_dir / "work"
     cache_plugin_root = workdir / "cache" / base.plugin_name
     scoped = RaceScopedStorage(base, workdir)
+    initialized = False
     try:
         for area in ArchiveArea:
             archive = session_dir / f"{area.value}.zip"
@@ -134,9 +135,10 @@ def race_session(
                 area=area.value,
                 cache_hit=found,
             )
+        initialized = True
         yield scoped
     finally:
-        for area in ArchiveArea:
+        for area in (ArchiveArea if initialized else ()):
             archive = session_dir / f"{area.value}.zip"
             try:
                 _pack(_AREA_SUBDIRS[area], cache_plugin_root, archive)
