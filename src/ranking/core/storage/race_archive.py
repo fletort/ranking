@@ -138,7 +138,7 @@ def race_session(
         initialized = True
         yield scoped
     finally:
-        for area in (ArchiveArea if initialized else ()):
+        for area in ArchiveArea if initialized else ():
             archive = session_dir / f"{area.value}.zip"
             try:
                 _pack(_AREA_SUBDIRS[area], cache_plugin_root, archive)
