@@ -83,7 +83,12 @@ def _pack(subdirs: tuple[str, ...], base_dir: Path, archive: Path) -> None:
 def _extract(archive: Path, target: Path) -> None:
     """Extract ``archive`` into ``target``, restoring the archived subtrees."""
     target.mkdir(parents=True, exist_ok=True)
+    target_root = target.resolve()
     with zipfile.ZipFile(archive, "r") as zf:
+        for member in zf.infolist():
+            member_path = (target / member.filename).resolve()
+            if member_path != target_root and target_root not in member_path.parents:
+                raise ValueError(f"unsafe archive member: {member.filename!r}")
         zf.extractall(target)
 
 
