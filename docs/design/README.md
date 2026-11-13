@@ -12,6 +12,7 @@ more frequently.
   - storage provider abstraction
   - class diagrams
   - runtime responsibilities
+  - race session & per-race archives
 
 ## Future Documents
 

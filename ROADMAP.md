@@ -151,7 +151,7 @@ Goal: Protect cloud storage sizing (Free Tier compatibility) and enforce data un
   - [x] Store raw page content using the final/target URL hash (canonical identity)
   - [x] Persist lightweight pointer entries for initial URLs to intercept future crawl hits without
         re-fetching
-- [ ] Implement multi-level Race-scoped ZIP packaging for HTTP and Extracted layers
+- [x] Implement multi-level Race-scoped ZIP packaging for HTTP and Extracted layers
       [#123](https://github.com/fletort/ranking/issues/123)
   - Design a Context Manager (`with`) lifecycle to handle transactional batch execution per race
   - Automatically sync (download/extract) pre-existing race archives from S3 at session

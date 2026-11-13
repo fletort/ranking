@@ -4,11 +4,12 @@ import os
 import random
 import time
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 import structlog
 
@@ -376,6 +377,26 @@ class CrawlerRuntime(ABC):
         document = self.downloader(url)
         self.storage.save_document(document)
         self.logger.info("document_downloaded", url=url, size=len(document.content))
+
+    @contextmanager
+    def race_session(self, race_url: str) -> Iterator[StorageProvider]:
+        """Scope the crawl of a single race, swapping in a scoped storage provider.
+
+        The scoped provider is obtained from the current storage backend and buffers the
+        fine-grained artifacts of the race locally, so they can be packaged into per-race
+        archives when the session closes (see ``docs/storage_strategy.md``). Backends without
+        archive support yield themselves, making this a no-op.
+
+        ``self.storage`` is restored to the previous provider when the block exits, even when
+        the body raises.
+        """
+        with self.storage.race_session(race_url) as scoped:
+            previous = self.storage
+            self.storage = scoped
+            try:
+                yield scoped
+            finally:
+                self.storage = previous
 
     def _snapshot_timestamp(self) -> str:
         """Return a UTC timestamp formatted for snapshot filenames."""
