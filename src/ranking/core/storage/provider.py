@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import hashlib
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import structlog
+
+if TYPE_CHECKING:
+    from ranking.core.storage.race_archive import ArchiveArea
 
 
 @dataclass
@@ -143,6 +148,29 @@ class StorageProvider(ABC):
         Returns:
             HealthCheckResult: The result of the health check.
         """
+
+    def download_area_archive(self, race_url: str, area: ArchiveArea, target: Path) -> bool:
+        """Download the per-race layer archive into ``target``.
+
+        Returns ``True`` when an archive existed and was written to ``target``. The default
+        implementation reports that the backend does not support race archives.
+        """
+        return False
+
+    def upload_area_archive(self, race_url: str, area: ArchiveArea, source: Path) -> None:
+        """Upload the per-race layer archive located at ``source``.
+
+        The default implementation is a no-op for backends without race archive support.
+        """
+        return None
+
+    def race_session(self, race_url: str) -> AbstractContextManager[StorageProvider]:
+        """Return a context manager scoping the crawl of a single race.
+
+        The default implementation is a no-op that yields this provider unchanged, so backends
+        without archive support (e.g. the local filesystem) keep their flat layout.
+        """
+        return nullcontext(self)
 
 
 __all__ = ["StorageProvider"]

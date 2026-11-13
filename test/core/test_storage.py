@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -10,7 +12,13 @@ import pytest
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
-from ranking.core.storage import DownloadedDocument, LocalStorageProvider, S3StorageProvider
+from ranking.core.storage import (
+    ArchiveArea,
+    DownloadedDocument,
+    LocalStorageProvider,
+    S3StorageProvider,
+)
+from ranking.core.storage.race_archive import race_session
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -580,3 +588,119 @@ def test_s3_healthcheck_write_failure():
 
     assert result.success is False
     assert result.checks["write"] is False
+
+
+# ---------------------------------------------------------------------------
+# Race archives — default (opt-in) behavior
+# ---------------------------------------------------------------------------
+
+RACE_URL = "https://example.com/race/42"
+RACE_BODY_URL = "https://example.com/race/42/results?page=1"
+RACE_REDIRECT_URL = "https://example.com/race/42/legacy"
+
+
+def _list_keys(bucket: str) -> list[str]:
+    client = boto3.client("s3", region_name="eu-west-1")
+    paginator = client.get_paginator("list_objects_v2")
+    keys: list[str] = []
+    for page in paginator.paginate(Bucket=bucket):
+        for obj in page.get("Contents", []):
+            keys.append(obj["Key"])
+    return keys
+
+
+def test_default_provider_has_no_archive_support(
+    local: LocalStorageProvider, tmp_path: Path
+) -> None:
+    target = tmp_path / "http.zip"
+
+    assert local.download_area_archive(RACE_URL, ArchiveArea.HTTP, target) is False
+    assert not target.exists()
+
+    # The default upload is a no-op: it neither raises nor creates anything.
+    local.upload_area_archive(RACE_URL, ArchiveArea.HTTP, target)
+
+    with local.race_session(RACE_URL) as scoped:
+        assert scoped is local
+
+
+# ---------------------------------------------------------------------------
+# Race archives — S3 session (via moto)
+# ---------------------------------------------------------------------------
+
+
+def test_s3_race_session_packages_and_restores_layers(s3_provider, tmp_path: Path) -> None:
+    with race_session(s3_provider, RACE_URL, workdir_root=tmp_path) as scoped:
+        scoped.save_http_cache(RACE_BODY_URL, "<html>results</html>")
+        scoped.save_redirect(RACE_REDIRECT_URL, RACE_BODY_URL)
+        scoped.save_extracted(RACE_BODY_URL, {"podium": [1, 2, 3]})
+
+    rid = s3_provider.compute_resource_id(RACE_URL)
+    http_key = f"myplugin/cache/http/current/{rid[:2]}/{rid}.zip"
+    extracted_key = f"myplugin/cache/extracted/{rid[:2]}/{rid}.zip"
+    keys = _list_keys("ranking")
+    assert http_key in keys
+    assert extracted_key in keys
+
+    client = boto3.client("s3", region_name="eu-west-1")
+    body_rid = s3_provider.compute_resource_id(RACE_BODY_URL)
+    redirect_rid = s3_provider.compute_resource_id(RACE_REDIRECT_URL)
+
+    http_zip = client.get_object(Bucket="ranking", Key=http_key)["Body"].read()
+    with zipfile.ZipFile(io.BytesIO(http_zip)) as zf:
+        http_names = set(zf.namelist())
+    assert f"http/current/{body_rid[:2]}/{body_rid}.html" in http_names
+    assert f"redirects/{redirect_rid[:2]}/{redirect_rid}.json" in http_names
+
+    extracted_zip = client.get_object(Bucket="ranking", Key=extracted_key)["Body"].read()
+    with zipfile.ZipFile(io.BytesIO(extracted_zip)) as zf:
+        extracted_names = set(zf.namelist())
+    assert extracted_names == {f"extracted/{body_rid[:2]}/{body_rid}.json"}
+
+    # Reopen: layers are re-extracted -> cache hit.
+    with race_session(s3_provider, RACE_URL, workdir_root=tmp_path) as scoped:
+        assert scoped.get_http_cache(RACE_BODY_URL) == "<html>results</html>"
+        assert scoped.get_redirect(RACE_REDIRECT_URL) == RACE_BODY_URL
+        assert scoped.get_extracted(RACE_BODY_URL) == {"podium": [1, 2, 3]}
+
+
+def test_s3_race_session_documents_stay_flat(s3_provider, tmp_path: Path) -> None:
+    content = b"%PDF-1.7"
+    document = DownloadedDocument(
+        url="https://example.com/race/42/results.pdf",
+        content=content,
+        original_filename="results.pdf",
+        content_type="application/pdf",
+        content_length=len(content),
+        downloaded_at=datetime.now(),
+    )
+
+    with race_session(s3_provider, RACE_URL, workdir_root=tmp_path) as scoped:
+        scoped.save_document(document)
+
+    assert s3_provider.document_exists(document.url)
+
+    doc_rid = s3_provider.compute_resource_id(document.url)
+    flat_key = f"myplugin/documents/{doc_rid[:2]}/{doc_rid}/results.pdf"
+    keys = _list_keys("ranking")
+    assert flat_key in keys
+    assert not any(key.startswith("myplugin/documents/") and key.endswith(".zip") for key in keys)
+
+
+def test_s3_race_session_reupload_replaces_archive(s3_provider, tmp_path: Path) -> None:
+    with race_session(s3_provider, RACE_URL, workdir_root=tmp_path) as scoped:
+        scoped.save_http_cache(RACE_BODY_URL, "<html>v1</html>")
+
+    with race_session(s3_provider, RACE_URL, workdir_root=tmp_path) as scoped:
+        scoped.save_http_cache(RACE_BODY_URL, "<html>v2</html>")
+
+    rid = s3_provider.compute_resource_id(RACE_URL)
+    body_rid = s3_provider.compute_resource_id(RACE_BODY_URL)
+    http_key = f"myplugin/cache/http/current/{rid[:2]}/{rid}.zip"
+    http_zip = (
+        boto3.client("s3", region_name="eu-west-1")
+        .get_object(Bucket="ranking", Key=http_key)["Body"]
+        .read()
+    )
+    with zipfile.ZipFile(io.BytesIO(http_zip)) as zf:
+        assert zf.read(f"http/current/{body_rid[:2]}/{body_rid}.html") == b"<html>v2</html>"

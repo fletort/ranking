@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from ranking.core.storage.local import LocalStorageProvider
 from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.storage.race_archive import ArchiveArea, RaceScopedStorage, race_session
 from ranking.core.storage.s3 import S3StorageProvider
 from ranking.core.storage.s3_aws import AwsS3StorageProvider
 from ranking.core.storage.s3_gcs import GcsS3StorageProvider
 
 __all__ = [
+    "ArchiveArea",
+    "RaceScopedStorage",
+    "race_session",
     "LocalStorageProvider",
     "S3StorageProvider",
     "AwsS3StorageProvider",
