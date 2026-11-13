@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from typing import Any
 
 import pytest
@@ -41,6 +42,9 @@ class DummyCache:
 
     def save_extracted_json(self, url: str, data: Any) -> None:
         return None
+
+    def race_session(self, race_url: str) -> Any:
+        return nullcontext(self)
 
 
 def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:

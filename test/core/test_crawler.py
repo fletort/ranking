@@ -1,4 +1,6 @@
+import io
 import time
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -11,7 +13,10 @@ from ranking.core.crawler.runtime import (
     FetchedResource,
     default_is_temporary_unavailable_page,
 )
-from ranking.core.storage.provider import DownloadedDocument
+from ranking.core.storage.local import LocalStorageProvider
+from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.storage.race_archive import ArchiveArea
+from ranking.core.storage.race_archive import race_session as storage_race_session
 
 
 class PlainFetcher(CrawlerRuntime):
@@ -594,3 +599,105 @@ def test_refresh_removes_pointer_when_url_stops_redirecting(tmp_path: Path) -> N
 
     assert cache.storage.get_redirect(a) is None
     assert cache.storage.get_http_cache(a) == "content"
+
+
+# ---------------------------------------------------------------------------
+# Race sessions (runtime provider swap + per-race archives)
+# ---------------------------------------------------------------------------
+
+
+class SessionStorageProvider(LocalStorageProvider):
+    """Base provider exposing race archive support, backing the runtime swap tests."""
+
+    def __init__(self, root: Path) -> None:
+        super().__init__("demo", cache_root=root / "cache", document_root=root / "documents")
+        self.session_urls: list[str] = []
+        self.uploaded: dict[ArchiveArea, bytes] = {}
+
+    def download_area_archive(self, race_url: str, area: ArchiveArea, target: Path) -> bool:
+        return False
+
+    def upload_area_archive(self, race_url: str, area: ArchiveArea, source: Path) -> None:
+        self.uploaded[area] = source.read_bytes()
+
+    def race_session(self, race_url: str):
+        self.session_urls.append(race_url)
+        return storage_race_session(self, race_url)
+
+
+class StorageFetcher(CrawlerRuntime):
+    """Runtime using an injected storage provider, with configurable redirects."""
+
+    def __init__(
+        self,
+        storage: StorageProvider,
+        redirects: dict[str, str] | None = None,
+        content: str = "body",
+    ) -> None:
+        super().__init__("demo", network_sleep_seconds={"min": 0, "max": 0}, storage=storage)
+        self.redirects = redirects or {}
+        self.content = content
+
+    def fetcher(self, url: str) -> FetchedResource:
+        return FetchedResource(url, self.redirects.get(url, url), self.content)
+
+
+def _zip_names(data: bytes) -> set[str]:
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        return set(zf.namelist())
+
+
+def test_race_session_swaps_and_restores_storage(tmp_path: Path) -> None:
+    base = SessionStorageProvider(tmp_path)
+    cache = StorageFetcher(base)
+
+    with cache.race_session("https://example.com/race/1") as scoped:
+        assert cache.storage is scoped
+        assert cache.storage is not base
+
+    assert cache.storage is base
+
+
+def test_race_session_restores_storage_when_body_raises(tmp_path: Path) -> None:
+    base = SessionStorageProvider(tmp_path)
+    cache = StorageFetcher(base)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with cache.race_session("https://example.com/race/1"):
+            raise RuntimeError("boom")
+
+    assert cache.storage is base
+
+
+def test_race_session_writes_go_to_scoped_provider(tmp_path: Path) -> None:
+    a = "https://example.com/a"
+    b = "https://example.com/b"
+    race_url = "https://example.com/race/1"
+    base = SessionStorageProvider(tmp_path)
+    cache = StorageFetcher(base, {a: b}, content="body-b")
+
+    with cache.race_session(race_url):
+        cache.fetch(a, CachePolicy.CACHE_IF_PRESENT)
+
+    assert cache.storage is base
+    assert base.session_urls == [race_url]
+    # Nothing leaked to the base provider: writes were buffered by the scoped provider.
+    assert base.get_http_cache(b) is None
+    assert base.get_redirect(a) is None
+    # On close, buffered artifacts were archived (HTTP archive bundles bodies + pointers).
+    body_rid = base.compute_resource_id(b)
+    redirect_rid = base.compute_resource_id(a)
+    http_names = _zip_names(base.uploaded[ArchiveArea.HTTP])
+    assert f"http/current/{body_rid[:2]}/{body_rid}.html" in http_names
+    assert f"redirects/{redirect_rid[:2]}/{redirect_rid}.json" in http_names
+
+
+def test_race_session_is_noop_without_archive_support(tmp_path: Path) -> None:
+    cache = RedirectFetcher(tmp_path)
+    original = cache.storage
+
+    with cache.race_session("https://example.com/race/1") as scoped:
+        assert scoped is original
+        assert cache.storage is original
+
+    assert cache.storage is original
