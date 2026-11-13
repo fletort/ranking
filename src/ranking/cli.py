@@ -389,7 +389,25 @@ def process_race(
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
 ) -> None:
+    """Crawl a single race within a race session.
+
+    The race session buffers the fine-grained HTTP/extracted artifacts of the race locally and
+    uploads the per-layer archives when the crawl completes (see ``docs/storage_strategy.md``).
+    Backends without archive support make the session a no-op.
+    """
     base_race_url = EVENTS_LIST_URL + race["technical_url"]
+    with cache.race_session(base_race_url):
+        _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
+
+
+def _crawl_race(
+    race: RaceItem,
+    cache: HttpxCrawlerRuntime,
+    log: structlog.BoundLogger,
+    base_race_url: str,
+    page_race_max: int | None,
+    summary: CrawlSummary | None,
+) -> None:
     current_url = base_race_url
     pages_processed = 0
 
