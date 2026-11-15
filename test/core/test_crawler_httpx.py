@@ -13,6 +13,7 @@ from ranking.core.crawler.httpx import (
     DEFAULT_RETRYABLE_STATUS_CODES,
     HEADERS,
     HEALTH_CHECK_STATUS_CODES_ENV,
+    HTTP_TIMEOUT,
     RETRY_DELAYS_ENV,
     RETRYABLE_STATUS_CODES_ENV,
     HttpxCrawlerRuntime,
@@ -59,13 +60,32 @@ def test_httpx_fetcher_raises_on_http_error(httpx_mock: HTTPXMock, tmp_path: Pat
         client.fetcher(url)
 
 
-def test_httpx_fetcher_raises_on_network_error(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+def test_httpx_fetcher_raises_on_network_error(
+    httpx_mock: HTTPXMock, tmp_path: Path, sleep_calls: list[float]
+) -> None:
+    """A persistent connection error is retried until the backoff schedule is exhausted."""
     url = "https://example.com/fail"
-    httpx_mock.add_exception(httpx.ConnectError("connection refused"), url=url)
+    httpx_mock.add_exception(httpx.ConnectError("connection refused"), url=url, is_reusable=True)
 
     client = HttpxCrawlerRuntime("demo", tmp_path)
     with pytest.raises(RuntimeError, match="Network error fetching URL"):
         client.fetcher(url)
+
+    assert sleep_calls == list(DEFAULT_RETRY_DELAYS_SECONDS)
+    assert len(httpx_mock.get_requests()) == len(DEFAULT_RETRY_DELAYS_SECONDS) + 1
+
+
+def test_httpx_fetcher_uses_relaxed_default_timeout(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    """Slow legacy servers must not be aborted by httpx's 5s default read timeout."""
+    url = "https://example.com/slow"
+    httpx_mock.add_response(url=url, text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    client.fetcher(url)
+
+    request = httpx_mock.get_requests()[0]
+    assert HTTP_TIMEOUT >= 15.0
+    assert request.extensions["timeout"]["read"] == HTTP_TIMEOUT
 
 
 # ---------------------------------------------------------------------------
@@ -176,13 +196,16 @@ def test_httpx_fetcher_does_not_retry_non_retryable_status(
     assert len(httpx_mock.get_requests()) == 1
 
 
-def test_httpx_fetcher_does_not_retry_network_error(
+def test_httpx_fetcher_does_not_retry_non_transient_network_error(
     httpx_mock: HTTPXMock,
     tmp_path: Path,
     sleep_calls: list[float],
 ) -> None:
-    url = "https://example.com/fail"
-    httpx_mock.add_exception(httpx.ConnectError("connection refused"), url=url)
+    """A fatal network error (e.g. too many redirects) is not transient: no retry."""
+    url = "https://example.com/redirect-loop"
+    httpx_mock.add_exception(
+        httpx.TooManyRedirects("too many redirects"), url=url, is_reusable=True
+    )
 
     client = HttpxCrawlerRuntime("demo", tmp_path)
 
@@ -191,6 +214,54 @@ def test_httpx_fetcher_does_not_retry_network_error(
 
     assert sleep_calls == []
     assert len(httpx_mock.get_requests()) == 1
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        httpx.ReadTimeout("read timed out"),
+        httpx.ConnectTimeout("connect timed out"),
+        httpx.WriteTimeout("write timed out"),
+        httpx.ConnectError("connection refused"),
+        httpx.ReadError("connection reset by peer"),
+    ],
+)
+def test_httpx_fetcher_retries_transient_network_error_then_succeeds(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+    exception: httpx.TransportError,
+) -> None:
+    """A transient network failure is retried and the following 200 OK is returned."""
+    url = "https://example.com/flaky"
+    httpx_mock.add_exception(exception, url=url)
+    httpx_mock.add_response(url=url, text="<html>Recovered</html>")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    result = client.fetcher(url)
+
+    assert result.content == "<html>Recovered</html>"
+    assert sleep_calls == [RETRY_BACKOFF[0]]
+    assert len(httpx_mock.get_requests()) == 2
+    assert client.sleep_duration_seconds == RETRY_BACKOFF[0]
+
+
+def test_httpx_fetcher_timeout_fails_after_max_attempts(
+    httpx_mock: HTTPXMock,
+    tmp_path: Path,
+    sleep_calls: list[float],
+) -> None:
+    """A persistent read timeout exhausts the backoff schedule and then fails."""
+    url = "https://example.com/always-slow"
+    httpx_mock.add_exception(httpx.ReadTimeout("read timed out"), url=url, is_reusable=True)
+
+    client = HttpxCrawlerRuntime("demo", tmp_path, retry_delays_seconds=(0.5, 1.5))
+
+    with pytest.raises(RuntimeError, match="Network error fetching URL"):
+        client.fetcher(url)
+
+    assert sleep_calls == [0.5, 1.5]
+    assert len(httpx_mock.get_requests()) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -820,6 +891,57 @@ def test_downloader_raises_runtime_error_on_network_error(monkeypatch: pytest.Mo
 
     with pytest.raises(RuntimeError, match="Network error downloading URL"):
         cache.downloader("https://example.com/missing.pdf")
+
+
+def test_downloader_retries_transient_network_error_then_succeeds(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """Documents reuse the shared retry loop: a transient timeout is retried, then the file wins."""
+    url = "https://example.com/race_info.pdf"
+    httpx_mock.add_exception(httpx.ReadTimeout("read timed out"), url=url)
+    httpx_mock.add_response(url=url, content=b"%PDF-1.7")
+
+    cache = HttpxCrawlerRuntime("demo")
+    document = cache.downloader(url)
+
+    assert document.content == b"%PDF-1.7"
+    assert sleep_calls == [RETRY_BACKOFF[0]]
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_downloader_retries_retryable_status_then_succeeds(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """Documents also retry the transient HTTP status codes (502/503/504)."""
+    url = "https://example.com/race_info.pdf"
+    httpx_mock.add_response(url=url, status_code=503)
+    httpx_mock.add_response(url=url, content=b"%PDF-1.7")
+
+    cache = HttpxCrawlerRuntime("demo")
+    document = cache.downloader(url)
+
+    assert document.content == b"%PDF-1.7"
+    assert sleep_calls == [RETRY_BACKOFF[0]]
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_downloader_timeout_fails_after_max_attempts(
+    httpx_mock: HTTPXMock,
+    sleep_calls: list[float],
+) -> None:
+    """A persistent timeout exhausts the shared backoff schedule and then fails."""
+    url = "https://example.com/race_info.pdf"
+    httpx_mock.add_exception(httpx.ReadTimeout("read timed out"), url=url, is_reusable=True)
+
+    cache = HttpxCrawlerRuntime("demo", retry_delays_seconds=(0.5, 1.5))
+
+    with pytest.raises(RuntimeError, match="Network error downloading URL"):
+        cache.downloader(url)
+
+    assert sleep_calls == [0.5, 1.5]
+    assert len(httpx_mock.get_requests()) == 3
 
 
 # ---------------------------------------------------------------------------
