@@ -809,6 +809,45 @@ def test_httpx_fetcher_reports_final_url_on_same_domain_redirect(
     assert resource.content == "<html>Moved</html>"
 
 
+def test_httpx_fetcher_blocks_an_off_host_url_without_requesting_it(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """A page-provided link to another host must be refused before any network call."""
+    external_url = "https://external.example.com/page"
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    with pytest.raises(
+        ExternalRedirectError,
+        check=lambda e: e.requested_url == external_url and e.final_url == external_url,
+    ):
+        client.fetcher(external_url)
+
+    assert httpx_mock.get_requests() == []
+
+
+def test_httpx_downloader_blocks_an_off_host_url_without_requesting_it(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    external_url = "https://cdn.example.com/file.pdf"
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    with pytest.raises(ExternalRedirectError):
+        client.downloader(external_url)
+
+    assert httpx_mock.get_requests() == []
+
+
+def test_httpx_fetcher_allows_a_url_on_the_base_host(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """The guard must not over-block: same host, whatever the path, stays allowed."""
+    url = "https://example.com/page"
+    httpx_mock.add_response(url=url, text="ok")
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com/base")
+
+    assert client.fetcher(url).content == "ok"
+
+
 def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:
     if args:
         return str(args[0])

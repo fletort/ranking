@@ -40,6 +40,7 @@ DEFAULT_HEALTH_CHECK_STATUS_CODES = (500,)
 # The last delay is reused when the schedule is shorter than the number of attempts.
 DEFAULT_RETRY_DELAYS_SECONDS = (30.0, 60.0, 120.0, 300.0, 3600.0)
 
+
 def normalize_url(url: str) -> str:
     """Validate *url* and return its canonical form before a network request.
 
@@ -350,10 +351,12 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             RuntimeError: On HTTP error status codes or network-level errors.
             LocalServerErrorException: When the target returns a health-check status code but the
                 reference page is healthy (localized page bug, no retry).
-            ExternalRedirectError: If the final URL after redirects is outside the allowed base URL.
+            ExternalRedirectError: If the requested URL, or the final URL after redirects, is
+                outside the allowed base URL.
             ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
         url = normalize_url(url)
+        self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,
             timeout=HTTP_TIMEOUT,
@@ -587,6 +590,22 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         # Reference page is down too: the whole site is unavailable, retry.
         return True
 
+    def _ensure_allowed_host(self, url: str) -> None:
+        """Refuse a URL whose host is outside the configured ``base_url``, before any request.
+
+        Page-provided links may be absolute (``https://other``) or scheme-relative (``//other``);
+        once resolved they replace the configured host. :meth:`_accept_fetched_body` only checks
+        the domain when the server redirects, so without this guard a *direct* request to another
+        host would succeed and be cached. Raising :class:`ExternalRedirectError` here keeps the
+        crawl on the configured site and lets the CLI skip the link
+        (``event_skipped`` / ``race_skipped``).
+
+        No-op when no ``base_url`` is configured.
+        """
+        if self.base_url and not self.is_same_domain(url, self.base_url):
+            self.logger.debug("external_host_blocked", url=url, base_url=self.base_url)
+            raise ExternalRedirectError(requested_url=url, final_url=url)
+
     def _accept_fetched_body(self, url: str, response: httpx.Response) -> bool:
         """Return ``False`` to retry a 2xx response that is not the real page content.
 
@@ -612,9 +631,11 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         Raises:
             RuntimeError: On HTTP error status codes or network-level errors, once retries are
                 exhausted.
+            ExternalRedirectError: If the URL is outside the allowed base URL.
             ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
         url = normalize_url(url)
+        self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,
             timeout=DOCUMENT_DOWNLOAD_TIMEOUT,
