@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import structlog
+
+from ranking.core.url import canonicalize_url
 
 if TYPE_CHECKING:
     from ranking.core.storage.race_archive import ArchiveArea
@@ -51,26 +52,13 @@ class StorageProvider(ABC):
 
     @staticmethod
     def compute_resource_id(url: str) -> str:
-        """Derive a deterministic SHA-1 resource ID from a canonicalized URL."""
-        canonical = StorageProvider._canonicalize_url(url)
-        return hashlib.sha1(canonical.encode("utf-8")).hexdigest()  # noqa: S324
+        """Derive a deterministic SHA-1 resource ID from the canonical URL.
 
-    @staticmethod
-    def _canonicalize_url(url: str) -> str:
-        """Canonicalize URL by sorting query parameters to stabilize resource IDs."""
-        parsed = urlparse(url)
-        sorted_query = sorted(parse_qsl(parsed.query, keep_blank_values=True))
-        canonical_query = urlencode(sorted_query, doseq=True)
-        return urlunparse(
-            (
-                parsed.scheme,
-                parsed.netloc,
-                parsed.path,
-                parsed.params,
-                canonical_query,
-                parsed.fragment,
-            )
-        )
+        The canonical form comes from the single, shared
+        :func:`ranking.core.url.canonicalize_url`, so the identity is guaranteed to match the URL
+        the HTTP client actually requests.
+        """
+        return hashlib.sha1(canonicalize_url(url).encode("utf-8")).hexdigest()  # noqa: S324
 
     @abstractmethod
     def save_http_cache(self, url: str, content: str) -> None:

@@ -26,6 +26,7 @@ from ranking.core.crawler.httpx import (
 from ranking.core.crawler.runtime import CachePolicy
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
+from ranking.core.url import canonicalize_url
 
 
 def test_httpx_fetcher_returns_html(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
@@ -86,6 +87,58 @@ def test_httpx_fetcher_uses_relaxed_default_timeout(httpx_mock: HTTPXMock, tmp_p
     request = httpx_mock.get_requests()[0]
     assert HTTP_TIMEOUT >= 15.0
     assert request.extensions["timeout"]["read"] == HTTP_TIMEOUT
+
+
+def test_httpx_fetcher_normalizes_consecutive_path_slashes(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """A URL built with a duplicated slash must hit its canonical (single-slash) resource."""
+    httpx_mock.add_response(url="https://example.com/page", text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    result = client.fetcher("https://example.com//page")
+
+    assert result.content == "ok"
+    assert str(httpx_mock.get_requests()[0].url) == "https://example.com/page"
+
+
+def test_httpx_request_url_matches_the_shared_storage_canonicalization(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """HTTP and Storage must apply the exact same normalization (no divergence)."""
+    url = "https://example.com//page?b=2&a=1"
+    canonical = canonicalize_url(url)
+    assert canonical == "https://example.com/page?a=1&b=2"
+    httpx_mock.add_response(url=canonical, text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+    client.fetcher(url)
+
+    assert str(httpx_mock.get_requests()[0].url) == canonical
+
+
+def test_httpx_fetcher_rejects_url_without_http_scheme_without_retry(
+    httpx_mock: HTTPXMock, tmp_path: Path, sleep_calls: list[float]
+) -> None:
+    """A URL without an http(s):// scheme fails fast, with a clear error and no network call."""
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    with pytest.raises(ValueError, match="expected an absolute http:// or https:// URL"):
+        client.fetcher("example.com/no-scheme")
+
+    assert httpx_mock.get_requests() == []
+    assert sleep_calls == []
+
+
+def test_httpx_downloader_rejects_url_without_http_scheme(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    with pytest.raises(ValueError, match="expected an absolute http:// or https:// URL"):
+        client.downloader("file:///tmp/document.pdf")
+
+    assert httpx_mock.get_requests() == []
 
 
 # ---------------------------------------------------------------------------

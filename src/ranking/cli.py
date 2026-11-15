@@ -21,6 +21,7 @@ from ranking.core.storage import (
     LocalStorageProvider,
     StorageProvider,
 )
+from ranking.core.url import absolute_url
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
     build_event_detail_no_info,
@@ -329,7 +330,7 @@ def process_event(
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
 ) -> None:
-    event_url = EVENTS_LIST_URL + event["url"]
+    event_url = absolute_url(EVENTS_LIST_URL, event["url"])
     log.info("event_processing", url=event_url, name=event["name"])
     try:
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
@@ -367,7 +368,7 @@ def process_event(
     # Download optionals event documents
     if "documents" in event_detail and event_detail["documents"]:
         for document in event_detail["documents"]:
-            document_url = document["url"]
+            document_url = absolute_url(EVENTS_LIST_URL, document["url"])
             try:
                 cache.download(document_url)
                 if summary is not None:
@@ -395,7 +396,7 @@ def process_race(
     uploads the per-layer archives when the crawl completes (see ``docs/storage_strategy.md``).
     Backends without archive support make the session a no-op.
     """
-    base_race_url = EVENTS_LIST_URL + race["technical_url"]
+    base_race_url = absolute_url(EVENTS_LIST_URL, race["technical_url"])
     with cache.race_session(base_race_url):
         _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
 
@@ -436,7 +437,7 @@ def _crawl_race(
         if pages_processed == 0:
             race_document_url = race_result["document"]
             if race_document_url:
-                full_document_url = EVENTS_LIST_URL + race_document_url
+                full_document_url = absolute_url(EVENTS_LIST_URL, race_document_url)
                 try:
                     cache.download(full_document_url)
                     log.info("document_downloaded", race_document_url=full_document_url)
@@ -470,7 +471,7 @@ def _crawl_race(
                         race_url=current_url,
                     )
                 else:
-                    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
+                    full_result_detail_url = absolute_url(EVENTS_LIST_URL, result_detail_url)
                     try:
                         detail_html = cache.fetch(
                             full_result_detail_url, CachePolicy.CACHE_IF_PRESENT

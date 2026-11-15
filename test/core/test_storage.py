@@ -19,6 +19,7 @@ from ranking.core.storage import (
     S3StorageProvider,
 )
 from ranking.core.storage.race_archive import race_session
+from ranking.core.url import canonicalize_url
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -27,6 +28,7 @@ from ranking.core.storage.race_archive import race_session
 TEST_URL = "https://example.com/events?year=2025&page=1"
 TEST_URL_REORDERED = "https://example.com/events?page=1&year=2025"
 TEST_URL_DIFFERENT = "https://example.com/other"
+TEST_URL_DOUBLE_SLASH = "https://example.com//events?page=1&year=2025"
 
 
 @pytest.fixture()
@@ -91,6 +93,29 @@ def test_resource_id_is_sha1_hex(local: LocalStorageProvider) -> None:
     )
     expected = hashlib.sha1(canonical.encode("utf-8")).hexdigest()  # noqa: S324
     assert local.compute_resource_id(url) == expected
+
+
+def test_canonicalization_collapses_consecutive_path_slashes(
+    local: LocalStorageProvider,
+) -> None:
+    """``https://example.com//page`` and ``https://example.com/page`` must be identical."""
+    double_slash = "https://example.com//page"
+    single_slash = "https://example.com/page"
+
+    assert canonicalize_url(double_slash) == canonicalize_url(single_slash)
+    assert local.compute_resource_id(double_slash) == local.compute_resource_id(single_slash)
+
+
+def test_canonicalization_collapses_slashes_but_keeps_query_parameters(
+    local: LocalStorageProvider,
+) -> None:
+    assert canonicalize_url("https://example.com//page?b=2&a=1") == (
+        "https://example.com/page?a=1&b=2"
+    )
+
+
+def test_resource_id_ignores_consecutive_path_slashes(local: LocalStorageProvider) -> None:
+    assert local.compute_resource_id(TEST_URL_DOUBLE_SLASH) == local.compute_resource_id(TEST_URL)
 
 
 # ---------------------------------------------------------------------------
