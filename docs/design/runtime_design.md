@@ -151,7 +151,9 @@ Not responsible for:
 ### Transient HTTP Failures
 
 Target websites may become temporarily unavailable (maintenance windows, gateway micro-outages).
-Instead of failing immediately, `HttpxCrawlerRuntime.fetcher` retries such requests.
+Instead of failing immediately, `HttpxCrawlerRuntime` retries such requests. Page fetching
+(`fetcher`) and document downloading (`downloader`) share the same retry policy, implemented once in
+`_request_with_retry`.
 
 Retried status codes (default):
 
@@ -159,9 +161,20 @@ Retried status codes (default):
 - 503 Service Unavailable
 - 504 Gateway Timeout
 
-Any other HTTP status code (e.g. 404) and network-level errors (DNS, connection, timeout) fail
-immediately. An HTTP 500 is a special case: it is first validated with a health check, as described
-below.
+Transient network-level errors are also retried, using the same exponential backoff:
+
+- `httpx.TimeoutException` (read, connect, write or pool timeouts);
+- `httpx.NetworkError` (connection resets, DNS hiccups, refused connections).
+
+Any other HTTP status code (e.g. 404) and any other network-level error (e.g. too many redirects,
+invalid URL) fail immediately. An HTTP 500 is a special case: it is first validated with a health
+check, as described below.
+
+#### Timeouts
+
+Requests use an explicit, relaxed read timeout (`HTTP_TIMEOUT`, 20s) for pages so that slow legacy
+servers are not aborted prematurely by httpx's 5s default. Document downloads use their own
+`DOCUMENT_DOWNLOAD_TIMEOUT` and are retried through the same backoff schedule.
 
 #### Localized page bugs (HTTP 500) vs. global outages
 
