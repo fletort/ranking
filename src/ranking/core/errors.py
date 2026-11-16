@@ -1,9 +1,22 @@
 class ExternalRedirectError(Exception):
+    """The crawler refused to leave the configured site.
+
+    Raised either when the requested URL itself targets another host (``requested_url`` equals
+    ``final_url``; refused before any network access) or when the server redirected the request to
+    another host. Both cases are recovered the same way: the link is skipped and the crawl
+    continues, so a single external link never aborts the crawl.
+    """
+
     def __init__(self, requested_url: str, final_url: str):
         self.requested_url = requested_url
         self.final_url = final_url
 
-        super().__init__(f"External redirect: {requested_url} → {final_url}")
+        if requested_url == final_url:
+            # Not a redirect: the requested link directly points at another host.
+            message = f"Refused external URL: {requested_url} (outside the allowed site)"
+        else:
+            message = f"External redirect: {requested_url} → {final_url}"
+        super().__init__(message)
 
 
 class LocalServerErrorException(RuntimeError):

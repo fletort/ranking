@@ -93,9 +93,15 @@ The same URL must always generate the same Resource ID.
 
 Before hash generation:
 
+- consecutive slashes (`//`) in the path are collapsed to a single slash
 - query parameters are parsed
 - parameters are sorted
 - the URL is rebuilt in canonical form
+
+Collapsing path slashes keeps the scheme (`http://` / `https://`) and the query parameters
+untouched, but guarantees that a URL carrying a duplicated separator (`https://host//path`) and its
+clean form (`https://host/path`) map to the same Resource ID. A plugin building links by
+concatenation can therefore never pollute the cache with an equivalent, duplicated entry.
 
 This guarantees that semantically equivalent URLs generate the same Resource ID.
 

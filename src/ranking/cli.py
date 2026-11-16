@@ -21,6 +21,7 @@ from ranking.core.storage import (
     LocalStorageProvider,
     StorageProvider,
 )
+from ranking.core.url import absolute_url
 from ranking.plugins.breizhchrono.eventdetail import (
     RaceItem,
     build_event_detail_no_info,
@@ -43,6 +44,14 @@ PLUGIN_NAME = "breizhchrono"
 NETWORK_SLEEP_SECONDS_MIN = 1
 NETWORK_SLEEP_SECONDS_MAX = 5
 NETWORK_SLEEP_SECONDS = {"min": NETWORK_SLEEP_SECONDS_MIN, "max": NETWORK_SLEEP_SECONDS_MAX}
+# A fetch or download can fail either on HTTP/network errors (``RuntimeError``) or on a malformed
+# URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``). Both are handled
+# the same way so a single bad link never aborts the whole crawl.
+REQUEST_FAILURES = (RuntimeError, ValueError)
+# Downloading a document can additionally be refused when the link targets another host: the HTTP
+# client raises ``ExternalRedirectError`` before the request. Such an optional document must be
+# recorded as a failed download, never abort the enclosing crawl.
+DOCUMENT_FAILURES = (*REQUEST_FAILURES, ExternalRedirectError)
 
 
 @dataclass
@@ -267,7 +276,7 @@ def list(ctx, storage, page_event_max, page_race_max) -> None:
         while True:
             try:
                 html = cache.fetch(current_url, CachePolicy.REFRESH_AND_CACHE)
-            except RuntimeError as exc:
+            except REQUEST_FAILURES as exc:
                 log.error("fetch_error", error=str(exc))
                 return
 
@@ -329,14 +338,15 @@ def process_event(
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
 ) -> None:
-    event_url = EVENTS_LIST_URL + event["url"]
-    log.info("event_processing", url=event_url, name=event["name"])
+    raw_event_url = event["url"]
+    log.info("event_processing", url=raw_event_url, name=event["name"])
     try:
+        event_url = absolute_url(EVENTS_LIST_URL, raw_event_url)
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
+    except REQUEST_FAILURES as exc:
         if summary is not None:
             summary.events_failed_count += 1
-        log.error("fetch_error", error=str(exc), event_url=event_url)
+        log.error("fetch_error", error=str(exc), event_url=raw_event_url)
         return
     except ExternalRedirectError as exc:
         log.info(
@@ -346,7 +356,7 @@ def process_event(
             to_url=exc.final_url,
         )
         no_event_detail = build_event_detail_no_info(status="external_redirect")
-        cache.save_extracted_json(event_url, no_event_detail)
+        cache.save_extracted_json(exc.requested_url, no_event_detail)
         return
 
     event_detail = extract_event_detail(event_html)
@@ -367,16 +377,21 @@ def process_event(
     # Download optionals event documents
     if "documents" in event_detail and event_detail["documents"]:
         for document in event_detail["documents"]:
-            document_url = document["url"]
+            if not document["url"]:
+                # The parser normalises a missing href to an empty string: resolving it would
+                # point at the site root and download the homepage as an event document.
+                log.debug("skipped_empty_document_url", event_document_name=document["name"])
+                continue
             try:
+                document_url = absolute_url(EVENTS_LIST_URL, document["url"])
                 cache.download(document_url)
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
                 log.info("document_downloaded", event_document_url=document_url)
-            except RuntimeError as exc:
+            except DOCUMENT_FAILURES as exc:
                 if summary is not None:
                     summary.events_document_failed_count += 1
-                log.error("download_error", error=str(exc), event_document_url=document_url)
+                log.error("download_error", error=str(exc), event_document_url=document["url"])
 
     for race in event_detail["races"]:
         process_race(race, cache, log, page_race_max, summary=summary)
@@ -395,7 +410,14 @@ def process_race(
     uploads the per-layer archives when the crawl completes (see ``docs/storage_strategy.md``).
     Backends without archive support make the session a no-op.
     """
-    base_race_url = EVENTS_LIST_URL + race["technical_url"]
+    raw_race_url = race["technical_url"]
+    try:
+        base_race_url = absolute_url(EVENTS_LIST_URL, raw_race_url)
+    except REQUEST_FAILURES as exc:
+        if summary is not None:
+            summary.races_failed_count += 1
+        log.error("fetch_error", error=str(exc), race_url=raw_race_url)
+        return
     with cache.race_session(base_race_url):
         _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
 
@@ -414,7 +436,7 @@ def _crawl_race(
     while True:
         try:
             race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
-        except RuntimeError as exc:
+        except REQUEST_FAILURES as exc:
             if summary is not None:
                 summary.races_failed_count += 1
             log.error("fetch_error", error=str(exc), race_url=current_url)
@@ -436,16 +458,16 @@ def _crawl_race(
         if pages_processed == 0:
             race_document_url = race_result["document"]
             if race_document_url:
-                full_document_url = EVENTS_LIST_URL + race_document_url
                 try:
+                    full_document_url = absolute_url(EVENTS_LIST_URL, race_document_url)
                     cache.download(full_document_url)
                     log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
                         summary.races_document_downloaded_count += 1
-                except RuntimeError as exc:
+                except DOCUMENT_FAILURES as exc:
                     if summary is not None:
                         summary.races_document_failed_count += 1
-                    log.error("download_error", error=str(exc), race_document_url=full_document_url)
+                    log.error("download_error", error=str(exc), race_document_url=race_document_url)
 
         results = race_result["results"]
         if summary is not None:
@@ -470,7 +492,7 @@ def _crawl_race(
                         race_url=current_url,
                     )
                 else:
-                    full_result_detail_url = EVENTS_LIST_URL + result_detail_url
+                    full_result_detail_url = absolute_url(EVENTS_LIST_URL, result_detail_url)
                     try:
                         detail_html = cache.fetch(
                             full_result_detail_url, CachePolicy.CACHE_IF_PRESENT
@@ -489,7 +511,7 @@ def _crawl_race(
                             from_url=exc.requested_url,
                             to_url=exc.final_url,
                         )
-                    except RuntimeError as exc:
+                    except REQUEST_FAILURES as exc:
                         if summary is not None:
                             summary.results_failed_count += 1
                         log.error(

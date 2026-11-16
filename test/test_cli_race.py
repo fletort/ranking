@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 import ranking.cli as cli_module
+from ranking.core.url import absolute_url
 
 
 class DummyLog:
@@ -41,5 +42,5 @@ def test_process_race_opens_a_race_session_on_the_base_race_url() -> None:
 
     cli_module.process_race(race, cache, log)
 
-    assert cache.sessions == [cli_module.EVENTS_LIST_URL + "/event/1/race/2"]
+    assert cache.sessions == [absolute_url(cli_module.EVENTS_LIST_URL, "/event/1/race/2")]
     assert cache.in_session is False

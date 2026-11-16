@@ -88,6 +88,41 @@ def test_httpx_fetcher_uses_relaxed_default_timeout(httpx_mock: HTTPXMock, tmp_p
     assert request.extensions["timeout"]["read"] == HTTP_TIMEOUT
 
 
+def test_httpx_fetcher_sends_the_url_unchanged(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    """The crawler requests exactly the URL it is given, like a browser (no rewriting)."""
+    url = "https://example.com//page?b=2&a=1"
+    httpx_mock.add_response(url=url, text="ok")
+
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    assert client.fetcher(url).content == "ok"
+    assert str(httpx_mock.get_requests()[0].url) == url
+
+
+def test_httpx_fetcher_rejects_url_without_http_scheme_without_retry(
+    httpx_mock: HTTPXMock, tmp_path: Path, sleep_calls: list[float]
+) -> None:
+    """A URL without an http(s):// scheme fails fast, with a clear error and no network call."""
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    with pytest.raises(ValueError, match="expected an absolute http:// or https:// URL"):
+        client.fetcher("example.com/no-scheme")
+
+    assert httpx_mock.get_requests() == []
+    assert sleep_calls == []
+
+
+def test_httpx_downloader_rejects_url_without_http_scheme(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    client = HttpxCrawlerRuntime("demo", tmp_path)
+
+    with pytest.raises(ValueError, match="expected an absolute http:// or https:// URL"):
+        client.downloader("file:///tmp/document.pdf")
+
+    assert httpx_mock.get_requests() == []
+
+
 # ---------------------------------------------------------------------------
 # Transient HTTP error retries (exponential backoff)
 # ---------------------------------------------------------------------------
@@ -754,6 +789,83 @@ def test_httpx_fetcher_reports_final_url_on_same_domain_redirect(
     assert resource.requested_url == url
     assert resource.final_url == redirected_url
     assert resource.content == "<html>Moved</html>"
+
+
+def test_external_redirect_error_reports_a_refused_host_clearly() -> None:
+    """An off-host requested URL is not a redirect: the message must not claim it is."""
+    url = "https://external.example.com/page"
+
+    refused = ExternalRedirectError(requested_url=url, final_url=url)
+    assert "External redirect" not in str(refused)
+    assert "Refused external URL" in str(refused)
+    assert url in str(refused)
+
+    redirected = ExternalRedirectError(requested_url=url, final_url="https://other.example.com/x")
+    assert str(redirected) == f"External redirect: {url} → https://other.example.com/x"
+
+
+def test_is_same_domain_ignores_hostname_case() -> None:
+    """DNS hostnames are case-insensitive: EXAMPLE.COM and example.com are the same site."""
+    assert HttpxCrawlerRuntime.is_same_domain("https://EXAMPLE.COM/a", "https://example.com/b")
+
+
+def test_is_same_domain_distinguishes_an_explicit_port() -> None:
+    assert not HttpxCrawlerRuntime.is_same_domain(
+        "https://example.com/a", "https://example.com:8443/a"
+    )
+
+
+def test_is_same_domain_is_false_for_another_host_or_a_malformed_url() -> None:
+    assert not HttpxCrawlerRuntime.is_same_domain("https://example.com/a", "https://other.com/a")
+    assert not HttpxCrawlerRuntime.is_same_domain("https://[broken/a", "https://example.com/a")
+
+
+def test_httpx_fetcher_allows_a_same_host_link_with_a_different_case(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """A legitimate same-host link must not be skipped just because its host casing differs."""
+    url = "https://EXAMPLE.COM/page"
+    httpx_mock.add_response(url=url, text="ok")
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    assert client.fetcher(url).content == "ok"
+
+
+def test_httpx_fetcher_blocks_an_off_host_url_without_requesting_it(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """A page-provided link to another host must be refused before any network call."""
+    external_url = "https://external.example.com/page"
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    with pytest.raises(
+        ExternalRedirectError,
+        check=lambda e: e.requested_url == external_url and e.final_url == external_url,
+    ):
+        client.fetcher(external_url)
+
+    assert httpx_mock.get_requests() == []
+
+
+def test_httpx_downloader_blocks_an_off_host_url_without_requesting_it(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    external_url = "https://cdn.example.com/file.pdf"
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    with pytest.raises(ExternalRedirectError):
+        client.downloader(external_url)
+
+    assert httpx_mock.get_requests() == []
+
+
+def test_httpx_fetcher_allows_a_url_on_the_base_host(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    """The guard must not over-block: same host, whatever the path, stays allowed."""
+    url = "https://example.com/page"
+    httpx_mock.add_response(url=url, text="ok")
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com/base")
+
+    assert client.fetcher(url).content == "ok"
 
 
 def _extract_url(args: tuple[object, ...], kwargs: dict[str, object]) -> str:

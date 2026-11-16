@@ -13,6 +13,7 @@ import httpx
 from ranking.core.crawler.runtime import CrawlerRuntime, FetchedResource
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, StorageProvider
+from ranking.core.url import validate_http_scheme
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -334,8 +335,12 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             RuntimeError: On HTTP error status codes or network-level errors.
             LocalServerErrorException: When the target returns a health-check status code but the
                 reference page is healthy (localized page bug, no retry).
-            ExternalRedirectError: If the final URL after redirects is outside the allowed base URL.
+            ExternalRedirectError: If the requested URL, or the final URL after redirects, is
+                outside the allowed base URL.
+            ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
+        validate_http_scheme(url)
+        self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,
             timeout=HTTP_TIMEOUT,
@@ -569,6 +574,22 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         # Reference page is down too: the whole site is unavailable, retry.
         return True
 
+    def _ensure_allowed_host(self, url: str) -> None:
+        """Refuse a URL whose host is outside the configured ``base_url``, before any request.
+
+        Page-provided links may be absolute (``https://other``) or scheme-relative (``//other``);
+        once resolved they replace the configured host. :meth:`_accept_fetched_body` only checks
+        the domain when the server redirects, so without this guard a *direct* request to another
+        host would succeed and be cached. Raising :class:`ExternalRedirectError` here keeps the
+        crawl on the configured site and lets the CLI skip the link
+        (``event_skipped`` / ``race_skipped``).
+
+        No-op when no ``base_url`` is configured.
+        """
+        if self.base_url and not self.is_same_domain(url, self.base_url):
+            self.logger.debug("external_host_blocked", url=url, base_url=self.base_url)
+            raise ExternalRedirectError(requested_url=url, final_url=url)
+
     def _accept_fetched_body(self, url: str, response: httpx.Response) -> bool:
         """Return ``False`` to retry a 2xx response that is not the real page content.
 
@@ -594,7 +615,11 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         Raises:
             RuntimeError: On HTTP error status codes or network-level errors, once retries are
                 exhausted.
+            ExternalRedirectError: If the URL is outside the allowed base URL.
+            ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
+        validate_http_scheme(url)
+        self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,
             timeout=DOCUMENT_DOWNLOAD_TIMEOUT,
@@ -614,8 +639,28 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
-        """Check if two URLs belong to the same domain."""
-        return urlparse(url1).netloc == urlparse(url2).netloc
+        """Return True when both URLs share the same host and effective port.
+
+        Hostnames are compared case-insensitively (DNS hostnames are), so ``https://EXAMPLE.COM/a``
+        and ``https://example.com/b`` are the same site, while a different explicit port
+        (``https://example.com:8443``) is not. A URL that cannot be parsed is never the same domain.
+        """
+        host1 = HttpxCrawlerRuntime._host_and_port(url1)
+        host2 = HttpxCrawlerRuntime._host_and_port(url2)
+        return host1 is not None and host1 == host2
+
+    @staticmethod
+    def _host_and_port(url: str) -> tuple[str, int | None] | None:
+        """Return the normalized ``(hostname, port)`` of *url*, or ``None`` when unparseable."""
+        try:
+            parsed = urlparse(url)
+            port = parsed.port
+        except ValueError:
+            # e.g. malformed IPv6 literal or invalid port.
+            return None
+        if not parsed.hostname:
+            return None
+        return (parsed.hostname.lower(), port)
 
     @staticmethod
     def extract_filename(response: httpx.Response) -> str:
