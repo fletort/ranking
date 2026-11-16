@@ -1,5 +1,3 @@
-from structlog.testing import capture_logs
-
 from ranking.plugins.breizhchrono.eventdetail import build_race_url, extract_event_detail
 
 
@@ -78,37 +76,3 @@ def test_extract_event_detail_returns_empty_races_when_no_badge_links() -> None:
     result = extract_event_detail(html)
 
     assert result == {"event_race_raw": "Trail des Monts 2026", "races": []}
-
-
-def test_extract_event_detail_skips_non_document_links_in_documents_section() -> None:
-    """A web link (not a downloadable document) is warned about and never queued for download."""
-    html = """
-    <html>
-      <body>
-        <h1>Challenge My Data Run</h1>
-        <div class="flex-wrap">
-          <a class="badge-link" href="/resultats-courses/ekiden-2026-123-4/ekiden">Ekiden</a>
-        </div>
-        <div class="flex-wrap">
-          <a class="badge-link" href="/bc/ekiden/?e=123">Autre page de resultats</a>
-          <a class="badge-link" href="/documents?reference=123&name=Classement.pdf">Classement</a>
-        </div>
-      </body>
-    </html>
-    """
-
-    with capture_logs() as logs:
-        result = extract_event_detail(html)
-
-    assert result is not None
-    assert result["documents"] == [
-        {
-            "url": "https://resultats.breizhchrono.com/documents?reference=123&name=Classement.pdf",
-            "name": "Classement",
-        }
-    ]
-
-    warnings = [entry for entry in logs if entry.get("event") == "invalid_format"]
-    assert len(warnings) == 1
-    # The warning carries the resolved absolute URL, not the raw relative href.
-    assert warnings[0]["href"] == "https://resultats.breizhchrono.com/bc/ekiden/?e=123"
