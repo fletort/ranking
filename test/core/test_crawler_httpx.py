@@ -822,6 +822,33 @@ def test_external_redirect_error_reports_a_refused_host_clearly() -> None:
     assert str(redirected) == f"External redirect: {url} → https://other.example.com/x"
 
 
+def test_is_same_domain_ignores_hostname_case() -> None:
+    """DNS hostnames are case-insensitive: EXAMPLE.COM and example.com are the same site."""
+    assert HttpxCrawlerRuntime.is_same_domain("https://EXAMPLE.COM/a", "https://example.com/b")
+
+
+def test_is_same_domain_distinguishes_an_explicit_port() -> None:
+    assert not HttpxCrawlerRuntime.is_same_domain(
+        "https://example.com/a", "https://example.com:8443/a"
+    )
+
+
+def test_is_same_domain_is_false_for_another_host_or_a_malformed_url() -> None:
+    assert not HttpxCrawlerRuntime.is_same_domain("https://example.com/a", "https://other.com/a")
+    assert not HttpxCrawlerRuntime.is_same_domain("https://[broken/a", "https://example.com/a")
+
+
+def test_httpx_fetcher_allows_a_same_host_link_with_a_different_case(
+    httpx_mock: HTTPXMock, tmp_path: Path
+) -> None:
+    """A legitimate same-host link must not be skipped just because its host casing differs."""
+    url = "https://EXAMPLE.COM/page"
+    httpx_mock.add_response(url=url, text="ok")
+    client = HttpxCrawlerRuntime("demo", tmp_path, base_url="https://example.com")
+
+    assert client.fetcher(url).content == "ok"
+
+
 def test_httpx_fetcher_blocks_an_off_host_url_without_requesting_it(
     httpx_mock: HTTPXMock, tmp_path: Path
 ) -> None:

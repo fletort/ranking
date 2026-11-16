@@ -5,6 +5,13 @@ from typing import NotRequired, TypedDict
 import structlog
 from bs4 import BeautifulSoup, Tag
 
+from ranking.core.url import absolute_url
+from ranking.plugins.breizhchrono.eventlist import EVENTS_LIST_URL
+
+# Only links whose resolved URL points at one of these document formats are kept in the
+# ``event_documents`` section.
+DOCUMENT_EXTENSIONS = (".pdf", ".csv", ".xls", ".xlsx")
+
 
 class RaceItem(TypedDict):
     source_url: str
@@ -111,17 +118,10 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
             else:
                 for link in link_nodes:
                     href, name = manage_link_node(link, log, "event_documents")
-                    other_ranks.append({"url": href, "name": name})
-                    if href is None or not href.lower().endswith(".pdf"):
-                        log.warning(
-                            "invalid_format",
-                            type="element",
-                            name="a",
-                            href=href,
-                            text=name,
-                            location="event_documents",
-                            reason="expected PDF document link, but found another link",
-                        )
+                    document_url = _resolve_document_url(href, name, log)
+                    if document_url is None:
+                        continue
+                    other_ranks.append({"url": document_url, "name": name})
                 reply["documents"] = other_ranks
 
         if len(divs) > 2:
@@ -139,6 +139,43 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
     except Exception:
         log.exception("parse_failed")
         return None
+
+
+def _resolve_document_url(href: str, name: str, log) -> str | None:
+    """Return the absolute URL of a downloadable document, or ``None`` when it is not one.
+
+    A link that does not point at an allowed document format (e.g. another results web page such
+    as ``/bc/ekiden/?e=123``) is reported with an ``invalid_format`` warning carrying its resolved
+    absolute URL, then skipped so it is never queued for download.
+    """
+    if not href:
+        # manage_link_node already warned about the missing href: nothing to resolve or download.
+        return None
+    try:
+        document_url = absolute_url(EVENTS_LIST_URL, href)
+    except ValueError:
+        log.warning(
+            "invalid_format",
+            type="element",
+            name="a",
+            href=href,
+            text=name,
+            location="event_documents",
+            reason="malformed document URL, could not be resolved",
+        )
+        return None
+    if not document_url.lower().endswith(DOCUMENT_EXTENSIONS):
+        log.warning(
+            "invalid_format",
+            type="element",
+            name="a",
+            href=document_url,
+            text=name,
+            location="event_documents",
+            reason="expected a downloadable document link, but found another link",
+        )
+        return None
+    return document_url
 
 
 def manage_link_node(link: Tag, log, location: str) -> tuple[str, str]:

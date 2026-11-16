@@ -11,6 +11,8 @@ from ranking.core.errors import ExternalRedirectError
 INVALID_URL = "javascript:void(0)"
 # An optional page link to another host: refused by the runtime's ``_ensure_allowed_host`` guard.
 OFF_HOST_URL = "https://evil.example.com/document.pdf"
+# A URL so malformed that resolving it raises ValueError (Invalid IPv6 URL).
+MALFORMED_URL = "https://[broken/event"
 ALLOWED_HOST = "resultats.breizhchrono.com"
 
 
@@ -31,6 +33,7 @@ class LinkCache:
 
     def __init__(self) -> None:
         self.downloaded: list[str] = []
+        self.sessions: list[str] = []
 
     @staticmethod
     def _reject(url: str) -> None:
@@ -52,6 +55,7 @@ class LinkCache:
 
     @contextmanager
     def race_session(self, race_url: str) -> Iterator["LinkCache"]:
+        self.sessions.append(race_url)
         yield self
 
 
@@ -201,3 +205,45 @@ def test_process_race_counts_an_off_host_document_as_failed_without_aborting(mon
 
     assert summary.races_document_failed_count == 1
     assert cache.downloaded == []
+
+
+def test_process_event_counts_a_malformed_event_url_as_failed_without_aborting() -> None:
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
+    summary = cli_module.CrawlSummary(started_at=0.0)
+    event: Any = {"name": "Event", "url": MALFORMED_URL, "date_raw": "", "location_raw": ""}
+
+    cli_module.process_event(event, cache, log, summary=summary)
+
+    assert summary.events_failed_count == 1
+
+
+def test_process_race_counts_a_malformed_race_url_as_failed_without_opening_a_session() -> None:
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
+    summary = cli_module.CrawlSummary(started_at=0.0)
+    race: Any = {"technical_url": MALFORMED_URL}
+
+    cli_module.process_race(race, cache, log, summary=summary)
+
+    assert summary.races_failed_count == 1
+    # The race session must not be opened for a link that cannot be resolved.
+    assert cache.sessions == []
+
+
+def test_process_race_counts_a_malformed_export_url_as_failed_without_aborting(monkeypatch) -> None:
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
+    summary = cli_module.CrawlSummary(started_at=0.0)
+    race: Any = {"technical_url": "/race-technical"}
+
+    monkeypatch.setattr(
+        cli_module,
+        "extract_race_results",
+        lambda html, race_item: {"results": [], "next_url": None, "document": MALFORMED_URL},
+    )
+
+    cli_module.process_race(race, cache, log, summary=summary)
+
+    assert summary.races_document_failed_count == 1
+    assert cache.sessions == ["https://resultats.breizhchrono.com/race-technical"]

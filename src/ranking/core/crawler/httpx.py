@@ -655,8 +655,28 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:
-        """Check if two URLs belong to the same domain."""
-        return urlparse(url1).netloc == urlparse(url2).netloc
+        """Return True when both URLs share the same host and effective port.
+
+        Hostnames are compared case-insensitively (DNS hostnames are), so ``https://EXAMPLE.COM/a``
+        and ``https://example.com/b`` are the same site, while a different explicit port
+        (``https://example.com:8443``) is not. A URL that cannot be parsed is never the same domain.
+        """
+        host1 = HttpxCrawlerRuntime._host_and_port(url1)
+        host2 = HttpxCrawlerRuntime._host_and_port(url2)
+        return host1 is not None and host1 == host2
+
+    @staticmethod
+    def _host_and_port(url: str) -> tuple[str, int | None] | None:
+        """Return the normalized ``(hostname, port)`` of *url*, or ``None`` when unparseable."""
+        try:
+            parsed = urlparse(url)
+            port = parsed.port
+        except ValueError:
+            # e.g. malformed IPv6 literal or invalid port.
+            return None
+        if not parsed.hostname:
+            return None
+        return (parsed.hostname.lower(), port)
 
     @staticmethod
     def extract_filename(response: httpx.Response) -> str:

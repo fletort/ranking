@@ -338,14 +338,15 @@ def process_event(
     page_race_max: int | None = None,
     summary: CrawlSummary | None = None,
 ) -> None:
-    event_url = absolute_url(EVENTS_LIST_URL, event["url"])
-    log.info("event_processing", url=event_url, name=event["name"])
+    raw_event_url = event["url"]
+    log.info("event_processing", url=raw_event_url, name=event["name"])
     try:
+        event_url = absolute_url(EVENTS_LIST_URL, raw_event_url)
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
     except REQUEST_FAILURES as exc:
         if summary is not None:
             summary.events_failed_count += 1
-        log.error("fetch_error", error=str(exc), event_url=event_url)
+        log.error("fetch_error", error=str(exc), event_url=raw_event_url)
         return
     except ExternalRedirectError as exc:
         log.info(
@@ -355,7 +356,7 @@ def process_event(
             to_url=exc.final_url,
         )
         no_event_detail = build_event_detail_no_info(status="external_redirect")
-        cache.save_extracted_json(event_url, no_event_detail)
+        cache.save_extracted_json(exc.requested_url, no_event_detail)
         return
 
     event_detail = extract_event_detail(event_html)
@@ -381,8 +382,8 @@ def process_event(
                 # point at the site root and download the homepage as an event document.
                 log.debug("skipped_empty_document_url", event_document_name=document["name"])
                 continue
-            document_url = absolute_url(EVENTS_LIST_URL, document["url"])
             try:
+                document_url = absolute_url(EVENTS_LIST_URL, document["url"])
                 cache.download(document_url)
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
@@ -390,7 +391,7 @@ def process_event(
             except DOCUMENT_FAILURES as exc:
                 if summary is not None:
                     summary.events_document_failed_count += 1
-                log.error("download_error", error=str(exc), event_document_url=document_url)
+                log.error("download_error", error=str(exc), event_document_url=document["url"])
 
     for race in event_detail["races"]:
         process_race(race, cache, log, page_race_max, summary=summary)
@@ -409,7 +410,14 @@ def process_race(
     uploads the per-layer archives when the crawl completes (see ``docs/storage_strategy.md``).
     Backends without archive support make the session a no-op.
     """
-    base_race_url = absolute_url(EVENTS_LIST_URL, race["technical_url"])
+    raw_race_url = race["technical_url"]
+    try:
+        base_race_url = absolute_url(EVENTS_LIST_URL, raw_race_url)
+    except REQUEST_FAILURES as exc:
+        if summary is not None:
+            summary.races_failed_count += 1
+        log.error("fetch_error", error=str(exc), race_url=raw_race_url)
+        return
     with cache.race_session(base_race_url):
         _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
 
@@ -450,8 +458,8 @@ def _crawl_race(
         if pages_processed == 0:
             race_document_url = race_result["document"]
             if race_document_url:
-                full_document_url = absolute_url(EVENTS_LIST_URL, race_document_url)
                 try:
+                    full_document_url = absolute_url(EVENTS_LIST_URL, race_document_url)
                     cache.download(full_document_url)
                     log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
@@ -459,7 +467,7 @@ def _crawl_race(
                 except DOCUMENT_FAILURES as exc:
                     if summary is not None:
                         summary.races_document_failed_count += 1
-                    log.error("download_error", error=str(exc), race_document_url=full_document_url)
+                    log.error("download_error", error=str(exc), race_document_url=race_document_url)
 
         results = race_result["results"]
         if summary is not None:
