@@ -837,9 +837,7 @@ def test_httpx_downloader_blocks_an_off_host_url_without_requesting_it(
     assert httpx_mock.get_requests() == []
 
 
-def test_httpx_fetcher_allows_a_url_on_the_base_host(
-    httpx_mock: HTTPXMock, tmp_path: Path
-) -> None:
+def test_httpx_fetcher_allows_a_url_on_the_base_host(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
     """The guard must not over-block: same host, whatever the path, stays allowed."""
     url = "https://example.com/page"
     httpx_mock.add_response(url=url, text="ok")

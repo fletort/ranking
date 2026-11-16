@@ -44,6 +44,10 @@ PLUGIN_NAME = "breizhchrono"
 NETWORK_SLEEP_SECONDS_MIN = 1
 NETWORK_SLEEP_SECONDS_MAX = 5
 NETWORK_SLEEP_SECONDS = {"min": NETWORK_SLEEP_SECONDS_MIN, "max": NETWORK_SLEEP_SECONDS_MAX}
+# A fetch or download can fail either on HTTP/network errors (``RuntimeError``) or on a malformed
+# URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``). Both are handled
+# the same way so a single bad link never aborts the whole crawl.
+REQUEST_FAILURES = (RuntimeError, ValueError)
 
 
 @dataclass
@@ -268,7 +272,7 @@ def list(ctx, storage, page_event_max, page_race_max) -> None:
         while True:
             try:
                 html = cache.fetch(current_url, CachePolicy.REFRESH_AND_CACHE)
-            except RuntimeError as exc:
+            except REQUEST_FAILURES as exc:
                 log.error("fetch_error", error=str(exc))
                 return
 
@@ -334,7 +338,7 @@ def process_event(
     log.info("event_processing", url=event_url, name=event["name"])
     try:
         event_html = cache.fetch(event_url, CachePolicy.CACHE_IF_PRESENT)
-    except RuntimeError as exc:
+    except REQUEST_FAILURES as exc:
         if summary is not None:
             summary.events_failed_count += 1
         log.error("fetch_error", error=str(exc), event_url=event_url)
@@ -368,13 +372,18 @@ def process_event(
     # Download optionals event documents
     if "documents" in event_detail and event_detail["documents"]:
         for document in event_detail["documents"]:
+            if not document["url"]:
+                # The parser normalises a missing href to an empty string: resolving it would
+                # point at the site root and download the homepage as an event document.
+                log.debug("skipped_empty_document_url", event_document_name=document["name"])
+                continue
             document_url = absolute_url(EVENTS_LIST_URL, document["url"])
             try:
                 cache.download(document_url)
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
                 log.info("document_downloaded", event_document_url=document_url)
-            except RuntimeError as exc:
+            except REQUEST_FAILURES as exc:
                 if summary is not None:
                     summary.events_document_failed_count += 1
                 log.error("download_error", error=str(exc), event_document_url=document_url)
@@ -415,7 +424,7 @@ def _crawl_race(
     while True:
         try:
             race_html = cache.fetch(current_url, CachePolicy.CACHE_IF_PRESENT)
-        except RuntimeError as exc:
+        except REQUEST_FAILURES as exc:
             if summary is not None:
                 summary.races_failed_count += 1
             log.error("fetch_error", error=str(exc), race_url=current_url)
@@ -443,7 +452,7 @@ def _crawl_race(
                     log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
                         summary.races_document_downloaded_count += 1
-                except RuntimeError as exc:
+                except REQUEST_FAILURES as exc:
                     if summary is not None:
                         summary.races_document_failed_count += 1
                     log.error("download_error", error=str(exc), race_document_url=full_document_url)
@@ -490,7 +499,7 @@ def _crawl_race(
                             from_url=exc.requested_url,
                             to_url=exc.final_url,
                         )
-                    except RuntimeError as exc:
+                    except REQUEST_FAILURES as exc:
                         if summary is not None:
                             summary.results_failed_count += 1
                         log.error(
