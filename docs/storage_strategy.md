@@ -99,8 +99,8 @@ Before hash generation:
 - the URL is rebuilt in canonical form
 
 Collapsing path slashes keeps the scheme (`http://` / `https://`) and the query parameters
-untouched, but guarantees that a URL carrying a duplicated separator (`https://host//path`) and
-its clean form (`https://host/path`) map to the same Resource ID. A plugin building links by
+untouched, but guarantees that a URL carrying a duplicated separator (`https://host//path`) and its
+clean form (`https://host/path`) map to the same Resource ID. A plugin building links by
 concatenation can therefore never pollute the cache with an equivalent, duplicated entry.
 
 The Canonicalization is implemented once, in the shared Core URL helper, and reused by both the
