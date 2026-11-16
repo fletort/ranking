@@ -26,7 +26,6 @@ from ranking.core.crawler.httpx import (
 from ranking.core.crawler.runtime import CachePolicy
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, HealthCheckResult, StorageProvider
-from ranking.core.url import canonicalize_url
 
 
 def test_httpx_fetcher_returns_html(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
@@ -89,32 +88,15 @@ def test_httpx_fetcher_uses_relaxed_default_timeout(httpx_mock: HTTPXMock, tmp_p
     assert request.extensions["timeout"]["read"] == HTTP_TIMEOUT
 
 
-def test_httpx_fetcher_normalizes_consecutive_path_slashes(
-    httpx_mock: HTTPXMock, tmp_path: Path
-) -> None:
-    """A URL built with a duplicated slash must hit its canonical (single-slash) resource."""
-    httpx_mock.add_response(url="https://example.com/page", text="ok")
-
-    client = HttpxCrawlerRuntime("demo", tmp_path)
-    result = client.fetcher("https://example.com//page")
-
-    assert result.content == "ok"
-    assert str(httpx_mock.get_requests()[0].url) == "https://example.com/page"
-
-
-def test_httpx_request_url_matches_the_shared_storage_canonicalization(
-    httpx_mock: HTTPXMock, tmp_path: Path
-) -> None:
-    """HTTP and Storage must apply the exact same normalization (no divergence)."""
+def test_httpx_fetcher_sends_the_url_unchanged(httpx_mock: HTTPXMock, tmp_path: Path) -> None:
+    """The crawler requests exactly the URL it is given, like a browser (no rewriting)."""
     url = "https://example.com//page?b=2&a=1"
-    canonical = canonicalize_url(url)
-    assert canonical == "https://example.com/page?a=1&b=2"
-    httpx_mock.add_response(url=canonical, text="ok")
+    httpx_mock.add_response(url=url, text="ok")
 
     client = HttpxCrawlerRuntime("demo", tmp_path)
-    client.fetcher(url)
 
-    assert str(httpx_mock.get_requests()[0].url) == canonical
+    assert client.fetcher(url).content == "ok"
+    assert str(httpx_mock.get_requests()[0].url) == url
 
 
 def test_httpx_fetcher_rejects_url_without_http_scheme_without_retry(

@@ -27,8 +27,8 @@ class LinkCache:
     """Cache stub mimicking the URL guards the real runtime applies before any network access.
 
     :meth:`fetch` and :meth:`download` raise ``ValueError`` for a URL that is not an absolute
-    ``http(s)`` URL (``normalize_url``) and ``ExternalRedirectError`` for a URL outside the crawled
-    host (``_ensure_allowed_host``).
+    ``http(s)`` URL (``validate_http_scheme``) and ``ExternalRedirectError`` for a URL outside the
+    crawled host (``_ensure_allowed_host``).
     """
 
     def __init__(self) -> None:

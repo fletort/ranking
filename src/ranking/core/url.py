@@ -11,10 +11,9 @@ def canonicalize_url(url: str) -> str:
     ``https://host/path``) and the query parameters are sorted. The scheme
     (``http://`` / ``https://``), the parameters themselves and the fragment are preserved.
 
-    Both the Storage identity (:meth:`StorageProvider.compute_resource_id`) and the HTTP client
-    (:func:`ranking.core.crawler.httpx.normalize_url`) call this function, so a URL requested on
-    the network is always exactly the URL its Resource ID is computed from. Keeping a single
-    implementation prevents the two layers from diverging.
+    Only the Storage identity (:meth:`StorageProvider.compute_resource_id`) calls this function, to
+    derive the Resource ID used for cache lookup and storage. The HTTP client never rewrites the
+    URL: it requests exactly the URL it is given.
     """
     parsed = urlparse(url)
     canonical_path = re.sub(r"/+", "/", parsed.path)

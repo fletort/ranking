@@ -13,7 +13,7 @@ import httpx
 from ranking.core.crawler.runtime import CrawlerRuntime, FetchedResource
 from ranking.core.errors import ExternalRedirectError, LocalServerErrorException
 from ranking.core.storage.provider import DownloadedDocument, StorageProvider
-from ranking.core.url import canonicalize_url, validate_http_scheme
+from ranking.core.url import validate_http_scheme
 
 VERIFY_SSL = os.getenv("ENV") != "dev"
 
@@ -39,22 +39,6 @@ DEFAULT_HEALTH_CHECK_STATUS_CODES = (500,)
 # Exponential backoff schedule: the delay before attempt N is the item N-1 of this tuple.
 # The last delay is reused when the schedule is shorter than the number of attempts.
 DEFAULT_RETRY_DELAYS_SECONDS = (30.0, 60.0, 120.0, 300.0, 3600.0)
-
-
-def normalize_url(url: str) -> str:
-    """Validate *url* and return its canonical form before a network request.
-
-    The scheme is checked first, so a URL that is not an absolute ``http(s)`` URL fails
-    immediately, without any network access or retry. Normalization is then delegated to the
-    single, shared :func:`ranking.core.url.canonicalize_url`, which the Storage layer also uses to
-    compute Resource IDs: the URL requested on the network is therefore exactly the URL whose
-    identity is stored in the cache.
-
-    Raises:
-        ValueError: When the URL does not use the ``http`` or ``https`` scheme.
-    """
-    validate_http_scheme(url)
-    return canonicalize_url(url)
 
 
 def _parse_status_codes(
@@ -355,7 +339,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 outside the allowed base URL.
             ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
-        url = normalize_url(url)
+        validate_http_scheme(url)
         self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,
@@ -634,7 +618,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             ExternalRedirectError: If the URL is outside the allowed base URL.
             ValueError: If the URL is not an absolute ``http(s)`` URL.
         """
-        url = normalize_url(url)
+        validate_http_scheme(url)
         self._ensure_allowed_host(url)
         response = self._request_with_retry(
             url,

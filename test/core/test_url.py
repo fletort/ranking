@@ -58,7 +58,7 @@ def test_absolute_url_keeps_non_http_schemes() -> None:
     assert absolute_url(BASE, "javascript:void(0)") == "javascript:void(0)"
 
 
-# --- canonicalize_url: identity normalization (storage + HTTP) ---
+# --- canonicalize_url: identity normalization (storage Resource ID) ---
 
 
 def test_canonicalize_url_collapses_consecutive_path_slashes() -> None:

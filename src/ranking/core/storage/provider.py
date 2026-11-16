@@ -54,9 +54,9 @@ class StorageProvider(ABC):
     def compute_resource_id(url: str) -> str:
         """Derive a deterministic SHA-1 resource ID from the canonical URL.
 
-        The canonical form comes from the single, shared
-        :func:`ranking.core.url.canonicalize_url`, so the identity is guaranteed to match the URL
-        the HTTP client actually requests.
+        The canonical form comes from the shared :func:`ranking.core.url.canonicalize_url`, so
+        URLs that only differ by a duplicated path slash or by query-parameter order share the
+        same identity.
         """
         return hashlib.sha1(canonicalize_url(url).encode("utf-8")).hexdigest()  # noqa: S324
 
