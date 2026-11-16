@@ -48,7 +48,8 @@ class LinkCache:
 
 
 def test_process_event_skips_empty_document_url_and_survives_an_invalid_link(monkeypatch) -> None:
-    cache = LinkCache()
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
     summary = cli_module.CrawlSummary(started_at=0.0)
     processed_races: list[Any] = []
 
@@ -78,7 +79,7 @@ def test_process_event_skips_empty_document_url_and_survives_an_invalid_link(mon
     )
 
     event: Any = {"name": "Event", "url": "/event-1", "date_raw": "", "location_raw": ""}
-    cli_module.process_event(event, cache, RecordingLog(), summary=summary)
+    cli_module.process_event(event, cache, log, summary=summary)
 
     # The empty href is skipped: the homepage is never downloaded as a document.
     assert cache.downloaded == ["https://resultats.breizhchrono.com/documents?name=ok.pdf"]
@@ -90,18 +91,20 @@ def test_process_event_skips_empty_document_url_and_survives_an_invalid_link(mon
 
 
 def test_process_event_records_failure_when_the_event_url_is_invalid() -> None:
-    cache = LinkCache()
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
     summary = cli_module.CrawlSummary(started_at=0.0)
     event: Any = {"name": "Event", "url": INVALID_URL, "date_raw": "", "location_raw": ""}
 
-    cli_module.process_event(event, cache, RecordingLog(), summary=summary)
+    cli_module.process_event(event, cache, log, summary=summary)
 
     assert summary.events_failed_count == 1
     assert cache.downloaded == []
 
 
 def test_process_race_survives_invalid_document_and_result_detail_links(monkeypatch) -> None:
-    cache = LinkCache()
+    cache: Any = LinkCache()
+    log: Any = RecordingLog()
     summary = cli_module.CrawlSummary(started_at=0.0)
     race: Any = {
         "source_url": "/race-source",
@@ -121,7 +124,7 @@ def test_process_race_survives_invalid_document_and_result_detail_links(monkeypa
         },
     )
 
-    cli_module.process_race(race, cache, RecordingLog(), summary=summary)
+    cli_module.process_race(race, cache, log, summary=summary)
 
     assert summary.races_document_failed_count == 1
     assert summary.results_failed_count == 1

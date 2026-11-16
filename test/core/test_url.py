@@ -2,12 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ranking.core.url import (
-    SUPPORTED_HTTP_SCHEMES,
-    absolute_url,
-    canonicalize_url,
-    validate_http_scheme,
-)
+from ranking.core.url import absolute_url, canonicalize_url, validate_http_scheme
 
 BASE = "https://resultats.breizhchrono.com/"
 
@@ -79,16 +74,18 @@ def test_canonicalize_url_sorts_query_parameters() -> None:
 # --- validate_http_scheme: HTTP-only guard ---
 
 
-@pytest.mark.parametrize("url", ["http://example.com", "https://example.com/page"])
+@pytest.mark.parametrize(
+    "url",
+    ["http://example.com", "https://example.com/page", "HTTPS://EXAMPLE.COM/page"],
+)
 def test_validate_http_scheme_accepts_http_and_https(url: str) -> None:
     validate_http_scheme(url)
 
 
-@pytest.mark.parametrize("url", ["example.com/page", "/relative", "ftp://example.com/x"])
+@pytest.mark.parametrize(
+    "url",
+    ["example.com/page", "/relative", "ftp://example.com/x", "http://", "mailto:a@b.com"],
+)
 def test_validate_http_scheme_rejects_non_http_urls(url: str) -> None:
     with pytest.raises(ValueError, match="expected an absolute http:// or https:// URL"):
         validate_http_scheme(url)
-
-
-def test_supported_http_schemes() -> None:
-    assert SUPPORTED_HTTP_SCHEMES == ("http", "https")

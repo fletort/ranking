@@ -3,9 +3,6 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
-# Schemes the crawler is allowed to request over the network.
-SUPPORTED_HTTP_SCHEMES = ("http", "https")
-
 
 def canonicalize_url(url: str) -> str:
     """Return the canonical form of *url*: the single URL normalization of the Core layer.
@@ -41,8 +38,8 @@ def validate_http_scheme(url: str) -> None:
     Used by the HTTP client before any network access, so an invalid URL fails immediately
     instead of being sent to the transport (and retried).
     """
-    scheme = urlparse(url).scheme
-    if scheme not in SUPPORTED_HTTP_SCHEMES:
+    parsed = urlparse(url)
+    if not url.lower().startswith(("http://", "https://")) or not parsed.hostname:
         raise ValueError(f"Invalid URL {url!r}: expected an absolute http:// or https:// URL")
 
 
@@ -75,7 +72,6 @@ def absolute_url(base_url: str, href: str) -> str:
 
 
 __all__ = [
-    "SUPPORTED_HTTP_SCHEMES",
     "absolute_url",
     "canonicalize_url",
     "validate_http_scheme",
