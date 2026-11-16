@@ -809,6 +809,19 @@ def test_httpx_fetcher_reports_final_url_on_same_domain_redirect(
     assert resource.content == "<html>Moved</html>"
 
 
+def test_external_redirect_error_reports_a_refused_host_clearly() -> None:
+    """An off-host requested URL is not a redirect: the message must not claim it is."""
+    url = "https://external.example.com/page"
+
+    refused = ExternalRedirectError(requested_url=url, final_url=url)
+    assert "External redirect" not in str(refused)
+    assert "Refused external URL" in str(refused)
+    assert url in str(refused)
+
+    redirected = ExternalRedirectError(requested_url=url, final_url="https://other.example.com/x")
+    assert str(redirected) == f"External redirect: {url} → https://other.example.com/x"
+
+
 def test_httpx_fetcher_blocks_an_off_host_url_without_requesting_it(
     httpx_mock: HTTPXMock, tmp_path: Path
 ) -> None:

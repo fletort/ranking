@@ -48,6 +48,10 @@ NETWORK_SLEEP_SECONDS = {"min": NETWORK_SLEEP_SECONDS_MIN, "max": NETWORK_SLEEP_
 # URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``). Both are handled
 # the same way so a single bad link never aborts the whole crawl.
 REQUEST_FAILURES = (RuntimeError, ValueError)
+# Downloading a document can additionally be refused when the link targets another host: the HTTP
+# client raises ``ExternalRedirectError`` before the request. Such an optional document must be
+# recorded as a failed download, never abort the enclosing crawl.
+DOCUMENT_FAILURES = (*REQUEST_FAILURES, ExternalRedirectError)
 
 
 @dataclass
@@ -383,7 +387,7 @@ def process_event(
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
                 log.info("document_downloaded", event_document_url=document_url)
-            except REQUEST_FAILURES as exc:
+            except DOCUMENT_FAILURES as exc:
                 if summary is not None:
                     summary.events_document_failed_count += 1
                 log.error("download_error", error=str(exc), event_document_url=document_url)
@@ -452,7 +456,7 @@ def _crawl_race(
                     log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
                         summary.races_document_downloaded_count += 1
-                except REQUEST_FAILURES as exc:
+                except DOCUMENT_FAILURES as exc:
                     if summary is not None:
                         summary.races_document_failed_count += 1
                     log.error("download_error", error=str(exc), race_document_url=full_document_url)
