@@ -421,9 +421,11 @@ def process_race(
         log.error("fetch_error", error=str(exc), race_url=raw_race_url)
         return
     with cache.race_session(base_race_url):
-        _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
-    if summary is not None:
-        summary.races_processed_count += 1
+        race_completed = _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
+    if race_completed:
+        if summary is not None:
+            summary.races_processed_count += 1
+        log.info("race_processed", race_url=base_race_url)
 
 
 def _crawl_race(
@@ -433,7 +435,8 @@ def _crawl_race(
     base_race_url: str,
     page_race_max: int | None,
     summary: CrawlSummary | None,
-) -> None:
+) -> bool:
+    """Crawl all paginated result pages of one race and report whether it completed."""
     current_url = base_race_url
     pages_processed = 0
 
@@ -444,7 +447,7 @@ def _crawl_race(
             if summary is not None:
                 summary.races_failed_count += 1
             log.error("fetch_error", error=str(exc), race_url=current_url)
-            return
+            return False
         except ExternalRedirectError as exc:
             if summary is not None:
                 summary.races_external_count += 1
@@ -454,7 +457,7 @@ def _crawl_race(
                 from_url=exc.requested_url,
                 to_url=exc.final_url,
             )
-            return
+            return False
 
         race_log = log.bind(url=current_url, race_url=base_race_url)
         race_result = extract_race_results(race_html, race, race_log)
@@ -478,7 +481,7 @@ def _crawl_race(
         if summary is not None:
             summary.result_pages_processed_count += 1
         cache.save_extracted_json(current_url, race_result)
-        log.info("race_processed", race_url=current_url)
+        log.debug("race_result_page_processed", race_url=current_url)
         pages_processed += 1
 
         if results:
@@ -534,6 +537,8 @@ def _crawl_race(
             break
 
         current_url = urljoin(base_race_url, next_url)
+
+    return True
 
 
 @cli.command()
