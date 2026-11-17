@@ -45,13 +45,11 @@ NETWORK_SLEEP_SECONDS_MIN = 1
 NETWORK_SLEEP_SECONDS_MAX = 5
 NETWORK_SLEEP_SECONDS = {"min": NETWORK_SLEEP_SECONDS_MIN, "max": NETWORK_SLEEP_SECONDS_MAX}
 # A fetch or download can fail either on HTTP/network errors (``RuntimeError``) or on a malformed
-# URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``). Both are handled
-# the same way so a single bad link never aborts the whole crawl.
+# URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``) or an external
+# redirect (``ExternalRedirectError``).
+# All are handled the same way so a single bad link never aborts the whole crawl.
 REQUEST_FAILURES = (RuntimeError, ValueError)
-# Downloading a document can additionally be refused when the link targets another host: the HTTP
-# client raises ``ExternalRedirectError`` before the request. Such an optional document must be
-# recorded as a failed download, never abort the enclosing crawl.
-DOCUMENT_FAILURES = (*REQUEST_FAILURES, ExternalRedirectError)
+DOCUMENT_FAILURES = (RuntimeError, ValueError, ExternalRedirectError)
 
 
 @dataclass
@@ -492,8 +490,9 @@ def _crawl_race(
                         race_url=current_url,
                     )
                 else:
-                    full_result_detail_url = absolute_url(EVENTS_LIST_URL, result_detail_url)
                     try:
+                        full_result_detail_url = result_detail_url  # in case of exception init this
+                        full_result_detail_url = absolute_url(EVENTS_LIST_URL, result_detail_url)
                         detail_html = cache.fetch(
                             full_result_detail_url, CachePolicy.CACHE_IF_PRESENT
                         )

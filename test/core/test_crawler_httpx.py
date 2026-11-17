@@ -7,16 +7,14 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 import ranking.core.crawler.httpx as httpx_module
-from ranking.core.crawler.httpx import (
+from ranking.core.crawler.httpx import HEADERS, HTTP_TIMEOUT, HttpxCrawlerRuntime
+from ranking.core.crawler.retry_config import (
     DEFAULT_HEALTH_CHECK_STATUS_CODES,
     DEFAULT_RETRY_DELAYS_SECONDS,
     DEFAULT_RETRYABLE_STATUS_CODES,
-    HEADERS,
     HEALTH_CHECK_STATUS_CODES_ENV,
-    HTTP_TIMEOUT,
     RETRY_DELAYS_ENV,
     RETRYABLE_STATUS_CODES_ENV,
-    HttpxCrawlerRuntime,
     parse_health_check_status_codes,
     parse_retry_delays_seconds,
     parse_retryable_status_codes,
@@ -914,6 +912,7 @@ def test_downloader_returns_downloaded_document(monkeypatch: pytest.MonkeyPatch)
     document = cache.downloader(url)
 
     assert calls == [url]
+    assert document is not None
     assert document.url == url
     assert document.content == b"%PDF-1.7"
     assert document.content_length == len(b"%PDF-1.7")
@@ -976,7 +975,7 @@ def test_downloader_preserves_file_extension(
     cache = HttpxCrawlerRuntime("demo")
 
     document = cache.downloader(url)
-
+    assert document is not None
     assert document.original_filename is not None
     assert document.original_filename.endswith(expected_suffix)
 
@@ -1017,6 +1016,7 @@ def test_downloader_retries_transient_network_error_then_succeeds(
     cache = HttpxCrawlerRuntime("demo")
     document = cache.downloader(url)
 
+    assert document is not None
     assert document.content == b"%PDF-1.7"
     assert sleep_calls == [RETRY_BACKOFF[0]]
     assert len(httpx_mock.get_requests()) == 2
@@ -1034,6 +1034,7 @@ def test_downloader_retries_retryable_status_then_succeeds(
     cache = HttpxCrawlerRuntime("demo")
     document = cache.downloader(url)
 
+    assert document is not None
     assert document.content == b"%PDF-1.7"
     assert sleep_calls == [RETRY_BACKOFF[0]]
     assert len(httpx_mock.get_requests()) == 2

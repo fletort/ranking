@@ -147,8 +147,6 @@ Not responsible for:
 
 - storage
 - cache persistence
-- URL canonicalization (a storage identity concern, see
-  [Canonicalization](../storage_strategy.md#canonicalization))
 
 #### URL fidelity
 
@@ -157,15 +155,15 @@ on the network to maintain HTTP fidelity with respect to the remote servers, whi
 is applied solely to compute the cache key (Resource ID). `fetcher` and `downloader` only validate
 that the URL uses the `http(s)` scheme (raising `ValueError` without retrying otherwise) and send
 the exact URL they were given to httpx, the same way a browser would. Collapsing consecutive path
-slashes and sorting query parameters is performed by the storage identity (`canonicalize_url`),
-never by the transport.
+slashes and sorting query parameters is performed by the storage identity, never by the transport.
 
 ### Transient HTTP Failures
 
 Target websites may become temporarily unavailable (maintenance windows, gateway micro-outages).
 Instead of failing immediately, `HttpxCrawlerRuntime` retries such requests. Page fetching
-(`fetcher`) and document downloading (`downloader`) share the same retry policy, implemented once in
-`_request_with_retry`.
+(`fetcher`) and document downloading (`downloader`) apply the same retry policy (same backoff
+schedule and attempt limit), each with its own readable retry loop; the low-level single request is
+delegated to the `_send_get` helper.
 
 Retried status codes (default):
 
