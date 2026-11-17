@@ -439,7 +439,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             self.logger.debug("external_host_blocked", url=url, base_url=self.base_url)
             raise ExternalRedirectError(requested_url=url, final_url=url)
 
-    def downloader(self, url: str) -> DownloadedDocument | None:
+    def downloader(self, url: str) -> DownloadedDocument:
         """Download a document from the given URL without touching the cache.
 
         Transient failures (retryable status codes, read/connect timeouts and connection errors)
