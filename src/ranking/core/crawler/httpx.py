@@ -469,7 +469,6 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             except httpx.HTTPStatusError as e:
                 self._manage_status_code_error(e, url, "download")
                 continue
-            break
 
             # Temporary unavailable page check (fake 200 OK maintenance page)
             content_type = response.headers.get("content-type", "").lower()
