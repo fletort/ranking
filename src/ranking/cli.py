@@ -61,6 +61,7 @@ class CrawlSummary:
     events_document_downloaded_count: int = 0
     events_document_failed_count: int = 0
     races_processed_count: int = 0
+    result_pages_processed_count: int = 0
     races_document_downloaded_count: int = 0
     races_document_failed_count: int = 0
     races_external_count: int = 0
@@ -86,6 +87,7 @@ def log_crawl_summary(
         events_document_downloaded_count=summary.events_document_downloaded_count,
         events_document_failed_count=summary.events_document_failed_count,
         races_processed_count=summary.races_processed_count,
+        result_pages_processed_count=summary.result_pages_processed_count,
         races_external_count=summary.races_external_count,
         races_failed_count=summary.races_failed_count,
         races_document_downloaded_count=summary.races_document_downloaded_count,
@@ -420,6 +422,8 @@ def process_race(
         return
     with cache.race_session(base_race_url):
         _crawl_race(race, cache, log, base_race_url, page_race_max, summary)
+    if summary is not None:
+        summary.races_processed_count += 1
 
 
 def _crawl_race(
@@ -472,7 +476,7 @@ def _crawl_race(
 
         results = race_result["results"]
         if summary is not None:
-            summary.races_processed_count += 1
+            summary.result_pages_processed_count += 1
         cache.save_extracted_json(current_url, race_result)
         log.info("race_processed", race_url=current_url)
         pages_processed += 1
