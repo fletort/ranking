@@ -357,16 +357,17 @@ def process_event(
         cache.save_extracted_json(exc.requested_url, no_event_detail)
         return
 
-    event_detail = extract_event_detail(event_html, log.bind(url=event_url, event_url=event_url))
+    event_log = log.bind(url=event_url, event_url=event_url)
+    event_detail = extract_event_detail(event_html, event_log)
     cache.save_extracted_json(event_url, event_detail)
     if not event_detail or "races" not in event_detail or not event_detail["races"]:
-        log.warning("no_event_detail_or_races_found")
+        event_log.warning("no_event_detail_or_races_found")
         return
     else:
         if summary is not None:
             summary.events_processed_count += 1
-        log.info("event_processed", event_name=event_detail["event_race_raw"])
-        log.debug(
+        event_log.info("event_processed", event_name=event_detail["event_race_raw"])
+        event_log.debug(
             "event_detail_race_sample",
             sample=event_detail["races"][:1],
         )
@@ -377,21 +378,23 @@ def process_event(
             if not document["url"]:
                 # The parser normalises a missing href to an empty string: resolving it would
                 # point at the site root and download the homepage as an event document.
-                log.debug("skipped_empty_document_url", event_document_name=document["name"])
+                event_log.debug("skipped_empty_document_url", event_document_name=document["name"])
                 continue
             try:
                 document_url = absolute_url(EVENTS_LIST_URL, document["url"])
                 cache.download(document_url)
                 if summary is not None:
                     summary.events_document_downloaded_count += 1
-                log.info("document_downloaded", event_document_url=document_url)
+                event_log.info("document_downloaded", event_document_url=document_url)
             except DOCUMENT_FAILURES as exc:
                 if summary is not None:
                     summary.events_document_failed_count += 1
-                log.error("download_error", error=str(exc), event_document_url=document["url"])
+                event_log.error(
+                    "download_error", error=str(exc), event_document_url=document["url"]
+                )
 
     for race in event_detail["races"]:
-        process_race(race, cache, log, page_race_max, summary=summary)
+        process_race(race, cache, event_log, page_race_max, summary=summary)
 
 
 def process_race(
