@@ -363,7 +363,8 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             url: The URL of the temporarily unavailable page.
             event_prefix: Prefix of the structured-log events, e.g. ``"http"`` or ``"download"``.
         Raises:
-            RuntimeError: If the page remains temporarily unavailable after the maximum number of attempts.
+            RuntimeError: If the page remains temporarily unavailable after the maximum number of
+            attempts.
         """
         if self.attempt >= self.max_attempts:
             self.logger.error(
