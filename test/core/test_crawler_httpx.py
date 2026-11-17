@@ -7,16 +7,14 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 import ranking.core.crawler.httpx as httpx_module
-from ranking.core.crawler.httpx import (
+from ranking.core.crawler.httpx import HEADERS, HTTP_TIMEOUT, HttpxCrawlerRuntime
+from ranking.core.crawler.retry_config import (
     DEFAULT_HEALTH_CHECK_STATUS_CODES,
     DEFAULT_RETRY_DELAYS_SECONDS,
     DEFAULT_RETRYABLE_STATUS_CODES,
-    HEADERS,
     HEALTH_CHECK_STATUS_CODES_ENV,
-    HTTP_TIMEOUT,
     RETRY_DELAYS_ENV,
     RETRYABLE_STATUS_CODES_ENV,
-    HttpxCrawlerRuntime,
     parse_health_check_status_codes,
     parse_retry_delays_seconds,
     parse_retryable_status_codes,

@@ -162,8 +162,8 @@ slashes and sorting query parameters is performed by the storage identity, never
 Target websites may become temporarily unavailable (maintenance windows, gateway micro-outages).
 Instead of failing immediately, `HttpxCrawlerRuntime` retries such requests. Page fetching
 (`fetcher`) and document downloading (`downloader`) apply the same retry policy (same backoff
-schedule and attempt limit), each with its own readable retry loop; the low-level single request
-is delegated to the `_send_get` helper.
+schedule and attempt limit), each with its own readable retry loop; the low-level single request is
+delegated to the `_send_get` helper.
 
 Retried status codes (default):
 
