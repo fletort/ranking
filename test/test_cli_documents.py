@@ -22,6 +22,9 @@ class RecordingLog:
     def __getattr__(self, name: str) -> Any:
         return lambda *args, **kwargs: None
 
+    def bind(self, **kwargs: Any) -> "RecordingLog":
+        return self
+
 
 class LinkCache:
     """Cache stub mimicking the URL guards the real runtime applies before any network access.
