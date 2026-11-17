@@ -315,7 +315,7 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             )
             raise RuntimeError(f"Network error {error_noun} URL: {url}") from e
         self._sleep_before_retry(
-            "http_transient_network_error",
+            f"{event_prefix}_transient_network_error",
             url=url,
             error=str(e),
         )
@@ -471,22 +471,23 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
                 continue
             break
 
-        # Temporary unavailable page check (fake 200 OK maintenance page)
-        content_type = response.headers.get("content-type", "").lower()
-        start = response.content[:500].lower()
-        is_html = "text/html" in content_type or b"<html" in start or b"<!doctype" in start
-        if is_html and self.is_temporary_unavailable_page(url, response.text):
-            self._manage_temporary_unavailable_page(url, "download")
+            # Temporary unavailable page check (fake 200 OK maintenance page)
+            content_type = response.headers.get("content-type", "").lower()
+            start = response.content[:500].lower()
+            is_html = "text/html" in content_type or b"<html" in start or b"<!doctype" in start
+            if is_html and self.is_temporary_unavailable_page(url, response.text):
+                self._manage_temporary_unavailable_page(url, "download")
+                continue
 
-        filename = self.extract_filename(response)
-        return DownloadedDocument(
-            url=url,
-            content=response.content,
-            original_filename=filename,
-            content_length=len(response.content),
-            content_type=response.headers.get("content-type", "application/octet-stream"),
-            downloaded_at=datetime.now(timezone.utc),
-        )
+            filename = self.extract_filename(response)
+            return DownloadedDocument(
+                url=url,
+                content=response.content,
+                original_filename=filename,
+                content_length=len(response.content),
+                content_type=response.headers.get("content-type", "application/octet-stream"),
+                downloaded_at=datetime.now(timezone.utc),
+            )
 
     @staticmethod
     def is_same_domain(url1: str, url2: str) -> bool:

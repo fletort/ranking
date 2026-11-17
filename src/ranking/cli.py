@@ -48,7 +48,7 @@ NETWORK_SLEEP_SECONDS = {"min": NETWORK_SLEEP_SECONDS_MIN, "max": NETWORK_SLEEP_
 # URL (``ValueError``, e.g. an optional page link such as ``javascript:void(0)``) or an external
 # redirect (``ExternalRedirectError``).
 # All are handled the same way so a single bad link never aborts the whole crawl.
-REQUEST_FAILURES = (RuntimeError, ValueError, ExternalRedirectError)
+REQUEST_FAILURES = (RuntimeError, ValueError)
 DOCUMENT_FAILURES = (RuntimeError, ValueError, ExternalRedirectError)
 
 
@@ -491,6 +491,7 @@ def _crawl_race(
                     )
                 else:
                     try:
+                        full_result_detail_url = result_detail_url  # in case of exception init this
                         full_result_detail_url = absolute_url(EVENTS_LIST_URL, result_detail_url)
                         detail_html = cache.fetch(
                             full_result_detail_url, CachePolicy.CACHE_IF_PRESENT
