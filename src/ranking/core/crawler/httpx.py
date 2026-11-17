@@ -215,6 +215,15 @@ def validate_retry_delays_seconds(
     return tuple(validated)
 
 
+class _RetryableTransportError(Exception):
+    """Internal signal: a transient transport failure that the caller may retry.
+
+    Raised by :meth:`HttpxCrawlerRuntime._send_get` for ``httpx.TimeoutException`` and
+    ``httpx.NetworkError`` so both retry loops (HTML pages and documents) can back off and
+    retry. The original exception is kept as :attr:`__cause__` for logging and error chaining.
+    """
+
+
 class HttpxCrawlerRuntime(CrawlerRuntime):
     """Crawler runtime implementation using httpx for network operations."""
 
@@ -341,26 +350,89 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         """
         validate_http_scheme(url)
         self._ensure_allowed_host(url)
-        response = self._request_with_retry(
-            url,
-            timeout=HTTP_TIMEOUT,
-            error_noun="fetching",
-            event_prefix="http",
-            body_reject_message="Temporary unavailable page for URL: {url}",
-            on_status_error=self._classify_fetch_status_error,
-            body_validator=self._accept_fetched_body,
-        )
 
-        final_url = str(response.url)
-        self.logger.debug(
-            "http_fetch",
-            requested_url=url,
-            final_url=final_url,
-            status=response.status_code,
-            size=len(response.text),
-        )
-        self._last_successful_url = url
-        return FetchedResource(requested_url=url, final_url=final_url, content=response.text)
+        attempt = 1
+        while True:
+            self.logger.info("http_request", url=url, attempt=attempt)
+            try:
+                response = self._send_get(url, HTTP_TIMEOUT, "fetching", "http")
+                response.raise_for_status()
+            except _RetryableTransportError as transient_error:
+                # Transient network-level failure: back off and retry.
+                if attempt >= self.max_attempts:
+                    self.logger.error(
+                        "http_network_error",
+                        url=url,
+                        error=str(transient_error),
+                        attempts=attempt,
+                        max_attempts=self.max_attempts,
+                    )
+                    raise RuntimeError(f"Network error fetching URL: {url}") from transient_error
+                attempt = self._sleep_before_retry(
+                    attempt,
+                    "http_transient_network_error",
+                    url=url,
+                    error=str(transient_error),
+                )
+                continue
+            except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code
+                retryable = status_code in self.retryable_status_codes
+                if status_code in self.health_check_status_codes:
+                    # A page-specific server error (500 by default): probe a reference page.
+                    if self._is_reference_page_healthy(url):
+                        self.logger.error(
+                            "http_local_server_error", url=url, status_code=status_code
+                        )
+                        raise LocalServerErrorException(
+                            requested_url=url, status_code=status_code
+                        ) from e
+                    # The reference page is down too: the whole site is unavailable, retry.
+                    retryable = True
+                if not retryable or attempt >= self.max_attempts:
+                    self.logger.error(
+                        "http_error",
+                        url=url,
+                        status_code=status_code,
+                        attempts=attempt,
+                        retryable=retryable,
+                    )
+                    raise RuntimeError(f"HTTP error {status_code} for URL: {url}") from e
+                attempt = self._sleep_before_retry(
+                    attempt, "http_transient_error", url=url, status_code=status_code
+                )
+                continue
+
+            # 2xx: keep the domain decisions explicit so the whole lifecycle is readable.
+            final_url = str(response.url)
+            if final_url != url:
+                if self.base_url and not self.is_same_domain(final_url, self.base_url):
+                    self.logger.debug("external_redirect_detected", from_url=url, to_url=final_url)
+                    raise ExternalRedirectError(requested_url=url, final_url=final_url)
+                self.logger.info("redirect_detected", from_url=url, to_url=final_url)
+
+            if self.is_temporary_unavailable_page(url, response.text):
+                # A fake 200 OK maintenance page: never cache it, retry instead.
+                if attempt >= self.max_attempts:
+                    self.logger.error(
+                        "http_unacceptable_response",
+                        url=url,
+                        attempts=attempt,
+                        max_attempts=self.max_attempts,
+                    )
+                    raise RuntimeError(f"Temporary unavailable page for URL: {url}")
+                attempt = self._sleep_before_retry(attempt, "http_unacceptable_response", url=url)
+                continue
+
+            self.logger.debug(
+                "http_fetch",
+                requested_url=url,
+                final_url=final_url,
+                status=response.status_code,
+                size=len(response.text),
+            )
+            self._last_successful_url = url
+            return FetchedResource(requested_url=url, final_url=final_url, content=response.text)
 
     def _reference_page_url(self, url: str) -> str | None:
         """Return the reference page (``CheckPage``) to probe for a site health check.
@@ -443,144 +515,60 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         self.sleep_duration_seconds += delay_seconds
         return attempt + 1
 
-    def _request_with_retry(
-        self,
-        url: str,
-        *,
-        timeout: float,
-        error_noun: str,
-        event_prefix: str,
-        body_reject_message: str = "Unusable response for URL: {url}",
-        on_status_error: Callable[[str, httpx.HTTPStatusError], bool] | None = None,
-        body_validator: Callable[[str, httpx.Response], bool] | None = None,
+    def _send_get(
+        self, url: str, timeout: float, error_noun: str, event_prefix: str
     ) -> httpx.Response:
-        """GET ``url`` and return the response, retrying transient failures.
+        """Perform a single ``httpx.get`` request and normalise transport failures.
 
-        Shared by :meth:`fetcher` (HTML pages) and :meth:`downloader` (documents) so both apply
-        the exact same retry policy through the shared exponential backoff:
+        Low-level building block shared by :meth:`fetcher` and :meth:`downloader`. It only
+        handles the transport layer: the HTTP status code is returned untouched so the callers
+        keep their domain decisions (which status codes to retry, health checks, page
+        validation) explicit in their own loops.
 
-        - retryable HTTP status codes (``retryable_status_codes``), with an optional
-          ``on_status_error`` hook to force a retry (e.g. the fetcher's 500 health check);
-        - transient network failures (``httpx.TimeoutException``, ``httpx.NetworkError``);
-        - at most ``max_attempts`` attempts over the shared backoff schedule.
+        A transient transport failure (``httpx.TimeoutException`` or ``httpx.NetworkError``,
+        i.e. read/connect/write timeouts, connection resets or DNS hiccups) is translated into
+        :class:`_RetryableTransportError` so the caller can back off and retry. Any other
+        transport failure (e.g. too many redirects, invalid URL) is not transient and fails
+        immediately with ``RuntimeError``.
 
         Args:
             url: The URL to request.
             timeout: Request timeout, in seconds.
-            error_noun: Verb used in error messages, e.g. ``"fetching"`` or ``"downloading"``.
+            error_noun: Verb used in the fatal network-error message, e.g. ``"fetching"``.
             event_prefix: Prefix of the structured-log events, e.g. ``"http"`` or ``"download"``.
-            body_reject_message: Message raised when a rejected body outlives the retry budget.
-                ``{url}`` is substituted with the requested URL.
-            on_status_error: Optional callback invoked for every HTTP error status before the
-                retry decision. Returning ``True`` forces a retry; it may raise to abort
-                immediately (e.g. ``LocalServerErrorException`` for a localized page bug).
-            body_validator: Optional callback invoked for every successful (2xx) response.
-                Returning ``False`` rejects the body and retries it (e.g. a temporary
-                maintenance page served as ``200 OK``); it may raise to abort immediately
-                (e.g. ``ExternalRedirectError``).
 
         Returns:
-            The accepted response.
+            The raw response, whatever its status code.
 
         Raises:
-            RuntimeError: On HTTP error status codes, rejected bodies or network-level errors,
-                once retries are exhausted.
-            Exception: Whatever ``on_status_error`` or ``body_validator`` raises.
+            _RetryableTransportError: On a transient transport failure.
+            RuntimeError: On a non-transient transport failure.
         """
-        attempt = 1
-        while True:
-            self.logger.info(f"{event_prefix}_request", url=url, attempt=attempt)
-            try:
-                response = httpx.get(
-                    url,
-                    headers=HEADERS,
-                    follow_redirects=True,
-                    verify=VERIFY_SSL,
-                    timeout=timeout,
-                )
-                response.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                status_code = e.response.status_code
-                retryable = status_code in self.retryable_status_codes
-                if on_status_error is not None:
-                    retryable = on_status_error(url, e) or retryable
-
-                if not retryable or attempt >= self.max_attempts:
-                    self.logger.error(
-                        f"{event_prefix}_error",
-                        url=url,
-                        status_code=status_code,
-                        attempts=attempt,
-                        retryable=retryable,
-                    )
-                    raise RuntimeError(f"HTTP error {status_code} for URL: {url}") from e
-
-                attempt = self._sleep_before_retry(
-                    attempt, f"{event_prefix}_transient_error", url=url, status_code=status_code
-                )
-            except (httpx.TimeoutException, httpx.NetworkError) as e:
-                # Transient network-level failures (read/connect/write timeouts, connection
-                # resets, DNS hiccups) feed the same retry/backoff loop as 5xx codes.
-                if attempt >= self.max_attempts:
-                    self.logger.error(
-                        f"{event_prefix}_network_error",
-                        url=url,
-                        error=str(e),
-                        attempts=attempt,
-                        max_attempts=self.max_attempts,
-                    )
-                    raise RuntimeError(f"Network error {error_noun} URL: {url}") from e
-
-                attempt = self._sleep_before_retry(
-                    attempt, f"{event_prefix}_transient_network_error", url=url, error=str(e)
-                )
-            except httpx.RequestError as e:
-                # Any other network-level error (e.g. too many redirects, invalid URL) is not
-                # transient: fail immediately.
-                self.logger.error(f"{event_prefix}_network_error", url=url, error=str(e))
-                raise RuntimeError(f"Network error {error_noun} URL: {url}") from e
-            else:
-                if body_validator is not None and not body_validator(url, response):
-                    if attempt >= self.max_attempts:
-                        self.logger.error(
-                            f"{event_prefix}_unacceptable_response",
-                            url=url,
-                            attempts=attempt,
-                            max_attempts=self.max_attempts,
-                        )
-                        raise RuntimeError(body_reject_message.format(url=url))
-                    attempt = self._sleep_before_retry(
-                        attempt, f"{event_prefix}_unacceptable_response", url=url
-                    )
-                    continue
-                return response
-
-    def _classify_fetch_status_error(self, url: str, error: httpx.HTTPStatusError) -> bool:
-        """Return ``True`` when a fetch status error must be retried.
-
-        A server error that may be page-specific (500 by default, configurable through the
-        ``RANKING_HTTP_HEALTH_CHECK_STATUS_CODES`` environment variable) first triggers a
-        reference page (``CheckPage``) health check: a healthy reference page means the target
-        URL is the only thing broken, so it fails immediately without retry
-        (``LocalServerErrorException``); a down reference page means the whole website is
-        unavailable, so the standard retry mechanism applies.
-        """
-        status_code = error.response.status_code
-        if status_code not in self.health_check_status_codes:
-            return False
-        if self._is_reference_page_healthy(url):
-            self.logger.error("http_local_server_error", url=url, status_code=status_code)
-            raise LocalServerErrorException(requested_url=url, status_code=status_code) from error
-        # Reference page is down too: the whole site is unavailable, retry.
-        return True
+        try:
+            return httpx.get(
+                url,
+                headers=HEADERS,
+                follow_redirects=True,
+                verify=VERIFY_SSL,
+                timeout=timeout,
+            )
+        except (httpx.TimeoutException, httpx.NetworkError) as e:
+            # Transient network-level failures (read/connect/write timeouts, connection resets,
+            # DNS hiccups) are reported as retryable so the caller can back off and retry.
+            raise _RetryableTransportError(str(e)) from e
+        except httpx.RequestError as e:
+            # Any other network-level error (e.g. too many redirects, invalid URL) is not
+            # transient: fail immediately.
+            self.logger.error(f"{event_prefix}_network_error", url=url, error=str(e))
+            raise RuntimeError(f"Network error {error_noun} URL: {url}") from e
 
     def _ensure_allowed_host(self, url: str) -> None:
         """Refuse a URL whose host is outside the configured ``base_url``, before any request.
 
         Page-provided links may be absolute (``https://other``) or scheme-relative (``//other``);
-        once resolved they replace the configured host. :meth:`_accept_fetched_body` only checks
-        the domain when the server redirects, so without this guard a *direct* request to another
-        host would succeed and be cached. Raising :class:`ExternalRedirectError` here keeps the
+        once resolved they replace the configured host. :meth:`fetcher` only checks the domain
+        when the server redirects, so without this guard a *direct* request to another host would
+        succeed and be cached. Raising :class:`ExternalRedirectError` here keeps the
         crawl on the configured site and lets the CLI skip the link
         (``event_skipped`` / ``race_skipped``).
 
@@ -590,27 +578,11 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
             self.logger.debug("external_host_blocked", url=url, base_url=self.base_url)
             raise ExternalRedirectError(requested_url=url, final_url=url)
 
-    def _accept_fetched_body(self, url: str, response: httpx.Response) -> bool:
-        """Return ``False`` to retry a 2xx response that is not the real page content.
-
-        An external redirect (final URL outside the allowed ``base_url``) is fatal and raised
-        here so it is never retried. A temporary maintenance page served as a fake ``200 OK``
-        is rejected so it is retried and never cached nor snapshotted.
-        """
-        final_url = str(response.url)
-        if final_url != url:
-            if self.base_url and not self.is_same_domain(final_url, self.base_url):
-                self.logger.debug("external_redirect_detected", from_url=url, to_url=final_url)
-                raise ExternalRedirectError(requested_url=url, final_url=final_url)
-            self.logger.info("redirect_detected", from_url=url, to_url=final_url)
-        return not self.is_temporary_unavailable_page(url, response.text)
-
     def downloader(self, url: str) -> DownloadedDocument:
         """Download a document from the given URL without touching the cache.
 
         Transient failures (retryable status codes, read/connect timeouts and connection errors)
-        are retried through the same backoff schedule as :meth:`fetcher`, via
-        :meth:`_request_with_retry`.
+        are retried through the same backoff schedule as :meth:`fetcher`.
 
         Raises:
             RuntimeError: On HTTP error status codes or network-level errors, once retries are
@@ -620,12 +592,48 @@ class HttpxCrawlerRuntime(CrawlerRuntime):
         """
         validate_http_scheme(url)
         self._ensure_allowed_host(url)
-        response = self._request_with_retry(
-            url,
-            timeout=DOCUMENT_DOWNLOAD_TIMEOUT,
-            error_noun="downloading",
-            event_prefix="download",
-        )
+
+        attempt = 1
+        while True:
+            self.logger.info("download_request", url=url, attempt=attempt)
+            try:
+                response = self._send_get(url, DOCUMENT_DOWNLOAD_TIMEOUT, "downloading", "download")
+                response.raise_for_status()
+            except _RetryableTransportError as transient_error:
+                # Transient network-level failure: back off and retry.
+                if attempt >= self.max_attempts:
+                    self.logger.error(
+                        "download_network_error",
+                        url=url,
+                        error=str(transient_error),
+                        attempts=attempt,
+                        max_attempts=self.max_attempts,
+                    )
+                    raise RuntimeError(f"Network error downloading URL: {url}") from transient_error
+                attempt = self._sleep_before_retry(
+                    attempt,
+                    "download_transient_network_error",
+                    url=url,
+                    error=str(transient_error),
+                )
+                continue
+            except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code
+                retryable = status_code in self.retryable_status_codes
+                if not retryable or attempt >= self.max_attempts:
+                    self.logger.error(
+                        "download_error",
+                        url=url,
+                        status_code=status_code,
+                        attempts=attempt,
+                        retryable=retryable,
+                    )
+                    raise RuntimeError(f"HTTP error {status_code} for URL: {url}") from e
+                attempt = self._sleep_before_retry(
+                    attempt, "download_transient_error", url=url, status_code=status_code
+                )
+                continue
+            break
 
         filename = self.extract_filename(response)
         return DownloadedDocument(
