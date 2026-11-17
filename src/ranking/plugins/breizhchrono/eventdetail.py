@@ -5,6 +5,12 @@ from typing import NotRequired, TypedDict
 import structlog
 from bs4 import BeautifulSoup, Tag
 
+from ranking.core.url import absolute_url
+from ranking.plugins.breizhchrono.eventlist import EVENTS_LIST_URL
+
+# Downloadable document formats accepted in the ``event_documents`` section.
+DOCUMENT_EXTENSIONS = (".pdf", ".csv", ".xls", ".xlsx")
+
 
 class RaceItem(TypedDict):
     source_url: str
@@ -111,17 +117,19 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
             else:
                 for link in link_nodes:
                     href, name = manage_link_node(link, log, "event_documents")
-                    other_ranks.append({"url": href, "name": name})
-                    if href is None or not href.lower().endswith(".pdf"):
+                    absolute_href = absolute_url(EVENTS_LIST_URL, href)
+                    if not is_document_link(absolute_href):
                         log.warning(
                             "invalid_format",
                             type="element",
                             name="a",
-                            href=href,
+                            href=absolute_href,
                             text=name,
                             location="event_documents",
-                            reason="expected PDF document link, but found another link",
+                            reason="expected document link, but found another link",
                         )
+                        continue
+                    other_ranks.append({"url": href, "name": name})
                 reply["documents"] = other_ranks
 
         if len(divs) > 2:
@@ -139,6 +147,11 @@ def extract_event_detail(html_content: str) -> EventDetail | None:
     except Exception:
         log.exception("parse_failed")
         return None
+
+
+def is_document_link(url: str) -> bool:
+    """Return whether *url* points to an accepted downloadable document format."""
+    return url.lower().endswith(DOCUMENT_EXTENSIONS)
 
 
 def manage_link_node(link: Tag, log, location: str) -> tuple[str, str]:
