@@ -1,4 +1,5 @@
 import pytest
+import structlog
 from structlog.testing import capture_logs
 
 from ranking.plugins.breizhchrono.eventdetail import build_race_url, extract_event_detail
@@ -132,3 +133,25 @@ def test_extract_event_detail_keeps_allowed_document_extensions(ext: str) -> Non
     assert result is not None
     assert result["documents"] == [{"url": f"/documents?name=ranking{ext}", "name": "Document"}]
     assert [event for event in logs if event["event"] == "invalid_format"] == []
+
+
+def test_extract_event_detail_missing_h1_logs_page_url() -> None:
+    url = "https://resultats.breizhchrono.com/event-1"
+    html = """
+    <html>
+      <body>
+        <div>
+          <a class="badge-link" href="/resultats-course/10km-2026-12345-123/10km">10km</a>
+        </div>
+      </body>
+    </html>
+    """
+
+    with capture_logs() as logs:
+        result = extract_event_detail(html, structlog.get_logger().bind(url=url))
+
+    assert result is None
+    missing = [event for event in logs if event["event"] == "missing_data"]
+    assert len(missing) == 1
+    assert missing[0]["name"] == "h1"
+    assert missing[0]["url"] == url

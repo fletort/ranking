@@ -47,7 +47,9 @@ class ResultDetail(TypedDict):
     intermediates: list[dict[str, str]]
 
 
-def extract_result_detail(html_content: str) -> ResultDetail | None:
+def extract_result_detail(
+    html_content: str, log: structlog.BoundLogger | None = None
+) -> ResultDetail | None:
     """Extract raw result detail fields from a BreizhChrono runner detail page.
 
     Parses the HTML of a per-runner result page and returns an object with the extracted fields.
@@ -56,11 +58,11 @@ def extract_result_detail(html_content: str) -> ResultDetail | None:
 
     Returns None if parsing fails entirely.
     """
+    log = (log or structlog.get_logger()).bind(
+        component="parser",
+        entity="result_detail",
+    )
     try:
-        log = structlog.get_logger().bind(
-            component="parser",
-            entity="result_detail",
-        )
         soup = BeautifulSoup(html_content, "html.parser")
         result: ResultDetail = {
             "name_bib": "",

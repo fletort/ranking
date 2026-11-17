@@ -40,14 +40,15 @@ def build_event_detail_no_info(status: str) -> EventDetail:
     }
 
 
-def extract_event_detail(html_content: str) -> EventDetail | None:
+def extract_event_detail(
+    html_content: str, log: structlog.BoundLogger | None = None
+) -> EventDetail | None:
+    log = (log or structlog.get_logger()).bind(
+        component="parser",
+        entity="event_detail",
+    )
     reply: EventDetail | None = None
     try:
-        log = structlog.get_logger().bind(
-            component="parser",
-            entity="event_detail",
-        )
-
         soup = BeautifulSoup(html_content, "html.parser")
 
         h1 = soup.find("h1")
