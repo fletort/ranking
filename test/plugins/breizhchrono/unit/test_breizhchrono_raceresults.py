@@ -1,7 +1,9 @@
 import base64
 
 import pytest
+import structlog
 from bs4 import BeautifulSoup
+from structlog.testing import capture_logs
 
 from ranking.plugins.breizhchrono.eventdetail import RaceItem
 from ranking.plugins.breizhchrono.raceresults import (
@@ -261,3 +263,18 @@ def test_extract_race_results_returns_no_next_url_when_no_pagination() -> None:
     result = extract_race_results(html)
 
     assert result["next_url"] is None
+
+
+def test_extract_race_results_missing_data_logs_page_url() -> None:
+    url = "https://resultats.breizhchrono.com/bc/resultats/course-result.jsp?ref=1&heat=10km"
+
+    with capture_logs() as logs:
+        result = extract_race_results(
+            "<html><body></body></html>", log=structlog.get_logger().bind(url=url)
+        )
+
+    assert result["results"] == []
+    missing = [event for event in logs if event["event"] == "missing_data"]
+    assert len(missing) == 1
+    assert missing[0]["name"] == "data"
+    assert missing[0]["url"] == url

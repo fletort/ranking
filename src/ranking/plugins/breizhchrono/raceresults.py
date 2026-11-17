@@ -70,8 +70,12 @@ def check_decode_order(soup: BeautifulSoup) -> None:
             print("[WARN] Field mapping changed:", fields)
 
 
-def extract_race_results(html: str, race_item: RaceItem | None = None) -> RaceResultsResult:
-    log = structlog.get_logger().bind(
+def extract_race_results(
+    html: str,
+    race_item: RaceItem | None = None,
+    log: structlog.BoundLogger | None = None,
+) -> RaceResultsResult:
+    log = (log or structlog.get_logger()).bind(
         component="parser",
         entity="race_results",
     )

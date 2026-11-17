@@ -36,12 +36,14 @@ def _as_text(value: object) -> str:
     return ""
 
 
-def extract_events_list(html_content: str) -> EventListResult:
+def extract_events_list(
+    html_content: str, log: structlog.BoundLogger | None = None
+) -> EventListResult:
+    log = (log or structlog.get_logger()).bind(
+        component="parser",
+        entity="event_list",
+    )
     try:
-        log = structlog.get_logger().bind(
-            component="parser",
-            entity="event_list",
-        )
         soup = BeautifulSoup(html_content, "html.parser")
         table = soup.select_one("div.table-responsive table")
         if table is None:

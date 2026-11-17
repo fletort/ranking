@@ -284,6 +284,26 @@ logger.warning(
 )
 ```
 
+#### Source URL context (required)
+
+Every `missing_data` event must carry the URL of the page being parsed, so the flagged page can be
+inspected later. Bind it once on the logger (see 4.7 Context Binding) rather than repeating it on
+each call:
+
+```python
+logger = structlog.get_logger().bind(
+    component="parser",
+    entity="race_results",
+    url=url,
+)
+
+logger.error("missing_data", type="element", name="data")
+```
+
+When the page is a child page (race results, runner detail), the parent `race_url` / `event_url`
+should also be present in the context when available. Bind the context progressively as the crawl
+descends the hierarchy (event → race → result) so child logs inherit the parent context.
+
 ---
 
 ### 4.5 Log Levels

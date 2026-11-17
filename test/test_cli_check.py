@@ -54,7 +54,7 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
     monkeypatch.setattr(
         cli_module,
         "extract_events_list",
-        lambda html: {
+        lambda html, log=None: {
             "events": [
                 {
                     "name": "Event 1",
@@ -69,7 +69,7 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
     monkeypatch.setattr(
         cli_module,
         "extract_event_detail",
-        lambda html: {
+        lambda html, log=None: {
             "event_race_raw": "Event 1",
             "races": [
                 {
@@ -85,13 +85,15 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
     monkeypatch.setattr(
         cli_module,
         "extract_race_results",
-        lambda html, race_information: {
+        lambda html, race_information, log=None: {
             "results": [{"result_detail_url_computed": "/result-1"}],
             "next_url": None,
             "document": None,
         },
     )
-    monkeypatch.setattr(cli_module, "extract_result_detail", lambda html: {"runner": "Alice"})
+    monkeypatch.setattr(
+        cli_module, "extract_result_detail", lambda html, log=None: {"runner": "Alice"}
+    )
     monkeypatch.setattr(cli_module, "setup_logging", lambda debug=False: None)
     monkeypatch.setattr(cli_module.structlog, "get_logger", lambda: log)
     monkeypatch.setattr(cli_module, "HttpxCrawlerRuntime", lambda *args, **kwargs: cache)

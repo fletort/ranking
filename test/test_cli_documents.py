@@ -22,6 +22,9 @@ class RecordingLog:
     def __getattr__(self, name: str) -> Any:
         return lambda *args, **kwargs: None
 
+    def bind(self, **kwargs: Any) -> "RecordingLog":
+        return self
+
 
 class LinkCache:
     """Cache stub mimicking the URL guards the real runtime applies before any network access.
@@ -68,7 +71,7 @@ def test_process_event_skips_empty_document_url_and_survives_an_invalid_link(mon
     monkeypatch.setattr(
         cli_module,
         "extract_event_detail",
-        lambda html: {
+        lambda html, log=None: {
             "event_race_raw": "Event",
             "races": [
                 {
@@ -129,7 +132,7 @@ def test_process_race_survives_invalid_document_and_result_detail_links(monkeypa
     monkeypatch.setattr(
         cli_module,
         "extract_race_results",
-        lambda html, race_item: {
+        lambda html, race_item, log=None: {
             "results": [{"result_detail_url_computed": INVALID_URL}],
             "next_url": None,
             "document": INVALID_URL,
@@ -152,7 +155,7 @@ def test_process_event_counts_an_off_host_document_as_failed_without_aborting(mo
     monkeypatch.setattr(
         cli_module,
         "extract_event_detail",
-        lambda html: {
+        lambda html, log=None: {
             "event_race_raw": "Event",
             "races": [
                 {
@@ -194,7 +197,7 @@ def test_process_race_counts_an_off_host_document_as_failed_without_aborting(mon
     monkeypatch.setattr(
         cli_module,
         "extract_race_results",
-        lambda html, race_item: {
+        lambda html, race_item, log=None: {
             "results": [],
             "next_url": None,
             "document": OFF_HOST_URL,
@@ -240,7 +243,11 @@ def test_process_race_counts_a_malformed_export_url_as_failed_without_aborting(m
     monkeypatch.setattr(
         cli_module,
         "extract_race_results",
-        lambda html, race_item: {"results": [], "next_url": None, "document": MALFORMED_URL},
+        lambda html, race_item, log=None: {
+            "results": [],
+            "next_url": None,
+            "document": MALFORMED_URL,
+        },
     )
 
     cli_module.process_race(race, cache, log, summary=summary)
