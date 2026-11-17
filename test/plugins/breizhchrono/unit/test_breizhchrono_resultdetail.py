@@ -165,10 +165,7 @@ def test_extract_result_detail_handles_missing_data() -> None:
 
 
 def test_extract_result_detail_missing_h1_logs_url_and_inherited_race_url() -> None:
-    url = (
-        "https://resultats.breizhchrono.com/bc/resultats/coureur.jsp"
-        "?ref=1&heat=10km&dossard=42"
-    )
+    url = "https://resultats.breizhchrono.com/bc/resultats/coureur.jsp?ref=1&heat=10km&dossard=42"
     race_url = "https://resultats.breizhchrono.com/bc/resultats/course-result.jsp?ref=1&heat=10km"
     logger = structlog.get_logger().bind(url=url, race_url=race_url)
 
@@ -176,9 +173,7 @@ def test_extract_result_detail_missing_h1_logs_url_and_inherited_race_url() -> N
         extract_result_detail("<html><body></body></html>", logger)
 
     missing = [
-        event
-        for event in logs
-        if event["event"] == "missing_data" and event["name"] == "h1.title"
+        event for event in logs if event["event"] == "missing_data" and event["name"] == "h1.title"
     ]
     assert len(missing) == 1
     assert missing[0]["url"] == url
