@@ -61,7 +61,6 @@ class CrawlSummary:
     events_document_downloaded_count: int = 0
     events_document_failed_count: int = 0
     races_processed_count: int = 0
-    result_pages_processed_count: int = 0
     races_document_downloaded_count: int = 0
     races_document_failed_count: int = 0
     races_external_count: int = 0
@@ -87,7 +86,6 @@ def log_crawl_summary(
         events_document_downloaded_count=summary.events_document_downloaded_count,
         events_document_failed_count=summary.events_document_failed_count,
         races_processed_count=summary.races_processed_count,
-        result_pages_processed_count=summary.result_pages_processed_count,
         races_external_count=summary.races_external_count,
         races_failed_count=summary.races_failed_count,
         races_document_downloaded_count=summary.races_document_downloaded_count,
@@ -380,7 +378,7 @@ def process_event(
             if not document["url"]:
                 # The parser normalises a missing href to an empty string: resolving it would
                 # point at the site root and download the homepage as an event document.
-                event_log.debug("skipped_empty_document_url", event_document_name=document["name"])
+                event_log.info("skipped_empty_document_url", event_document_name=document["name"])
                 continue
             try:
                 document_url = absolute_url(EVENTS_LIST_URL, document["url"])
@@ -478,10 +476,8 @@ def _crawl_race(
                     log.error("download_error", error=str(exc), race_document_url=race_document_url)
 
         results = race_result["results"]
-        if summary is not None:
-            summary.result_pages_processed_count += 1
         cache.save_extracted_json(current_url, race_result)
-        log.debug("race_result_page_processed", race_url=current_url)
+        log.info("race_result_page_processed", race_url=current_url)
         pages_processed += 1
 
         if results:
