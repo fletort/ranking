@@ -467,34 +467,32 @@ def _crawl_race(
                 try:
                     full_document_url = absolute_url(EVENTS_LIST_URL, race_document_url)
                     cache.download(full_document_url)
-                    log.info("document_downloaded", race_document_url=full_document_url)
+                    race_log.info("document_downloaded", race_document_url=full_document_url)
                     if summary is not None:
                         summary.races_document_downloaded_count += 1
                 except DOCUMENT_FAILURES as exc:
                     if summary is not None:
                         summary.races_document_failed_count += 1
-                    log.error("download_error", error=str(exc), race_document_url=race_document_url)
+                    race_log.error(
+                        "download_error", error=str(exc), race_document_url=race_document_url
+                    )
 
         results = race_result["results"]
         cache.save_extracted_json(current_url, race_result)
-        log.info("race_result_page_processed", race_url=current_url)
+        race_log.info("race_result_page_processed", url=current_url)
         pages_processed += 1
 
         if results:
-            log.debug(
+            race_log.debug(
                 "race_results_sample",
-                race_url=current_url,
+                url=current_url,
                 sample=results[:1],
             )
             # Fetch and extract all detailed results pages
             for result in results:
                 result_detail_url = result.get("result_detail_url_computed")
                 if not isinstance(result_detail_url, str) or not result_detail_url:
-                    log.info(
-                        "partial_data_available",
-                        missing="result_detail",
-                        race_url=current_url,
-                    )
+                    race_log.info("partial_data_available", missing="result_detail")
                 else:
                     try:
                         full_result_detail_url = result_detail_url  # in case of exception init this
@@ -508,11 +506,11 @@ def _crawl_race(
                         if summary is not None:
                             summary.results_processed_count += 1
                         cache.save_extracted_json(full_result_detail_url, detail)
-                        log.info("result_detail_processed", url=full_result_detail_url)
+                        race_log.info("result_detail_processed", url=full_result_detail_url)
                     except ExternalRedirectError as exc:
                         if summary is not None:
                             summary.results_failed_count += 1
-                        log.info(
+                        race_log.info(
                             "result_detail_skipped",
                             reason="external_redirect",
                             from_url=exc.requested_url,
@@ -521,7 +519,7 @@ def _crawl_race(
                     except REQUEST_FAILURES as exc:
                         if summary is not None:
                             summary.results_failed_count += 1
-                        log.error(
+                        race_log.error(
                             "fetch_error", error=str(exc), result_detail_url=full_result_detail_url
                         )
 
@@ -529,7 +527,7 @@ def _crawl_race(
         if not next_url:
             break
         if page_race_max is not None and pages_processed >= page_race_max:
-            log.info("race_max_pages_reached", pages=pages_processed)
+            race_log.info("race_max_pages_reached", pages=pages_processed)
             break
 
         current_url = urljoin(base_race_url, next_url)
