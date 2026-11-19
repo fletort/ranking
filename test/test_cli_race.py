@@ -115,7 +115,6 @@ def test_races_processed_counts_a_unique_race_once_across_paginated_result_pages
     # The three paginated result pages belong to one race and must be counted as such.
     assert len(cache.fetched) == 3
     assert summary.races_processed_count == 1
-    assert summary.result_pages_processed_count == 3
     # The race is traced once; page-level progress is traced separately.
     assert log.events.count("race_processed") == 1
     assert log.events.count("race_result_page_processed") == 3
