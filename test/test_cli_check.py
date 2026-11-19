@@ -114,7 +114,6 @@ def test_event_list_logs_final_crawl_summary(monkeypatch) -> None:
         "events_document_downloaded_count": 0,
         "events_document_failed_count": 0,
         "races_processed_count": 1,
-        "result_pages_processed_count": 1,
         "races_external_count": 0,
         "races_failed_count": 0,
         "races_document_downloaded_count": 0,
